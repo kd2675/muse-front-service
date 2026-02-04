@@ -1,24 +1,61 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import Image from 'next/image';
+import { useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import Image from "next/image";
+import { setAccessToken } from "../lib/auth";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { setPendingPath } from "../store/uiSlice";
+import PageShell from "../components/PageShell";
+import { Skeleton } from "../components/Skeleton";
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  const pendingPath = useAppSelector((state) => state.ui.pendingPath);
+  const token = searchParams.get("token");
+  const isProcessing = Boolean(token);
 
   useEffect(() => {
-    const token = searchParams.get('token');
     if (token) {
-      localStorage.setItem('accessToken', token);
-      router.push('/');
+      setAccessToken(token);
+      if (pendingPath) {
+        dispatch(setPendingPath(undefined));
+        router.push(pendingPath);
+      } else {
+        router.push("/");
+      }
     }
-  }, [searchParams, router]);
+  }, [dispatch, pendingPath, router, token]);
 
   const handleNaverLogin = () => {
-    window.location.href = 'http://localhost:8080/oauth2/authorize/naver';
+    window.location.href = "http://localhost:8080/oauth2/authorize/naver";
   };
+
+  if (isProcessing) {
+    return (
+      <PageShell>
+        <div className="mt-16 flex min-h-[60vh] items-center justify-center">
+          <div className="w-full max-w-md rounded-[28px] border border-[color:var(--line)] bg-white/70 p-10 shadow-[var(--shadow)]">
+            <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">
+              Signing in
+            </p>
+            <h1 className="mt-3 font-[var(--font-display)] text-2xl">
+              로그인 처리 중입니다.
+            </h1>
+            <p className="mt-2 text-sm text-[color:var(--muted)]">
+              잠시만 기다려주세요.
+            </p>
+            <div className="mt-6 flex items-center gap-3 text-xs text-[color:var(--muted)]">
+              <div className="spinner" />
+              <span>인증 정보를 확인하는 중입니다.</span>
+            </div>
+          </div>
+        </div>
+      </PageShell>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 dark:bg-gray-900">
