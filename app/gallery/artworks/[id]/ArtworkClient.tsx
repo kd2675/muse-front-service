@@ -33,8 +33,7 @@ export default function ArtworkClient({ id }: ArtworkClientProps) {
     queryFn: () => getArtworkDetail(id),
   });
 
-  const artwork = data?.data;
-  const isFallback = data?.isFallback ?? false;
+  const artwork = data?.data ?? null;
   const error = data?.error;
   const relatedWorks = artwork
     ? [
@@ -238,15 +237,8 @@ export default function ArtworkClient({ id }: ArtworkClientProps) {
             </div>
           </div>
         </section>
-      ) : (
+      ) : artwork ? (
         <>
-          {isFallback && (
-            <div className="mt-10 rounded-2xl border border-[color:var(--line)] bg-white/70 px-5 py-3 text-xs text-[color:var(--muted)]">
-              작품 정보를 불러오지 못해 임시 콘텐츠를 표시하고 있습니다.
-              {error ? ` (${error})` : ""}
-            </div>
-          )}
-
           {artwork && (
             <section className="mt-10 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
@@ -431,9 +423,14 @@ export default function ArtworkClient({ id }: ArtworkClientProps) {
               </div>
             </div>
           </div>
-        </section>
+            </section>
           )}
         </>
+      ) : (
+        <div className="mt-10 rounded-[28px] border border-[color:var(--line)] bg-white/70 px-6 py-6 text-sm text-[color:var(--muted)] shadow-[var(--shadow)]">
+          작품 정보를 불러오지 못했습니다.
+          {error ? ` (${error})` : ""}
+        </div>
       )}
     </PageShell>
   );

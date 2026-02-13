@@ -11,11 +11,11 @@ import {
   getUserFromToken,
   isTokenExpired,
   logout,
-  notifyAuthExpired,
   scheduleTokenExpiry,
 } from "../lib/auth";
 import { onAuthChanged } from "../lib/authEvents";
 import { canAccessPath } from "../lib/routeGuard";
+import { useBodyScrollLock } from "../lib/useBodyScrollLock";
 import { Skeleton } from "./Skeleton";
 
 const tabs = ["home", "contest", "gallery", "profile"] as const;
@@ -65,6 +65,7 @@ export default function TopNav() {
   });
   const [isHydrated, setIsHydrated] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { status: authStatus, label: userLabel, exp: tokenExp } = authSnapshot;
 
   const queryTab = searchParams.get("tab");
@@ -81,6 +82,12 @@ export default function TopNav() {
   }, [dispatch, derivedTab, pathname, queryTab, router, searchParams]);
 
   useEffect(() => {
+    setIsMenuOpen(false);
+  }, [pathname, searchParams]);
+
+  useBodyScrollLock(isMenuOpen);
+
+  useEffect(() => {
     const updateAuth = () => {
       const token = getAccessToken();
       const user = getUserFromToken();
@@ -88,7 +95,6 @@ export default function TopNav() {
       if (exp && isTokenExpired(exp)) {
         setAuthSnapshot({ status: "out", label: null, exp: null });
         clearAccessToken();
-        notifyAuthExpired("expired");
         return;
       }
       setAuthSnapshot({
@@ -115,13 +121,11 @@ export default function TopNav() {
     if (isTokenExpired(tokenExp)) {
       setAuthSnapshot({ status: "out", label: null, exp: null });
       clearAccessToken();
-      notifyAuthExpired("expired");
       return;
     }
     return scheduleTokenExpiry(() => {
       setAuthSnapshot({ status: "out", label: null, exp: null });
       clearAccessToken();
-      notifyAuthExpired("expired");
     }, tokenExp);
   }, [isHydrated, tokenExp]);
 
@@ -148,6 +152,7 @@ export default function TopNav() {
       return;
     }
     router.push(`${nextPath}?tab=${tab}`);
+    setIsMenuOpen(false);
   };
 
   const handleSignOut = async () => {
@@ -162,6 +167,7 @@ export default function TopNav() {
       dispatch(showToast("로그아웃 처리 중 오류가 발생했습니다."));
     } finally {
       setIsSigningOut(false);
+      setIsMenuOpen(false);
     }
   };
 
@@ -180,19 +186,26 @@ export default function TopNav() {
       return;
     }
     router.push(target);
+    setIsMenuOpen(false);
   };
 
   return (
-    <header className="flex flex-wrap items-center justify-between gap-4">
-      <div>
+    <header className="relative flex flex-col gap-4 md:flex-row md:flex-wrap md:items-center md:justify-between">
+      <div className="flex items-center justify-between">
         <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--muted)]">
           Gallery Mode
         </p>
         <h1 className="font-[var(--font-display)] text-2xl text-[color:var(--canvas-ink)]">
           muse
         </h1>
+        <button
+          className="ml-auto flex h-11 w-11 items-center justify-center rounded-full border border-[color:var(--line)] text-lg text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] md:hidden"
+          onClick={() => setIsMenuOpen((prev) => !prev)}
+        >
+          <span className="leading-none">{isMenuOpen ? "✕" : "☰"}</span>
+        </button>
       </div>
-      <nav className="flex flex-wrap items-center gap-3 text-sm text-[color:var(--muted)]">
+      <nav className="hidden flex-wrap items-center gap-3 text-sm text-[color:var(--muted)] md:flex">
         {tabs.map((tab) => (
           <button
             key={tab}
@@ -203,7 +216,7 @@ export default function TopNav() {
           </button>
         ))}
       </nav>
-      <div className="flex items-center gap-3">
+      <div className="hidden items-center gap-3 md:flex">
         {!isHydrated ? (
           <Skeleton className="h-9 w-24 rounded-full border border-[color:var(--line)]" />
         ) : (
@@ -224,7 +237,7 @@ export default function TopNav() {
             ) : (
               <Link
                 href="/login"
-                className="rounded-full border border-[color:var(--line)] px-4 py-2 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                className="inline-flex items-center justify-center rounded-full border border-[color:var(--line)] px-4 py-2 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
               >
                 Sign in
               </Link>
@@ -237,6 +250,78 @@ export default function TopNav() {
         >
           {authStatus === "in" ? "Start contest" : "Get started"}
         </button>
+      </div>
+      <div
+        className={`fixed inset-0 z-40 bg-black/40 transition-opacity md:hidden ${
+          isMenuOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={() => setIsMenuOpen(false)}
+      />
+      <div
+        className={`fixed inset-y-0 right-0 z-50 w-[78%] max-w-xs transform bg-[color:var(--canvas)] p-6 shadow-[var(--shadow)] transition-transform duration-300 md:hidden ${
+          isMenuOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.3em] text-[color:var(--muted)]">
+              Gallery Mode
+            </p>
+            <h2 className="font-[var(--font-display)] text-xl">muse</h2>
+          </div>
+          <button
+            className="rounded-full border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            닫기
+          </button>
+        </div>
+        <div className="mt-6 flex flex-col gap-2 text-sm text-[color:var(--muted)]">
+          {tabs.map((tab) => (
+            <button
+              key={tab}
+              className={navItemClass(tab)}
+              onClick={() => handleNav(tab)}
+            >
+              {labelMap[tab]}
+            </button>
+          ))}
+        </div>
+        <div className="mt-6 flex flex-col gap-2">
+          {!isHydrated ? (
+            <Skeleton className="h-9 w-24 rounded-full border border-[color:var(--line)]" />
+          ) : (
+            <>
+              {authStatus === "in" && userLabel && (
+                <span className="rounded-full border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)]">
+                  {userLabel}
+                </span>
+              )}
+              {authStatus === "in" ? (
+                <button
+                  className="rounded-full border border-[color:var(--line)] px-4 py-2 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] disabled:opacity-60"
+                  onClick={handleSignOut}
+                  disabled={isSigningOut}
+                >
+                  {isSigningOut ? "Signing out..." : "Sign out"}
+                </button>
+              ) : (
+                <Link
+                  href="/login"
+                  className="inline-flex items-center justify-center rounded-full border border-[color:var(--line)] px-4 py-2 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                >
+                  Sign in
+                </Link>
+              )}
+            </>
+          )}
+          <button
+            className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm text-white shadow-[var(--shadow)] transition hover:opacity-90"
+            onClick={handleCta}
+          >
+            {authStatus === "in" ? "Start contest" : "Get started"}
+          </button>
+        </div>
       </div>
     </header>
   );

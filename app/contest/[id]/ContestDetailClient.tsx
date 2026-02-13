@@ -14,6 +14,7 @@ import {
 } from "../../lib/contest";
 import { uploadImage, type ImageUploadResult } from "../../lib/imageUpload";
 import { getAccessToken } from "../../lib/auth";
+import { useBodyScrollLock } from "../../lib/useBodyScrollLock";
 import { useAppDispatch } from "../../store/hooks";
 import { showToast } from "../../store/uiSlice";
 
@@ -40,6 +41,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
     "closed" | "payment" | "processing" | "confirm"
   >("closed");
   const [paymentMethod, setPaymentMethod] = useState("card");
+  useBodyScrollLock(paymentStep !== "closed");
   const { data, isLoading } = useQuery({
     queryKey: ["contest", id],
     queryFn: () => getContestDetail(id),
@@ -152,7 +154,6 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
   const isUploading = uploadStage === "uploading" || uploadStage === "saving";
 
   const contest = data?.data;
-  const isFallback = data?.isFallback ?? false;
   const error = data?.error;
   const credits = creditsOverride ?? creditData?.data?.credits ?? 0;
   const canSubmit = hasToken && credits > 0;
@@ -205,13 +206,6 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
         </section>
       ) : (
         <>
-          {isFallback && (
-            <div className="mt-10 rounded-2xl border border-[color:var(--line)] bg-white/70 px-5 py-3 text-xs text-[color:var(--muted)]">
-              콘테스트 정보를 불러오지 못해 임시 콘텐츠를 표시하고 있습니다.
-              {error ? ` (${error})` : ""}
-            </div>
-          )}
-
           {contest && (
         <section className="mt-10 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
@@ -457,6 +451,12 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
             </div>
           </div>
         </section>
+          )}
+          {!contest && (
+            <div className="mt-10 rounded-[28px] border border-[color:var(--line)] bg-white/70 px-6 py-6 text-sm text-[color:var(--muted)] shadow-[var(--shadow)]">
+              콘테스트 정보를 불러오지 못했습니다.
+              {error ? ` (${error})` : ""}
+            </div>
           )}
         </>
       )}

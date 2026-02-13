@@ -21,9 +21,8 @@ export default function CategoryClient({ categoryKey }: CategoryClientProps) {
     queryFn: () => getGalleryCategory(categoryKey),
   });
 
-  const category = data?.data.category;
-  const artworks = data?.data.artworks ?? [];
-  const isFallback = data?.isFallback ?? false;
+  const category = data?.data?.category ?? null;
+  const artworks = data?.data?.artworks ?? [];
   const error = data?.error;
 
   const artists = useMemo(() => {
@@ -88,15 +87,8 @@ export default function CategoryClient({ categoryKey }: CategoryClientProps) {
             ))}
           </div>
         </section>
-      ) : (
+      ) : category ? (
         <>
-          {isFallback && (
-            <div className="mt-10 rounded-2xl border border-[color:var(--line)] bg-white/70 px-5 py-3 text-xs text-[color:var(--muted)]">
-              카테고리 데이터를 불러오지 못해 임시 콘텐츠를 표시하고 있습니다.
-              {error ? ` (${error})` : ""}
-            </div>
-          )}
-
           {category && (
             <section className="mt-10 rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -189,6 +181,11 @@ export default function CategoryClient({ categoryKey }: CategoryClientProps) {
             </section>
           )}
         </>
+      ) : (
+        <div className="mt-10 rounded-[28px] border border-[color:var(--line)] bg-white/70 px-6 py-6 text-sm text-[color:var(--muted)] shadow-[var(--shadow)]">
+          카테고리 데이터를 불러오지 못했습니다.
+          {error ? ` (${error})` : ""}
+        </div>
       )}
     </PageShell>
   );

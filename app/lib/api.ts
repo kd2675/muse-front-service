@@ -187,7 +187,8 @@ async function requestJson<T>(
       "Unknown network error";
     const errorData = err.response?.data as BackendEnvelope | undefined;
     const durationMs = Date.now() - startedAt;
-    const mapped = mapBackendCode(errorData?.code);
+    const backendCodeValue = errorData?.code;
+    const mapped = mapBackendCode(backendCodeValue);
     const errorKind = resolveErrorKind(err);
     const isRefreshCall = path.startsWith("/auth/refresh");
     if (status === 401 && !isRefreshCall && retryCount < 1) {
@@ -217,7 +218,7 @@ async function requestJson<T>(
         status,
         durationMs,
         message,
-        backendCode: errorData?.code,
+        backendCode: backendCodeValue,
         backendMessage: errorData?.message,
         backendMapped: mapped,
         errorKind,

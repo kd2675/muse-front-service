@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getHomeData, fallbackHome } from "../lib/home";
+import { getHomeData } from "../lib/home";
 import { useAppDispatch } from "../store/hooks";
 import { showToast } from "../store/uiSlice";
 import TopNav from "../components/TopNav";
@@ -17,8 +17,7 @@ export default function HomeClient() {
     queryFn: getHomeData,
   });
 
-  const payload = data?.data ?? fallbackHome;
-  const isFallback = data?.isFallback ?? false;
+  const payload = data?.data ?? null;
   const error = data?.error;
 
   return (
@@ -49,15 +48,8 @@ export default function HomeClient() {
             ))}
           </div>
         </div>
-      ) : (
+      ) : payload ? (
         <>
-          {isFallback && (
-            <div className="mb-6 rounded-2xl border border-[color:var(--line)] bg-white/70 px-5 py-3 text-xs text-[color:var(--muted)]">
-              홈 데이터를 불러오지 못해 임시 콘텐츠를 표시하고 있습니다.
-              {error ? ` (${error})` : ""}
-            </div>
-          )}
-
           <section className="mt-12 grid gap-10 lg:grid-cols-[1.2fr_0.8fr]">
             <div className="rounded-[32px] border border-[color:var(--line)] bg-white/70 p-10 shadow-[var(--shadow)] backdrop-blur">
               <span className="inline-flex items-center rounded-full bg-[color:var(--chip)] px-4 py-1 text-xs uppercase tracking-[0.3em] text-[color:var(--accent)]">
@@ -274,6 +266,11 @@ export default function HomeClient() {
             </div>
           </section>
         </>
+      ) : (
+        <div className="mt-12 rounded-[28px] border border-[color:var(--line)] bg-white/70 px-6 py-8 text-sm text-[color:var(--muted)] shadow-[var(--shadow)]">
+          홈 데이터를 불러오지 못했습니다.
+          {error ? ` (${error})` : ""}
+        </div>
       )}
     </PageShell>
   );

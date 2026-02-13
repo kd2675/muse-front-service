@@ -41,11 +41,9 @@ export default function ProfileClient() {
     },
   });
 
-  const profile = data?.data;
-  const isFallback = data?.isFallback ?? false;
+  const profile = data?.data ?? null;
   const error = data?.error;
   const entries = entriesData?.data ?? [];
-  const isEntriesFallback = entriesData?.isFallback ?? false;
   const entriesError = entriesData?.error;
 
   const statusLabel: Record<string, string> = {
@@ -146,15 +144,8 @@ export default function ProfileClient() {
             </div>
           </div>
         </section>
-      ) : (
+      ) : profile ? (
         <>
-          {isFallback && (
-            <div className="mt-10 rounded-2xl border border-[color:var(--line)] bg-white/70 px-5 py-3 text-xs text-[color:var(--muted)]">
-              프로필 데이터를 불러오지 못해 임시 콘텐츠를 표시하고 있습니다.
-              {error ? ` (${error})` : ""}
-            </div>
-          )}
-
           {profile && (
             <section className="mt-10 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
               <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
@@ -281,9 +272,9 @@ export default function ProfileClient() {
                     </div>
                   ) : (
                     <>
-                      {isEntriesFallback && (
+                      {entriesError && (
                         <div className="mt-4 rounded-[18px] border border-[color:var(--line)] bg-white/80 px-4 py-2 text-xs text-[color:var(--muted)]">
-                          출품 데이터를 불러오지 못해 임시 콘텐츠를 표시하고 있습니다.
+                          출품 데이터를 불러오지 못했습니다.
                           {entriesError ? ` (${entriesError})` : ""}
                         </div>
                       )}
@@ -378,6 +369,11 @@ export default function ProfileClient() {
             </section>
           )}
         </>
+      ) : (
+        <div className="mt-10 rounded-[28px] border border-[color:var(--line)] bg-white/70 px-6 py-6 text-sm text-[color:var(--muted)] shadow-[var(--shadow)]">
+          프로필 데이터를 불러오지 못했습니다.
+          {error ? ` (${error})` : ""}
+        </div>
       )}
     </PageShell>
   );

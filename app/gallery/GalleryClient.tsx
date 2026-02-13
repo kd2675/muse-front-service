@@ -18,8 +18,7 @@ export default function GalleryClient() {
     queryFn: getGalleryLobby,
   });
 
-  const lobby = data?.data;
-  const isFallback = data?.isFallback ?? false;
+  const lobby = data?.data ?? null;
   const error = data?.error;
 
   return (
@@ -75,15 +74,8 @@ export default function GalleryClient() {
             </div>
           </div>
         </section>
-      ) : (
+      ) : lobby ? (
         <>
-          {isFallback && (
-            <div className="mt-10 rounded-2xl border border-[color:var(--line)] bg-white/70 px-5 py-3 text-xs text-[color:var(--muted)]">
-              갤러리 데이터를 불러오지 못해 임시 콘텐츠를 표시하고 있습니다.
-              {error ? ` (${error})` : ""}
-            </div>
-          )}
-
           <section className="mt-10 grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
             <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
               <div className="flex items-center justify-between">
@@ -172,6 +164,11 @@ export default function GalleryClient() {
             </div>
           </section>
         </>
+      ) : (
+        <div className="mt-10 rounded-[28px] border border-[color:var(--line)] bg-white/70 px-6 py-6 text-sm text-[color:var(--muted)] shadow-[var(--shadow)]">
+          갤러리 데이터를 불러오지 못했습니다.
+          {error ? ` (${error})` : ""}
+        </div>
       )}
     </PageShell>
   );

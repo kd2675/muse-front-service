@@ -6,10 +6,12 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import PageShell from "../components/PageShell";
 import TopNav from "../components/TopNav";
-import { showToast } from "../store/uiSlice";
+import { setPendingPath, showToast } from "../store/uiSlice";
 import { useAppDispatch } from "../store/hooks";
 import { getContestList, purchaseEntryCredit } from "../lib/contest";
 import { Skeleton, SkeletonText } from "../components/Skeleton";
+import { getAccessToken } from "../lib/auth";
+import { useBodyScrollLock } from "../lib/useBodyScrollLock";
 
 const formatNumber = (value: number) => value.toLocaleString("ko-KR");
 
@@ -29,13 +31,13 @@ export default function ContestClient() {
     null,
   );
   const [paymentMethod, setPaymentMethod] = useState("card");
+  useBodyScrollLock(paymentStep !== "closed");
   const { data, isLoading } = useQuery({
     queryKey: ["contests"],
     queryFn: getContestList,
   });
 
   const contests = data?.data ?? [];
-  const isFallback = data?.isFallback ?? false;
   const error = data?.error;
   const selectedContest = useMemo(
     () => contests.find((contest) => contest.id === selectedContestId) ?? null,
@@ -43,6 +45,12 @@ export default function ContestClient() {
   );
 
   const openPayment = () => {
+    if (!getAccessToken()) {
+      dispatch(setPendingPath("/contest?tab=contest"));
+      dispatch(showToast("로그인 후 결제할 수 있습니다."));
+      router.push("/login");
+      return;
+    }
     if (isLoading) {
       dispatch(showToast("콘테스트 목록을 불러오는 중입니다."));
       return;
@@ -87,9 +95,9 @@ export default function ContestClient() {
         </section>
       ) : (
         <>
-          {isFallback && (
+          {error && (
             <div className="mt-10 rounded-2xl border border-[color:var(--line)] bg-white/70 px-5 py-3 text-xs text-[color:var(--muted)]">
-              콘테스트 데이터를 불러오지 못해 임시 콘텐츠를 표시하고 있습니다.
+              콘테스트 데이터를 불러오지 못했습니다.
               {error ? ` (${error})` : ""}
             </div>
           )}
