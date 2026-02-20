@@ -30,7 +30,9 @@ export default function AuthWatcher() {
         router.push("/login");
       }
     });
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+    };
   }, [dispatch, pathname, router, searchParams]);
 
   useEffect(() => {

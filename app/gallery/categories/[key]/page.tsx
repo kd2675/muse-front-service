@@ -1,9 +1,10 @@
 import CategoryClient from "./CategoryClient";
 
 type PageProps = {
-  params: { key: string };
+  params: Promise<{ key: string }>;
 };
 
-export default function CategoryPage({ params }: PageProps) {
-  return <CategoryClient categoryKey={params.key} />;
+export default async function CategoryPage({ params }: PageProps) {
+  const { key } = await params;
+  return <CategoryClient categoryKey={key} />;
 }

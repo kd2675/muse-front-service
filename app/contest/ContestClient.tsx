@@ -20,6 +20,12 @@ const statusLabel: Record<string, string> = {
   ENDED: "종료",
   UPCOMING: "예정",
 };
+const phaseLabel: Record<string, string> = {
+  UPCOMING: "출품 대기",
+  SUBMISSION: "출품 진행 중",
+  VOTING: "전시 중",
+  ENDED: "종료",
+};
 
 export default function ContestClient() {
   const dispatch = useAppDispatch();
@@ -37,7 +43,11 @@ export default function ContestClient() {
     queryFn: getContestList,
   });
 
-  const contests = data?.data ?? [];
+  const contests = useMemo(() => data?.data ?? [], [data?.data]);
+  const exhibitionCount = useMemo(
+    () => contests.filter((contest) => contest.phase === "VOTING").length,
+    [contests],
+  );
   const error = data?.error;
   const selectedContest = useMemo(
     () => contests.find((contest) => contest.id === selectedContestId) ?? null,
@@ -59,7 +69,14 @@ export default function ContestClient() {
       dispatch(showToast("참가 가능한 콘테스트가 없습니다."));
       return;
     }
-    setSelectedContestId(contests[0].id);
+    const submissionContest = contests.find(
+      (contest) => contest.phase === "SUBMISSION",
+    );
+    if (!submissionContest) {
+      dispatch(showToast("출품 가능한 콘테스트가 없습니다."));
+      return;
+    }
+    setSelectedContestId(submissionContest.id);
     setPaymentMethod("card");
     setPaymentStep("payment");
   };
@@ -77,7 +94,6 @@ export default function ContestClient() {
           <div className="mt-8 grid gap-4">
             {Array.from({ length: 3 }).map((_, index) => (
               <div
-                // eslint-disable-next-line react/no-array-index-key
                 key={index}
                 className="rounded-[22px] border border-[color:var(--line)] bg-white/80 p-5"
               >
@@ -111,6 +127,11 @@ export default function ContestClient() {
                 <p className="mt-2 text-sm text-[color:var(--muted)]">
                   진행 중인 테마와 상금풀을 확인하고 참여하세요.
                 </p>
+                {exhibitionCount > 0 && (
+                  <p className="mt-2 text-xs text-[color:var(--accent)]">
+                    전시 중인 콘테스트 {exhibitionCount}개
+                  </p>
+                )}
               </div>
             <button
               className="rounded-full bg-[color:var(--accent)] px-5 py-2 text-sm text-white shadow-[var(--shadow)]"
@@ -139,7 +160,9 @@ export default function ContestClient() {
                       </p>
                     </div>
                     <span className="rounded-full bg-[color:var(--chip)] px-3 py-1 text-xs text-[color:var(--accent)]">
-                      {statusLabel[contest.status] ?? contest.status}
+                      {phaseLabel[contest.phase] ??
+                        statusLabel[contest.status] ??
+                        contest.status}
                     </span>
                   </div>
                   <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-[color:var(--muted)]">
@@ -149,7 +172,11 @@ export default function ContestClient() {
                     <span className="rounded-full border border-[color:var(--line)] px-3 py-1">
                       상금풀 {formatNumber(contest.prizePool)}원
                     </span>
-                    {contest.daysLeft > 0 ? (
+                    {contest.phase === "VOTING" ? (
+                      <span className="rounded-full border border-[color:var(--line)] px-3 py-1">
+                        전시 중
+                      </span>
+                    ) : contest.daysLeft > 0 ? (
                       <span className="rounded-full border border-[color:var(--line)] px-3 py-1">
                         {contest.daysLeft}일 남음
                       </span>
@@ -162,7 +189,9 @@ export default function ContestClient() {
                       href={`/contest/${contest.id}`}
                       className="ml-auto rounded-full border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
                     >
-                      상세 보기
+                      {contest.phase === "VOTING"
+                        ? "전시 보기"
+                        : "상세 보기"}
                     </Link>
                   </div>
                 </article>
@@ -208,11 +237,13 @@ export default function ContestClient() {
                     }
                     className="h-11 rounded-[18px] border border-[color:var(--line)] bg-white px-4 text-sm text-[color:var(--canvas-ink)] focus:border-[color:var(--accent)] focus:outline-none"
                   >
-                    {contests.map((contest) => (
+                    {contests
+                      .filter((contest) => contest.phase === "SUBMISSION")
+                      .map((contest) => (
                       <option key={contest.id} value={contest.id}>
                         {contest.theme}
                       </option>
-                    ))}
+                      ))}
                   </select>
 
                   <div className="rounded-[18px] border border-[color:var(--line)] bg-[color:var(--chip)] px-4 py-3 text-sm text-[color:var(--canvas-ink)]">

@@ -1,72 +1,276 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import PageShell from "../../components/PageShell";
 import TopNav from "../../components/TopNav";
 import { Skeleton, SkeletonText } from "../../components/Skeleton";
 import {
   getContestDetail,
+  getContestEntries,
+  getContestRanking,
   getMyEntryCredits,
   purchaseEntryCredit,
   submitContestEntry,
+  voteContestEntry,
 } from "../../lib/contest";
 import { uploadImage, type ImageUploadResult } from "../../lib/imageUpload";
 import { getAccessToken } from "../../lib/auth";
 import { useBodyScrollLock } from "../../lib/useBodyScrollLock";
 import { useAppDispatch } from "../../store/hooks";
-import { showToast } from "../../store/uiSlice";
+import { setPendingPath, showToast } from "../../store/uiSlice";
 
 type ContestDetailClientProps = {
   id: number;
 };
 
+type ContestPhaseKey = "UPCOMING" | "SUBMISSION" | "VOTING" | "ENDED";
+type EntryRenderMode = ContestPhaseKey;
+type PhasePlaybookItem = {
+  kicker: string;
+  title: string;
+  description: string;
+};
+type PhasePanelMeta = {
+  kicker: string;
+  title: string;
+  description: string;
+};
+type PhaseTone = {
+  titleClass: string;
+  leadClass: string;
+  primaryButtonClass: string;
+  secondaryButtonClass: string;
+};
+
 const formatNumber = (value: number) => value.toLocaleString("ko-KR");
+
+const entryStatusLabel: Record<string, string> = {
+  SUBMITTED: "제출 완료",
+  REVIEWING: "검토 중",
+  APPROVED: "승인",
+  REJECTED: "반려",
+};
+
+const phaseMeta: Record<ContestPhaseKey, { label: string; title: string; note: string }> = {
+  UPCOMING: {
+    label: "출품 대기",
+    title: "오픈 전 프리뷰",
+    note: "시작 전 단계입니다. 규칙과 일정을 확인하고 작품을 준비하세요.",
+  },
+  SUBMISSION: {
+    label: "출품 진행 중",
+    title: "출품 스튜디오",
+    note: "출품권 결제 후 작품을 등록할 수 있습니다.",
+  },
+  VOTING: {
+    label: "전시 중",
+    title: "전시 & 투표 아레나",
+    note: "공개된 작품을 감상하고 원하는 출품작에 투표하세요.",
+  },
+  ENDED: {
+    label: "종료",
+    title: "결과 아카이브",
+    note: "콘테스트가 종료되었습니다. 최종 랭킹과 아카이브를 확인하세요.",
+  },
+};
+
+const phaseActionBoard: Record<ContestPhaseKey, PhasePlaybookItem[]> = {
+  UPCOMING: [
+    {
+      kicker: "CHECK",
+      title: "규칙 확인",
+      description: "해상도, 보정 제한, 제출 형식 등 탈락 사유를 먼저 체크하세요.",
+    },
+    {
+      kicker: "SCOUT",
+      title: "컨셉 시뮬레이션",
+      description: "예상 전시 흐름을 기준으로 시선이 머무는 핵심 컷을 정리하세요.",
+    },
+    {
+      kicker: "QUEUE",
+      title: "출품 동선 준비",
+      description: "출품권 결제와 업로드 시퀀스를 사전에 점검해 오픈 직후 바로 제출하세요.",
+    },
+  ],
+  SUBMISSION: [
+    {
+      kicker: "PAY",
+      title: "출품권 확보",
+      description: "출품권 1개당 1회 제출됩니다. 제출 수량에 맞게 먼저 결제하세요.",
+    },
+    {
+      kicker: "UPLOAD",
+      title: "작품 등록",
+      description: "제목, 설명, 썸네일 품질까지 점검한 뒤 최종 이미지를 업로드하세요.",
+    },
+    {
+      kicker: "VERIFY",
+      title: "등록 상태 확인",
+      description: "등록 후 상태값(제출 완료/검토 중)을 확인하고 마감 전 보완하세요.",
+    },
+  ],
+  VOTING: [
+    {
+      kicker: "BROWSE",
+      title: "전시 탐색",
+      description: "출품작들을 비교해 주제 적합도와 완성도를 빠르게 스크리닝하세요.",
+    },
+    {
+      kicker: "PICK",
+      title: "작품 선택 투표",
+      description: "A/B가 아닌 출품작별 선택 투표입니다. 선호 작품에 직접 투표하세요.",
+    },
+    {
+      kicker: "TRACK",
+      title: "순위 추적",
+      description: "투표 이후 랭킹 변화를 확인해 경쟁 구도의 흐름을 파악하세요.",
+    },
+  ],
+  ENDED: [
+    {
+      kicker: "FINAL",
+      title: "최종 결과 검토",
+      description: "상위권 작품의 공통점과 심사 관점을 다음 시즌 전략에 반영하세요.",
+    },
+    {
+      kicker: "ARCHIVE",
+      title: "작품 리서치",
+      description: "종료된 전시를 아카이브로 활용해 기준작 품질을 반복 학습하세요.",
+    },
+    {
+      kicker: "RESET",
+      title: "다음 시즌 준비",
+      description: "다음 공모의 주제와 촬영 플랜을 미리 준비해 리드 타임을 확보하세요.",
+    },
+  ],
+};
+
+const phaseSubmitMeta: Record<ContestPhaseKey, PhasePanelMeta> = {
+  UPCOMING: {
+    kicker: "Submission Prep",
+    title: "출품 준비 데스크",
+    description: "출품 시작 전 단계입니다. 제출 포맷과 작품 설명을 미리 준비하세요.",
+  },
+  SUBMISSION: {
+    kicker: "Submission Live",
+    title: "출품 등록 데스크",
+    description: "지금 출품이 열려 있습니다. 결제 후 작품 등록을 완료하세요.",
+  },
+  VOTING: {
+    kicker: "Submission Closed",
+    title: "출품 마감 데스크",
+    description: "출품은 마감되었습니다. 전시 작품 감상과 투표에 집중하는 단계입니다.",
+  },
+  ENDED: {
+    kicker: "Submission Ended",
+    title: "출품 종료 아카이브",
+    description: "이번 시즌 출품은 종료되었습니다. 결과 분석 후 다음 시즌을 준비하세요.",
+  },
+};
+
+const phaseTone: Record<ContestPhaseKey, PhaseTone> = {
+  UPCOMING: {
+    titleClass: "font-[var(--font-display)] tracking-[0.002em]",
+    leadClass: "text-sm leading-relaxed text-[color:var(--muted)]",
+    primaryButtonClass:
+      "rounded-full border border-[rgba(194,123,77,0.35)] bg-[rgba(194,123,77,0.1)] px-5 py-3 text-sm text-[color:var(--accent-2)] transition hover:bg-[rgba(194,123,77,0.16)]",
+    secondaryButtonClass:
+      "rounded-full border border-[color:var(--line)] bg-white/85 px-5 py-3 text-sm text-[color:var(--muted)] transition hover:border-[rgba(194,123,77,0.35)] hover:text-[color:var(--accent-2)]",
+  },
+  SUBMISSION: {
+    titleClass: "font-[var(--font-display)] tracking-[0.002em]",
+    leadClass: "text-sm leading-relaxed text-[color:var(--muted)]",
+    primaryButtonClass:
+      "rounded-full bg-[color:var(--accent)] px-5 py-3 text-sm text-white shadow-[var(--shadow)] transition hover:brightness-110 disabled:opacity-60",
+    secondaryButtonClass:
+      "rounded-full border border-[rgba(11,91,91,0.35)] bg-white/90 px-5 py-3 text-sm text-[color:var(--accent)] transition hover:bg-[rgba(11,91,91,0.08)]",
+  },
+  VOTING: {
+    titleClass: "font-[var(--font-display)] tracking-[0.002em]",
+    leadClass: "text-sm leading-relaxed text-[color:var(--muted)]",
+    primaryButtonClass:
+      "rounded-full border border-[rgba(106,147,204,0.44)] bg-[rgba(224,238,255,0.9)] px-5 py-3 text-sm text-[#2f537f] shadow-[var(--shadow)] transition hover:bg-[rgba(189,217,249,0.95)]",
+    secondaryButtonClass:
+      "rounded-full border border-[rgba(106,147,204,0.34)] bg-white/92 px-5 py-3 text-sm text-[#3f6597] transition hover:bg-[rgba(229,241,255,0.95)]",
+  },
+  ENDED: {
+    titleClass: "font-[var(--font-display)] tracking-[0.002em]",
+    leadClass: "text-sm leading-relaxed text-[color:var(--muted)]",
+    primaryButtonClass:
+      "rounded-full bg-[#7b5b34] px-5 py-3 text-sm text-white shadow-[var(--shadow)] transition hover:brightness-110",
+    secondaryButtonClass:
+      "rounded-full border border-[rgba(123,91,52,0.32)] bg-white/90 px-5 py-3 text-sm text-[#7b5b34] transition hover:bg-[rgba(123,91,52,0.08)]",
+  },
+};
 
 export default function ContestDetailClient({ id }: ContestDetailClientProps) {
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadStage, setUploadStage] = useState<
-    "idle" | "uploading" | "saving" | "done"
-  >("idle");
+  const [uploadStage, setUploadStage] = useState<"idle" | "uploading" | "saving" | "done">("idle");
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
-  const [creditsOverride, setCreditsOverride] = useState<number | null>(null);
-  const [paymentStep, setPaymentStep] = useState<
-    "closed" | "payment" | "processing" | "confirm"
-  >("closed");
+  const [pendingVoteEntryId, setPendingVoteEntryId] = useState<string | null>(null);
+  const [paymentStep, setPaymentStep] = useState<"closed" | "payment" | "processing" | "confirm">("closed");
   const [paymentMethod, setPaymentMethod] = useState("card");
+
   useBodyScrollLock(paymentStep !== "closed");
+
   const { data, isLoading } = useQuery({
     queryKey: ["contest", id],
     queryFn: () => getContestDetail(id),
   });
-  const [hasToken, setHasToken] = useState(false);
-  useEffect(() => {
-    setHasToken(Boolean(getAccessToken()));
-  }, []);
-  useEffect(() => {
-    setCreditsOverride(null);
-  }, [id]);
+
+  const hasToken = Boolean(getAccessToken());
+
   const { data: creditData } = useQuery({
     queryKey: ["contest", id, "entryCredits"],
     queryFn: () => getMyEntryCredits(id),
     enabled: hasToken,
   });
 
+  const { data: entriesData, isLoading: entriesLoading } = useQuery({
+    queryKey: ["contest", id, "entries"],
+    queryFn: () => getContestEntries(id),
+  });
+
+  const { data: rankingData, isLoading: rankingLoading } = useQuery({
+    queryKey: ["contest", id, "ranking"],
+    queryFn: () => getContestRanking(id),
+  });
+
+  const voteMutation = useMutation({
+    mutationFn: (entryId: string) => voteContestEntry(id, { entryId }),
+    onMutate: (entryId) => {
+      setPendingVoteEntryId(entryId);
+    },
+    onSuccess: (result) => {
+      if (result.error || !result.data) {
+        dispatch(showToast(result.error ?? "투표에 실패했습니다."));
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["contest", id, "ranking"] });
+      dispatch(showToast("투표가 반영되었습니다."));
+    },
+    onError: () => {
+      dispatch(showToast("투표 중 오류가 발생했습니다."));
+    },
+    onSettled: () => {
+      setPendingVoteEntryId(null);
+    },
+  });
+
   const purchaseMutation = useMutation({
     mutationFn: () => purchaseEntryCredit(id),
     onSuccess: (result) => {
       if (!result.error) {
-        setCreditsOverride(result.data.credits);
-        queryClient.invalidateQueries({
-          queryKey: ["contest", id, "entryCredits"],
-        });
+        queryClient.invalidateQueries({ queryKey: ["contest", id, "entryCredits"] });
         setPaymentStep("confirm");
       } else {
         setPaymentStep("payment");
@@ -112,26 +316,22 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
       setUploadStage("uploading");
     },
     onSuccess: (result) => {
-      setUploadStage("done");
-      if (!result.error) {
-        setCreditsOverride((prev) =>
-          prev !== null ? Math.max(prev - 1, 0) : prev,
-        );
-        queryClient.invalidateQueries({
-          queryKey: ["contest", id, "entryCredits"],
-        });
+      if (result.error || !result.data) {
+        const message = result.error ?? "출품 정보 저장에 실패했습니다.";
+        setUploadStage("idle");
+        setUploadError(message);
+        dispatch(showToast(`출품 등록에 실패했습니다. (${message})`));
+        return;
       }
-      dispatch(
-        showToast(
-          result.error
-            ? `업로드는 되었지만 오류가 있습니다. (${result.error})`
-            : "콘테스트 출품이 완료되었습니다.",
-        ),
-      );
+
+      setUploadError(null);
+      setUploadStage("done");
+      queryClient.invalidateQueries({ queryKey: ["contest", id, "entryCredits"] });
+      queryClient.invalidateQueries({ queryKey: ["contest", id, "entries"] });
+      dispatch(showToast("콘테스트 출품이 완료되었습니다."));
     },
     onError: (error) => {
-      const message =
-        error instanceof Error ? error.message : "출품 업로드에 실패했습니다.";
+      const message = error instanceof Error ? error.message : "출품 업로드에 실패했습니다.";
       setUploadError(message);
       setUploadStage("idle");
       dispatch(showToast("출품 업로드에 실패했습니다."));
@@ -155,305 +355,851 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
 
   const contest = data?.data;
   const error = data?.error;
-  const credits = creditsOverride ?? creditData?.data?.credits ?? 0;
-  const canSubmit = hasToken && credits > 0;
-  const needsCredit = hasToken && credits <= 0;
+  const entries = entriesData?.data ?? [];
+  const entriesError = entriesData?.error;
+  const ranking = rankingData?.data ?? [];
+  const rankingError = rankingData?.error;
 
-  return (
-    <PageShell>
-      <TopNav />
-      {isLoading ? (
-        <section className="mt-10 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
-            <Skeleton className="h-4 w-24 rounded-full" />
-            <Skeleton className="mt-3 h-8 w-2/3 rounded-[16px]" />
-            <SkeletonText className="mt-4" lines={3} />
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Skeleton className="h-7 w-40 rounded-full" />
-              <Skeleton className="h-7 w-32 rounded-full" />
-              <Skeleton className="h-7 w-32 rounded-full" />
-              <Skeleton className="h-7 w-24 rounded-full" />
+  const phase = (contest?.phase ?? "UPCOMING") as ContestPhaseKey;
+  const phaseInfo = phaseMeta[phase];
+  const tone = phaseTone[phase];
+  const submitMeta = phaseSubmitMeta[phase];
+
+  const credits = creditData?.data?.credits ?? 0;
+
+  const isUpcomingPhase = phase === "UPCOMING";
+  const isSubmissionPhase = phase === "SUBMISSION";
+  const isVotingPhase = phase === "VOTING";
+
+  const canSubmit = hasToken && isSubmissionPhase && credits > 0;
+  const needsCredit = hasToken && isSubmissionPhase && credits <= 0;
+  const canVote = hasToken && isVotingPhase;
+
+  const voteCountMap = new Map(ranking.map((item) => [item.entryId, item.voteCount]));
+  const rankMap = new Map(ranking.map((item) => [item.entryId, item.rank]));
+  const topWinners = ranking.slice(0, 3);
+  const submissionOpenCountdown = formatCountdown(contest?.submissionStartAt);
+  const votingOpenCountdown = formatCountdown(contest?.votingStartAt);
+  const submissionProgress = calculatePeriodProgress(contest?.submissionStartAt, contest?.submissionEndAt);
+  const votingProgress = calculatePeriodProgress(contest?.votingStartAt, contest?.votingEndAt);
+  const totalVotes = ranking.reduce((acc, item) => acc + item.voteCount, 0);
+
+  const openPayment = () => {
+    if (!hasToken) {
+      dispatch(setPendingPath(`/contest/${id}`));
+      dispatch(showToast("로그인 후 결제할 수 있습니다."));
+      return;
+    }
+    if (!isSubmissionPhase) {
+      dispatch(showToast("출품 진행 중 단계에서만 결제할 수 있습니다."));
+      return;
+    }
+    setPaymentStep("payment");
+  };
+
+  const scrollToSection = (sectionId: string) => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const section = document.getElementById(sectionId);
+    if (!section) {
+      return;
+    }
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const renderEntryGrid = (
+    mode: EntryRenderMode,
+    emptyMessage: string,
+    limit?: number,
+    options?: { compact?: boolean },
+  ) => {
+    const isVotingMode = mode === "VOTING";
+    const compact = options?.compact ?? false;
+    if (entriesLoading) {
+      return (
+        <div className={`mt-5 grid gap-4 ${compact ? "md:grid-cols-3" : "sm:grid-cols-2"}`}>
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div
+              key={index}
+              className={`rounded-[18px] border p-4 ${
+                isVotingMode
+                  ? "border-[rgba(123,157,212,0.3)] bg-[rgba(246,251,255,0.94)]"
+                  : "border-[color:var(--line)] bg-white/90"
+              }`}
+            >
+              <Skeleton className="h-44 w-full rounded-[14px]" />
+              <Skeleton className="mt-3 h-4 w-2/3 rounded-full" />
             </div>
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <Skeleton className="h-11 w-36 rounded-full" />
-              <Skeleton className="h-5 w-20 rounded-full" />
-            </div>
-          </div>
-          <div className="grid gap-6">
-            <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
-              <Skeleton className="h-6 w-40 rounded-[14px]" />
-              <SkeletonText className="mt-4" lines={4} />
-            </div>
-            <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
-              <Skeleton className="h-6 w-44 rounded-[14px]" />
-              <SkeletonText className="mt-4" lines={3} />
-              <div className="mt-6 grid gap-3">
-                <Skeleton className="h-7 w-40 rounded-full" />
-                <Skeleton className="h-7 w-40 rounded-full" />
-                <Skeleton className="h-7 w-40 rounded-full" />
-              </div>
-            </div>
-            <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
-              <Skeleton className="h-6 w-32 rounded-[14px]" />
-              <SkeletonText className="mt-4" lines={2} />
-              <div className="mt-4 grid gap-3">
-                <Skeleton className="h-11 w-full rounded-[18px]" />
-                <Skeleton className="h-24 w-full rounded-[18px]" />
-                <Skeleton className="h-11 w-32 rounded-full" />
-              </div>
-            </div>
-          </div>
-        </section>
-      ) : (
-        <>
-          {contest && (
-        <section className="mt-10 grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
-            <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">
-              Contest
-            </p>
-            <h1 className="mt-2 font-[var(--font-display)] text-3xl">
-              {contest.theme}
-            </h1>
-            <p className="mt-3 text-sm text-[color:var(--muted)]">
-              {contest.description}
-            </p>
-            <div className="mt-6 flex flex-wrap items-center gap-3 text-xs text-[color:var(--muted)]">
-              <span className="rounded-full border border-[color:var(--line)] px-3 py-1">
-                {contest.period}
-              </span>
-              <span className="rounded-full border border-[color:var(--line)] px-3 py-1">
-                참가비 {formatNumber(contest.entryFee)}원
-              </span>
-              <span className="rounded-full border border-[color:var(--line)] px-3 py-1">
-                상금풀 {formatNumber(contest.prizePool)}원
-              </span>
-              <span className="rounded-full border border-[color:var(--line)] px-3 py-1">
-                참여 {formatNumber(contest.participationCount)}명
-              </span>
-              {hasToken && (
-                <span className="rounded-full border border-[color:var(--line)] px-3 py-1">
-                  출품권 {credits}개
-                </span>
+          ))}
+        </div>
+      );
+    }
+
+    if (entriesError) {
+      return (
+        <div
+          className={`mt-4 rounded-[16px] border px-4 py-2 text-xs ${
+            isVotingMode
+              ? "border-[rgba(123,157,212,0.3)] bg-[rgba(246,251,255,0.94)] text-[#557199]"
+              : "border-[color:var(--line)] bg-white/80 text-[color:var(--muted)]"
+          }`}
+        >
+          출품 목록을 불러오지 못했습니다.
+          {entriesError ? ` (${entriesError})` : ""}
+        </div>
+      );
+    }
+
+    if (entries.length === 0) {
+      return (
+        <div
+          className={`mt-4 rounded-[16px] border px-4 py-3 text-sm ${
+            isVotingMode
+              ? "border-[rgba(123,157,212,0.3)] bg-[rgba(246,251,255,0.94)] text-[#557199]"
+              : "border-[color:var(--line)] bg-white/80 text-[color:var(--muted)]"
+          }`}
+        >
+          {emptyMessage}
+        </div>
+      );
+    }
+
+    const visibleEntries = typeof limit === "number" ? entries.slice(0, limit) : entries;
+
+    return (
+      <div className={`mt-5 grid gap-4 ${compact ? "md:grid-cols-3" : "sm:grid-cols-2"}`}>
+        {visibleEntries.map((entry) => {
+          const isVotingEntry = pendingVoteEntryId === entry.entryId;
+          const currentRank = rankMap.get(entry.entryId);
+          const isTopThree = mode === "ENDED" && currentRank !== undefined && currentRank <= 3;
+          const focusGalleryHref = `/contest/${id}/gallery?tab=contest&entryId=${entry.entryId}`;
+          const cardClass =
+            mode === "VOTING"
+              ? "border-[rgba(123,157,212,0.32)] bg-[rgba(248,252,255,0.95)]"
+              : mode === "UPCOMING"
+                ? "border-dashed border-[rgba(194,123,77,0.3)] bg-[rgba(255,250,245,0.9)]"
+                : mode === "ENDED"
+                  ? "border-[rgba(123,91,52,0.28)] bg-[rgba(252,248,241,0.92)]"
+                  : "border-[rgba(11,91,91,0.26)] bg-[rgba(245,252,251,0.92)]";
+          const motionClass =
+            mode === "UPCOMING"
+              ? "phase-upcoming-card transition duration-300 hover:-translate-y-0.5"
+              : mode === "SUBMISSION"
+                ? "phase-submission-card transition duration-250 hover:-translate-y-0.5"
+                : mode === "VOTING"
+                  ? "phase-voting-card transition duration-200 hover:-translate-y-1 hover:shadow-[0_12px_22px_rgba(39,72,120,0.1)]"
+                  : "phase-ended-card transition duration-300 hover:-translate-y-0.5";
+
+          return (
+            <article key={entry.entryId} className={`overflow-hidden rounded-[18px] border ${cardClass} ${motionClass}`}>
+              {mode === "VOTING" ? (
+                <Link href={focusGalleryHref} className="group relative block">
+                  {entry.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={entry.imageUrl} alt={entry.title ?? "contest entry"} className="h-44 w-full object-cover" />
+                  ) : (
+                    <div className="h-44 w-full bg-[color:var(--chip)]" />
+                  )}
+                  <div className="absolute inset-0 flex items-center justify-center bg-[rgba(17,38,64,0.14)] text-[11px] uppercase tracking-[0.24em] text-[#1f3f64] opacity-0 transition group-hover:opacity-100">
+                    Focus View
+                  </div>
+                  {isTopThree && (
+                    <div className="absolute left-3 top-3 rounded-full bg-[rgba(123,91,52,0.88)] px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-white">
+                      #{currentRank}
+                    </div>
+                  )}
+                </Link>
+              ) : (
+                <div className="relative">
+                  {entry.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={entry.imageUrl}
+                      alt={entry.title ?? "contest entry"}
+                      className={`h-44 w-full object-cover ${mode === "UPCOMING" ? "saturate-75" : ""}`}
+                    />
+                  ) : (
+                    <div className="h-44 w-full bg-[color:var(--chip)]" />
+                  )}
+                  {mode === "UPCOMING" && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-[rgba(30,22,16,0.22)] text-[11px] uppercase tracking-[0.28em] text-white/90">
+                      Preview Only
+                    </div>
+                  )}
+                  {isTopThree && (
+                    <div className="absolute left-3 top-3 rounded-full bg-[rgba(123,91,52,0.88)] px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-white">
+                      #{currentRank}
+                    </div>
+                  )}
+                </div>
               )}
-            </div>
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <button
-                className="rounded-full bg-[color:var(--accent)] px-5 py-3 text-sm text-white shadow-[var(--shadow)] disabled:opacity-60"
-                onClick={() => {
-                  if (!hasToken) {
-                    dispatch(showToast("로그인 후 결제할 수 있습니다."));
-                    return;
-                  }
-                  setPaymentStep("payment");
-                }}
-                disabled={purchaseMutation.isPending}
+              <div className="p-4">
+                {mode === "VOTING" ? (
+                  <Link href={focusGalleryHref} className="block">
+                    <p className="truncate text-base font-semibold text-[#1f3552] transition hover:text-[#0f2f52]">{entry.title ?? "Untitled"}</p>
+                  </Link>
+                ) : (
+                  <p className={`truncate text-base font-semibold ${isVotingMode ? "text-[#1f3552]" : "text-[color:var(--canvas-ink)]"}`}>
+                    {entry.title ?? "Untitled"}
+                  </p>
+                )}
+                <p className={`mt-1 text-xs ${isVotingMode ? "text-[#5a759d]" : "text-[color:var(--muted)]"}`}>
+                  {entry.artistName} · {entry.submittedAt}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                  <span
+                    className={`rounded-full px-2 py-1 ${
+                      isVotingMode
+                        ? "border border-[rgba(123,157,212,0.3)] bg-[rgba(224,238,255,0.8)] text-[#37577f]"
+                        : "bg-[color:var(--chip)] text-[color:var(--accent)]"
+                    }`}
+                  >
+                    {entryStatusLabel[entry.status] ?? entry.status}
+                  </span>
+                  <span
+                    className={`rounded-full border px-2 py-1 ${
+                      isVotingMode
+                        ? "border-[rgba(123,157,212,0.3)] text-[#53739b]"
+                        : "border-[color:var(--line)] text-[color:var(--muted)]"
+                    }`}
+                  >
+                    득표 {voteCountMap.get(entry.entryId) ?? 0}
+                  </span>
+                </div>
+                {mode === "VOTING" ? (
+                  <div className="mt-4 grid gap-2">
+                    <Link
+                      href={focusGalleryHref}
+                      className="w-full rounded-full border border-[rgba(106,147,204,0.32)] bg-white/92 px-3 py-2 text-center text-xs text-[#4f729f] transition hover:bg-[rgba(223,238,255,0.9)]"
+                    >
+                      집중 감상으로 이동
+                    </Link>
+                    <button
+                      className="w-full rounded-full border border-[rgba(92,132,189,0.52)] bg-[rgba(224,238,255,0.88)] px-3 py-2 text-sm text-[#2f537f] transition hover:bg-[rgba(189,217,249,0.95)] disabled:opacity-60"
+                      onClick={() => voteMutation.mutate(entry.entryId)}
+                      disabled={Boolean(pendingVoteEntryId) || !canVote}
+                    >
+                      {!canVote ? "투표 불가" : isVotingEntry ? "투표 중..." : "이 작품에 투표"}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-full border border-[color:var(--line)] px-3 py-2 text-center text-xs text-[color:var(--muted)]">
+                    {mode === "UPCOMING"
+                      ? "오픈 전 미리보기"
+                      : mode === "SUBMISSION"
+                        ? "심사/공개 대기"
+                        : "전시 아카이브"}
+                  </div>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderRankingPanel = (
+    title: string,
+    description: string,
+    variant: "light" | "dark" | "studio" | "archive" = "light",
+  ) => {
+    const isDark = variant === "dark";
+    const panelClass =
+      variant === "dark"
+        ? "border-[rgba(123,157,212,0.35)] bg-[rgba(14,24,38,0.8)]"
+        : variant === "studio"
+          ? "border-[rgba(11,91,91,0.22)] bg-[rgba(245,252,251,0.9)]"
+          : variant === "archive"
+            ? "border-[rgba(123,91,52,0.22)] bg-[rgba(252,248,241,0.9)]"
+            : "border-[color:var(--line)] bg-white/90";
+
+    return (
+      <div className={`rounded-[28px] border p-8 shadow-[var(--shadow)] ${panelClass}`}>
+        <h2 className={`font-[var(--font-display)] text-2xl ${isDark ? "text-[#ecf3ff]" : ""}`}>{title}</h2>
+        <p className={`mt-2 text-sm ${isDark ? "text-[#b7c8e5]" : "text-[color:var(--muted)]"}`}>{description}</p>
+
+        {rankingLoading ? (
+          <div className="mt-4 grid gap-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Skeleton key={index} className="h-10 w-full rounded-[12px]" />
+            ))}
+          </div>
+        ) : (
+          <>
+            {rankingError && (
+              <div
+                className={`mt-4 rounded-[16px] border px-4 py-2 text-xs ${
+                  isDark
+                    ? "border-[rgba(123,157,212,0.3)] bg-[rgba(17,28,44,0.7)] text-[#b7c8e5]"
+                    : "border-[color:var(--line)] bg-white/80 text-[color:var(--muted)]"
+                }`}
               >
-                {purchaseMutation.isPending ? "결제 처리 중..." : "출품권 결제"}
-              </button>
-              <span className="text-xs text-[color:var(--muted)]">
-                {contest.daysLeft > 0
-                  ? `${contest.daysLeft}일 남음`
-                  : "마감됨"}
-              </span>
+                랭킹을 불러오지 못했습니다.
+                {rankingError ? ` (${rankingError})` : ""}
+              </div>
+            )}
+
+            {ranking.length === 0 ? (
+              <div
+                className={`mt-4 rounded-[16px] border px-4 py-3 text-sm ${
+                  isDark
+                    ? "border-[rgba(123,157,212,0.3)] bg-[rgba(17,28,44,0.7)] text-[#b7c8e5]"
+                    : "border-[color:var(--line)] bg-white/80 text-[color:var(--muted)]"
+                }`}
+              >
+                랭킹 데이터가 없습니다.
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-2">
+                {ranking.map((item) => (
+                  <div
+                    key={item.entryId}
+                    className={`flex items-center justify-between rounded-[14px] border px-3 py-2 ${
+                      isDark
+                        ? "border-[rgba(123,157,212,0.3)] bg-[rgba(17,28,44,0.65)]"
+                        : "border-[color:var(--line)] bg-white/80"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className={`w-8 text-sm font-semibold ${isDark ? "text-[#d5e6ff]" : "text-[color:var(--accent)]"}`}>
+                        {item.rank}위
+                      </span>
+                      <div>
+                        <p className={`text-sm font-medium ${isDark ? "text-[#ecf3ff]" : "text-[color:var(--canvas-ink)]"}`}>
+                          {item.title ?? "Untitled"}
+                        </p>
+                        <p className={`text-xs ${isDark ? "text-[#b7c8e5]" : "text-[color:var(--muted)]"}`}>{item.artistName}</p>
+                      </div>
+                    </div>
+                    <span className={`text-xs ${isDark ? "text-[#b7c8e5]" : "text-[color:var(--muted)]"}`}>{item.voteCount}표</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const renderSubmissionStudio = () => (
+    <div
+      id="submission-studio"
+      className="rounded-[28px] border border-[rgba(11,91,91,0.24)] bg-[rgba(245,252,251,0.92)] p-8 shadow-[var(--shadow)]"
+    >
+      <p className="text-[10px] uppercase tracking-[0.32em] text-[color:var(--accent)]">{submitMeta.kicker}</p>
+      <h2 className="mt-2 font-[var(--font-display)] text-3xl">{submitMeta.title}</h2>
+      <p className="mt-2 text-sm text-[color:var(--muted)]">{submitMeta.description} JPEG/PNG, 최대 100MB.</p>
+
+      {!canSubmit && hasToken && (
+        <div className="mt-4 rounded-[16px] border border-[color:var(--line)] bg-[color:var(--chip)] px-4 py-2 text-xs text-[color:var(--muted)]">
+          출품권 결제 후 출품이 가능합니다.
+        </div>
+      )}
+
+      {needsCredit && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-[color:var(--line)] bg-white/80 px-4 py-3 text-xs text-[color:var(--muted)]">
+          <div>출품권이 없습니다. 결제 1회당 출품권 1개가 추가됩니다.</div>
+          <button
+            className="rounded-full border border-[color:var(--accent)] px-4 py-2 text-xs text-[color:var(--accent)] transition hover:bg-[color:var(--accent)] hover:text-white"
+            onClick={openPayment}
+          >
+            출품권 결제하기
+          </button>
+        </div>
+      )}
+
+      {!hasToken && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-[color:var(--line)] bg-white/80 px-4 py-3 text-xs text-[color:var(--muted)]">
+          <div>로그인 후 결제 및 출품을 진행할 수 있습니다.</div>
+          <Link
+            href="/login"
+            className="rounded-full border border-[color:var(--line)] px-4 py-2 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+          >
+            로그인하러 가기
+          </Link>
+        </div>
+      )}
+
+      <div className="mt-5 grid gap-3">
+        <input
+          className="h-11 rounded-[16px] border border-[color:var(--line)] bg-white px-4 text-sm text-[color:var(--canvas-ink)] focus:border-[color:var(--accent)] focus:outline-none"
+          placeholder="작품 제목"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          disabled={!canSubmit}
+        />
+        <textarea
+          className="min-h-[90px] rounded-[16px] border border-[color:var(--line)] bg-white px-4 py-3 text-sm text-[color:var(--canvas-ink)] focus:border-[color:var(--accent)] focus:outline-none"
+          placeholder="작품 설명"
+          value={description}
+          onChange={(event) => setDescription(event.target.value)}
+          disabled={!canSubmit}
+        />
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/jpg"
+          onChange={(event) => {
+            const selected = event.target.files ? event.target.files[0] : null;
+            if (!selected) {
+              setFile(null);
+              setUploadError(null);
+              setUploadProgress(0);
+              setUploadStage("idle");
+              setUploadedImageUrl(null);
+              return;
+            }
+            const allowed = ["image/jpeg", "image/png", "image/jpg"];
+            const maxSize = 100 * 1024 * 1024;
+            if (!allowed.includes(selected.type)) {
+              setFile(null);
+              setUploadError("JPEG/PNG 파일만 업로드 가능합니다.");
+              setUploadStage("idle");
+              setUploadProgress(0);
+              setUploadedImageUrl(null);
+              return;
+            }
+            if (selected.size > maxSize) {
+              setFile(null);
+              setUploadError("파일 용량은 100MB 이하만 가능합니다.");
+              setUploadStage("idle");
+              setUploadProgress(0);
+              setUploadedImageUrl(null);
+              return;
+            }
+            setUploadError(null);
+            setUploadProgress(0);
+            setUploadStage("idle");
+            setUploadedImageUrl(null);
+            setFile(selected);
+          }}
+          className="text-xs text-[color:var(--muted)]"
+          disabled={!canSubmit}
+        />
+
+        {uploadStatusLabel && (
+          <div className="rounded-[16px] border border-[color:var(--line)] bg-white/80 px-4 py-2 text-xs text-[color:var(--muted)]">
+            {uploadStatusLabel}
+            {uploadStage === "uploading" && (
+              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[color:var(--line)]">
+                <div
+                  className="h-full rounded-full bg-[color:var(--accent)] transition-[width] duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {uploadError && (
+          <div className="rounded-[16px] border border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">
+            {uploadError}
+          </div>
+        )}
+
+        {file && (
+          <div className="rounded-[16px] border border-[color:var(--line)] bg-white/80 px-4 py-2 text-xs text-[color:var(--muted)]">
+            선택된 파일: {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+          </div>
+        )}
+
+        {uploadedImageUrl && (
+          <div className="rounded-[16px] border border-[color:var(--line)] bg-white/80 p-3">
+            <p className="text-xs text-[color:var(--muted)]">업로드된 이미지 미리보기</p>
+            <div className="mt-2 overflow-hidden rounded-[14px] border border-[color:var(--line)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={uploadedImageUrl} alt="업로드 미리보기" className="h-40 w-full object-cover" />
             </div>
           </div>
+        )}
 
-          <div className="grid gap-6">
-            <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
-              <h2 className="font-[var(--font-display)] text-2xl">
-                Contest Rules
-              </h2>
-              <ul className="mt-4 grid gap-3 text-sm text-[color:var(--muted)]">
-                {contest.rules.map((rule) => (
-                  <li
-                    key={rule}
-                    className="rounded-[18px] border border-[color:var(--line)] bg-white/80 px-4 py-2"
-                  >
+        <button
+          className="mt-2 rounded-full bg-[color:var(--accent)] px-5 py-3 text-sm text-white shadow-[var(--shadow)] disabled:opacity-60"
+          onClick={() => uploadMutation.mutate()}
+          disabled={!canSubmit || !file || uploadMutation.isPending || isUploading}
+        >
+          {!canSubmit ? "결제 후 출품 가능" : uploadMutation.isPending || isUploading ? "업로드 중..." : "출품하기"}
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderPhaseLayout = () => {
+    if (isUpcomingPhase) {
+      return (
+        <>
+          <section className="phase-upcoming-page phase-upcoming-enter relative mt-10 overflow-hidden rounded-[34px] p-6 md:p-10">
+            <div className="relative z-10 grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
+              <article className="rounded-[28px] border border-[rgba(181,119,76,0.22)] bg-[rgba(255,252,247,0.94)] p-6 shadow-[0_16px_32px_rgba(92,66,37,0.09)] md:p-8">
+                <p className="inline-flex rounded-full border border-[rgba(181,119,76,0.35)] bg-white px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-[#825735]">
+                  SEASON PREVIEW
+                </p>
+                <h1 className={`mt-5 text-4xl leading-tight text-[#26180f] md:text-5xl ${tone.titleClass}`}>{contest?.theme}</h1>
+                <p className="mt-4 max-w-3xl text-sm leading-relaxed text-[#5d4532]">
+                  {contest?.description ?? "콘테스트 설명이 아직 등록되지 않았습니다."}
+                </p>
+                <p className="mt-3 text-sm text-[#7d5838]">{phaseInfo.note}</p>
+                <div className="mt-7 grid gap-3 sm:grid-cols-3">
+                  {phaseActionBoard.UPCOMING.map((item) => (
+                    <article key={`upcoming-head-${item.kicker}`} className="rounded-[16px] border border-[rgba(181,119,76,0.2)] bg-white/90 p-4">
+                      <p className="text-[10px] uppercase tracking-[0.26em] text-[#9b6a3e]">{item.kicker}</p>
+                      <p className="mt-1 text-sm font-semibold text-[#3f2c1c]">{item.title}</p>
+                      <p className="mt-1 text-xs text-[#715640]">{item.description}</p>
+                    </article>
+                  ))}
+                </div>
+              </article>
+
+              <aside className="grid gap-4">
+                <article className="rounded-[24px] border border-[rgba(181,119,76,0.22)] bg-[rgba(255,250,244,0.92)] p-6 shadow-[0_14px_30px_rgba(92,66,37,0.08)]">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-[#8d623c]">Open Countdown</p>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-[14px] border border-[rgba(181,119,76,0.2)] bg-white/92 p-4">
+                      <p className="text-xs text-[#7b5c44]">출품 시작</p>
+                      <p className="mt-1 text-3xl font-semibold text-[#2a1d13]">{submissionOpenCountdown}</p>
+                    </div>
+                    <div className="rounded-[14px] border border-[rgba(181,119,76,0.2)] bg-white/92 p-4">
+                      <p className="text-xs text-[#7b5c44]">전시 시작</p>
+                      <p className="mt-1 text-3xl font-semibold text-[#2a1d13]">{votingOpenCountdown}</p>
+                    </div>
+                  </div>
+                </article>
+                <article className="rounded-[24px] border border-[rgba(181,119,76,0.22)] bg-[rgba(255,250,244,0.9)] p-6 shadow-[0_14px_30px_rgba(92,66,37,0.08)]">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-[#8d623c]">Release Timeline</p>
+                  <ol className="mt-3 grid gap-2 text-sm text-[#6a503a]">
+                    <li>출품 시작: {formatSchedule(contest?.submissionStartAt)}</li>
+                    <li>출품 마감: {formatSchedule(contest?.submissionEndAt)}</li>
+                    <li>전시 시작: {formatSchedule(contest?.votingStartAt)}</li>
+                    <li>전시 종료: {formatSchedule(contest?.votingEndAt)}</li>
+                  </ol>
+                </article>
+                <div className="flex flex-wrap gap-3">
+                  <button className={tone.primaryButtonClass} onClick={() => scrollToSection("upcoming-rulebook")}>
+                    규칙 확인
+                  </button>
+                  <button className={tone.secondaryButtonClass} onClick={() => scrollToSection("upcoming-preview-grid")}>
+                    프리뷰 월 이동
+                  </button>
+                </div>
+              </aside>
+            </div>
+          </section>
+
+          <section className="mt-8 grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
+            <article
+              id="upcoming-rulebook"
+              className="rounded-[30px] border border-[rgba(181,119,76,0.24)] bg-[rgba(255,250,244,0.9)] p-8 shadow-[var(--shadow)]"
+            >
+              <h2 className="font-[var(--font-display)] text-3xl text-[#2a1d13]">Preparation Packet</h2>
+              <p className="mt-2 text-sm text-[#715640]">오픈 전 단계에서 탈락 요소를 선제적으로 제거하세요.</p>
+              <ul className="mt-5 grid gap-2 text-sm text-[#6e553f]">
+                {(contest?.rules ?? []).map((rule) => (
+                  <li key={rule} className="rounded-[14px] border border-[rgba(181,119,76,0.2)] bg-white/88 px-4 py-3">
                     {rule}
                   </li>
                 ))}
               </ul>
-            </div>
-            <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
-              <h2 className="font-[var(--font-display)] text-2xl">
-                Prize Distribution
-              </h2>
-              <p className="mt-3 text-sm text-[color:var(--muted)]">
-                참가비의 70%가 상금 풀로 구성되며, 1등에게 가장 큰 보상이
-                지급됩니다.
-              </p>
-              <div className="mt-6 grid gap-3 text-xs text-[color:var(--muted)]">
-                <span className="rounded-full border border-[color:var(--line)] px-3 py-2">
-                  1등: 상금 풀의 50%
-                </span>
-                <span className="rounded-full border border-[color:var(--line)] px-3 py-2">
-                  2등: 상금 풀의 30%
-                </span>
-                <span className="rounded-full border border-[color:var(--line)] px-3 py-2">
-                  3등: 상금 풀의 20%
-                </span>
+            </article>
+
+            <article
+              id="upcoming-preview-grid"
+              className="rounded-[30px] border border-[rgba(181,119,76,0.2)] bg-[rgba(255,253,249,0.94)] p-8 shadow-[var(--shadow)]"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="font-[var(--font-display)] text-3xl text-[#2a1d13]">Preview Wall</h2>
+                <span className="rounded-full border border-[rgba(181,119,76,0.24)] bg-white/90 px-3 py-1 text-xs text-[#806042]">Read-only</span>
+              </div>
+              <p className="mt-2 text-sm text-[#715640]">전시 시작 전 공개 가능한 샘플/티저 작품을 확인할 수 있습니다.</p>
+              {renderEntryGrid("UPCOMING", "오픈 예정 전시 작품이 아직 없습니다.", 6, { compact: true })}
+            </article>
+          </section>
+        </>
+      );
+    }
+
+    if (isSubmissionPhase) {
+      return (
+        <>
+          <section className="phase-submission-page phase-submission-enter relative mt-10 overflow-hidden rounded-[34px] p-6 md:p-10">
+            <div className="relative z-10">
+              <header className="rounded-[26px] border border-[rgba(12,105,97,0.24)] bg-[rgba(244,255,252,0.92)] p-6 shadow-[0_16px_32px_rgba(12,75,71,0.1)] md:p-8">
+                <p className="inline-flex rounded-full border border-[rgba(12,105,97,0.32)] bg-white px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-[#0b5f58]">
+                  SUBMISSION CONSOLE
+                </p>
+                <h1 className={`mt-4 text-4xl leading-tight text-[#103f3b] md:text-5xl ${tone.titleClass}`}>{contest?.theme}</h1>
+                <p className="mt-3 text-sm leading-relaxed text-[#2a615a]">{phaseInfo.note}</p>
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <button className={`${tone.primaryButtonClass} phase-submission-button`} onClick={openPayment} disabled={purchaseMutation.isPending}>
+                    {purchaseMutation.isPending ? "결제 처리 중..." : "출품권 결제"}
+                  </button>
+                  <button className={tone.secondaryButtonClass} onClick={() => scrollToSection("submission-studio")}>
+                    출품 폼 이동
+                  </button>
+                  {hasToken && (
+                    <span className="rounded-full border border-[rgba(12,105,97,0.24)] bg-white px-3 py-1 text-xs text-[#29635d]">
+                      보유 출품권 {credits}개
+                    </span>
+                  )}
+                </div>
+              </header>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <article className="rounded-[18px] border border-[rgba(12,105,97,0.2)] bg-[rgba(250,255,254,0.9)] p-4">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-[#2b6c64]">Submission Progress</p>
+                  <p className="mt-2 text-3xl font-semibold text-[#103f3b]">{submissionProgress}%</p>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-[rgba(12,105,97,0.14)]">
+                    <div className="h-full rounded-full bg-[#0d7469] transition-[width] duration-500" style={{ width: `${submissionProgress}%` }} />
+                  </div>
+                </article>
+                <article className="rounded-[18px] border border-[rgba(12,105,97,0.2)] bg-[rgba(250,255,254,0.9)] p-4">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-[#2b6c64]">Submission Window</p>
+                  <p className="mt-2 text-xs text-[#2f6f68]">{formatSchedule(contest?.submissionStartAt)}</p>
+                  <p className="text-xs text-[#2f6f68]">~ {formatSchedule(contest?.submissionEndAt)}</p>
+                </article>
+                <article className="rounded-[18px] border border-[rgba(12,105,97,0.2)] bg-[rgba(250,255,254,0.9)] p-4">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-[#2b6c64]">Queue Size</p>
+                  <p className="mt-2 text-3xl font-semibold text-[#103f3b]">{formatNumber(entries.length)}</p>
+                  <p className="mt-1 text-xs text-[#2f6f68]">등록/검토 대상 작품</p>
+                </article>
+                <article className="rounded-[18px] border border-[rgba(12,105,97,0.2)] bg-[rgba(250,255,254,0.9)] p-4">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-[#2b6c64]">Entry Fee</p>
+                  <p className="mt-2 text-3xl font-semibold text-[#103f3b]">{formatNumber(contest?.entryFee ?? 0)}원</p>
+                  <p className="mt-1 text-xs text-[#2f6f68]">출품권 1개 = 출품 1회</p>
+                </article>
               </div>
             </div>
-            <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
-              <h2 className="font-[var(--font-display)] text-2xl">
-                Submit Entry
-              </h2>
-              <p className="mt-2 text-sm text-[color:var(--muted)]">
-                JPEG/PNG, 최대 100MB. 작품 정보를 입력하고 출품하세요.
-              </p>
-              {!canSubmit && hasToken && (
-                <div className="mt-4 rounded-[18px] border border-[color:var(--line)] bg-[color:var(--chip)] px-4 py-2 text-xs text-[color:var(--muted)]">
-                  출품권 결제 후 출품이 가능합니다.
-                </div>
-              )}
-              {needsCredit && (
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[color:var(--line)] bg-white/80 px-4 py-3 text-xs text-[color:var(--muted)]">
-                  <div>
-                    출품권이 없습니다. 결제 1회당 출품권 1개가 추가됩니다.
-                  </div>
-                  <button
-                    className="rounded-full border border-[color:var(--accent)] px-4 py-2 text-xs text-[color:var(--accent)] transition hover:bg-[color:var(--accent)] hover:text-white"
-                    onClick={() => setPaymentStep("payment")}
-                  >
-                    출품권 결제하기
+          </section>
+
+          <section className="mt-8 grid gap-6 2xl:grid-cols-[0.86fr_1.18fr_0.96fr]">
+            <article className="rounded-[30px] border border-[rgba(12,105,97,0.22)] bg-[rgba(244,255,252,0.9)] p-8 shadow-[var(--shadow)]">
+              <h2 className="font-[var(--font-display)] text-3xl text-[#103f3b]">Operations Queue</h2>
+              <p className="mt-2 text-sm text-[#2f6f68]">제출부터 공개 대기까지 운영 흐름을 체크하세요.</p>
+              <div className="mt-5 grid gap-3">
+                {phaseActionBoard.SUBMISSION.map((item) => (
+                  <article key={`submission-ops-${item.kicker}`} className="phase-submission-card rounded-[16px] border border-[rgba(12,105,97,0.22)] bg-white/90 p-4">
+                    <p className="text-[10px] uppercase tracking-[0.26em] text-[#0d7469]">{item.kicker}</p>
+                    <p className="mt-1 text-sm font-semibold text-[#1b4d48]">{item.title}</p>
+                    <p className="mt-1 text-xs text-[#3d756f]">{item.description}</p>
+                  </article>
+                ))}
+              </div>
+            </article>
+
+            {renderSubmissionStudio()}
+
+            <aside className="grid gap-6">
+              {renderRankingPanel("전시 전 랭킹", "전시 시작 후 실시간 랭킹이 활성화됩니다.", "studio")}
+              <article className="rounded-[30px] border border-[rgba(12,105,97,0.2)] bg-[rgba(244,255,252,0.9)] p-8 shadow-[var(--shadow)]">
+                <h2 className="font-[var(--font-display)] text-2xl text-[#103f3b]">Submission Queue</h2>
+                <p className="mt-2 text-sm text-[#2f6f68]">현재 제출된 작품의 공개 대기/검토 상태를 확인합니다.</p>
+                {renderEntryGrid("SUBMISSION", "아직 등록된 출품작이 없습니다.", 4)}
+              </article>
+            </aside>
+          </section>
+        </>
+      );
+    }
+
+    if (isVotingPhase) {
+      return (
+        <>
+          <section className="phase-voting-page phase-voting-enter relative mt-10 overflow-hidden rounded-[34px] p-6 md:p-10">
+            <div className="relative z-10 grid gap-6 xl:grid-cols-[1.24fr_0.76fr]">
+              <article
+                id="voting-gallery"
+                className="rounded-[30px] border border-[rgba(126,157,211,0.3)] bg-[linear-gradient(180deg,rgba(245,251,255,0.96)_0%,rgba(237,247,255,0.95)_100%)] p-6 shadow-[0_18px_34px_rgba(27,63,109,0.12)] md:p-8"
+              >
+                <p className="inline-flex rounded-full border border-[rgba(120,158,213,0.42)] bg-[rgba(232,243,255,0.9)] px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-[#3f6597]">
+                  LIVE EXHIBITION
+                </p>
+                <h1 className={`mt-5 text-4xl leading-tight text-[#1e3654] md:text-5xl ${tone.titleClass}`}>{contest?.theme}</h1>
+                <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[#56739b]">{phaseInfo.note}</p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <button className={`${tone.primaryButtonClass} phase-voting-button`} onClick={() => scrollToSection("voting-gallery-grid")}>
+                    작품 바로 보기
                   </button>
-                </div>
-              )}
-              {!hasToken && (
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-[color:var(--line)] bg-white/80 px-4 py-3 text-xs text-[color:var(--muted)]">
-                  <div>로그인 후 결제 및 출품을 진행할 수 있습니다.</div>
+                  <button className={tone.secondaryButtonClass} onClick={() => scrollToSection("voting-ranking")}>
+                    랭킹 패널 이동
+                  </button>
                   <Link
-                    href="/login"
-                    className="rounded-full border border-[color:var(--line)] px-4 py-2 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                    href={`/contest/${id}/gallery?tab=contest`}
+                    className="rounded-full border border-[rgba(106,147,204,0.46)] bg-[rgba(231,244,255,0.92)] px-5 py-3 text-sm text-[#355b8d] transition hover:bg-[rgba(206,229,251,0.95)]"
                   >
-                    로그인하러 가기
+                    집중 갤러리
                   </Link>
                 </div>
-              )}
-              <div className="mt-4 grid gap-3">
-                <input
-                  className="h-11 rounded-[18px] border border-[color:var(--line)] bg-white px-4 text-sm text-[color:var(--canvas-ink)] focus:border-[color:var(--accent)] focus:outline-none"
-                  placeholder="작품 제목"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  disabled={!canSubmit}
-                />
-                <textarea
-                  className="min-h-[90px] rounded-[18px] border border-[color:var(--line)] bg-white px-4 py-3 text-sm text-[color:var(--canvas-ink)] focus:border-[color:var(--accent)] focus:outline-none"
-                  placeholder="작품 설명"
-                  value={description}
-                  onChange={(event) => setDescription(event.target.value)}
-                  disabled={!canSubmit}
-                />
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/jpg"
-                  onChange={(event) => {
-                    const selected = event.target.files
-                      ? event.target.files[0]
-                      : null;
-                    if (!selected) {
-                      setFile(null);
-                      setUploadError(null);
-                      setUploadProgress(0);
-                      setUploadStage("idle");
-                      setUploadedImageUrl(null);
-                      return;
-                    }
-                    const allowed = [
-                      "image/jpeg",
-                      "image/png",
-                      "image/jpg",
-                    ];
-                    const maxSize = 100 * 1024 * 1024;
-                    if (!allowed.includes(selected.type)) {
-                      setFile(null);
-                      setUploadError("JPEG/PNG 파일만 업로드 가능합니다.");
-                      setUploadStage("idle");
-                      setUploadProgress(0);
-                      setUploadedImageUrl(null);
-                      return;
-                    }
-                    if (selected.size > maxSize) {
-                      setFile(null);
-                      setUploadError("파일 용량은 100MB 이하만 가능합니다.");
-                      setUploadStage("idle");
-                      setUploadProgress(0);
-                      setUploadedImageUrl(null);
-                      return;
-                    }
-                    setUploadError(null);
-                    setUploadProgress(0);
-                    setUploadStage("idle");
-                    setUploadedImageUrl(null);
-                    setFile(selected);
-                  }}
-                  className="text-xs text-[color:var(--muted)]"
-                  disabled={!canSubmit}
-                />
-                {uploadStatusLabel && (
-                  <div className="rounded-[18px] border border-[color:var(--line)] bg-white/80 px-4 py-2 text-xs text-[color:var(--muted)]">
-                    {uploadStatusLabel}
-                    {uploadStage === "uploading" && (
-                      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-[color:var(--line)]">
-                        <div
-                          className="h-full rounded-full bg-[color:var(--accent)] transition-[width] duration-300"
-                          style={{ width: `${uploadProgress}%` }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-                {uploadError && (
-                  <div className="rounded-[18px] border border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">
-                    {uploadError}
-                  </div>
-                )}
-                {file && (
-                  <div className="rounded-[18px] border border-[color:var(--line)] bg-white/80 px-4 py-2 text-xs text-[color:var(--muted)]">
-                    선택된 파일: {file.name} (
-                    {(file.size / (1024 * 1024)).toFixed(2)} MB)
-                  </div>
-                )}
-                {uploadedImageUrl && (
-                  <div className="rounded-[18px] border border-[color:var(--line)] bg-white/80 p-3">
-                    <p className="text-xs text-[color:var(--muted)]">
-                      업로드된 이미지 미리보기
-                    </p>
-                    <div className="mt-2 overflow-hidden rounded-[14px] border border-[color:var(--line)]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={uploadedImageUrl}
-                        alt="업로드 미리보기"
-                        className="h-40 w-full object-cover"
-                      />
+                <div id="voting-gallery-grid" className="mt-7">
+                  {renderEntryGrid("VOTING", "전시 중인 출품작이 없습니다.")}
+                </div>
+              </article>
+
+              <aside id="voting-ranking" className="grid gap-6">
+                <article className="rounded-[24px] border border-[rgba(126,157,211,0.3)] bg-[rgba(244,250,255,0.92)] p-6 shadow-[0_14px_30px_rgba(27,63,109,0.1)]">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-[#5a7aa4]">Exhibition Telemetry</p>
+                  <div className="mt-4 grid gap-3">
+                    <div className="rounded-[14px] border border-[rgba(126,157,211,0.3)] bg-white/92 p-4">
+                      <p className="text-xs text-[#5e7ea7]">전시 기간</p>
+                      <p className="mt-1 text-sm text-[#29486f]">
+                        {formatSchedule(contest?.votingStartAt)} ~ {formatSchedule(contest?.votingEndAt)}
+                      </p>
+                    </div>
+                    <div className="rounded-[14px] border border-[rgba(126,157,211,0.3)] bg-white/92 p-4">
+                      <p className="text-xs text-[#5e7ea7]">투표 진행률</p>
+                      <p className="mt-1 text-2xl font-semibold text-[#29486f]">{votingProgress}%</p>
+                    </div>
+                    <div className="rounded-[14px] border border-[rgba(126,157,211,0.3)] bg-white/92 p-4">
+                      <p className="text-xs text-[#5e7ea7]">누적 투표 수</p>
+                      <p className="mt-1 text-2xl font-semibold text-[#29486f]">{formatNumber(totalVotes)}</p>
                     </div>
                   </div>
-                )}
-                <button
-                  className="mt-2 rounded-full bg-[color:var(--accent)] px-5 py-3 text-sm text-white shadow-[var(--shadow)] disabled:opacity-60"
-                  onClick={() => uploadMutation.mutate()}
-                  disabled={
-                    !canSubmit ||
-                    !file ||
-                    uploadMutation.isPending ||
-                    isUploading
-                  }
-                >
-                  {!canSubmit
-                    ? "결제 후 출품 가능"
-                    : uploadMutation.isPending || isUploading
-                      ? "업로드 중..."
-                      : "출품하기"}
+                </article>
+
+                {renderRankingPanel("Live Ranking", "투표 반영 결과가 즉시 순위에 반영됩니다.", "light")}
+
+                <article className="rounded-[24px] border border-[rgba(126,157,211,0.3)] bg-[rgba(244,250,255,0.92)] p-6 shadow-[0_14px_30px_rgba(27,63,109,0.1)]">
+                  <h2 className="font-[var(--font-display)] text-2xl text-[#1f3a5c]">Voting Rulebook</h2>
+                  <ul className="mt-4 grid gap-2 text-sm text-[#5d7da7]">
+                    {(contest?.rules ?? []).map((rule) => (
+                      <li key={rule} className="rounded-[12px] border border-[rgba(126,157,211,0.28)] bg-white/92 px-3 py-2">
+                        {rule}
+                      </li>
+                    ))}
+                  </ul>
+                  {!hasToken && (
+                    <div className="mt-4 flex items-center justify-between gap-3 rounded-[14px] border border-[rgba(126,157,211,0.28)] bg-white/92 px-3 py-3 text-xs text-[#56749d]">
+                      <span>투표는 로그인 후 가능합니다.</span>
+                      <Link
+                        href="/login"
+                        className="rounded-full border border-[rgba(106,147,204,0.42)] bg-[rgba(227,241,255,0.92)] px-3 py-1.5 text-[#355b8d] transition hover:bg-[rgba(204,228,251,0.95)]"
+                      >
+                        로그인
+                      </Link>
+                    </div>
+                  )}
+                </article>
+              </aside>
+            </div>
+          </section>
+        </>
+      );
+    }
+
+    const winnerShowcase = topWinners.length > 0 ? topWinners : ranking.slice(0, 3);
+    return (
+      <>
+        <section className="phase-ended-page phase-ended-enter relative mt-10 overflow-hidden rounded-[34px] p-6 md:p-10">
+          <div className="relative z-10">
+            <header className="rounded-[26px] border border-[rgba(120,88,52,0.24)] bg-[rgba(252,248,241,0.92)] p-6 shadow-[0_16px_32px_rgba(74,53,30,0.1)] md:p-8">
+              <p className="inline-flex rounded-full border border-[rgba(120,88,52,0.34)] bg-white px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-[#6f4f2d]">
+                FINAL REPORT
+              </p>
+              <h1 className={`mt-4 text-4xl leading-tight text-[#352614] md:text-5xl ${tone.titleClass}`}>{contest?.theme}</h1>
+              <p className="mt-3 text-sm leading-relaxed text-[#634a31]">{phaseInfo.note}</p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <button className={`${tone.primaryButtonClass} phase-ended-button`} onClick={() => scrollToSection("ended-winners")}>
+                  수상작 보기
                 </button>
+                <Link href="/contest?tab=contest" className={tone.secondaryButtonClass}>
+                  다음 시즌 보기
+                </Link>
               </div>
+            </header>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <article className="rounded-[18px] border border-[rgba(120,88,52,0.2)] bg-[rgba(255,252,246,0.9)] p-4">
+                <p className="text-[10px] uppercase tracking-[0.24em] text-[#7a5a37]">Total Entries</p>
+                <p className="mt-2 text-3xl font-semibold text-[#352614]">{formatNumber(entries.length)}</p>
+              </article>
+              <article className="rounded-[18px] border border-[rgba(120,88,52,0.2)] bg-[rgba(255,252,246,0.9)] p-4">
+                <p className="text-[10px] uppercase tracking-[0.24em] text-[#7a5a37]">Total Votes</p>
+                <p className="mt-2 text-3xl font-semibold text-[#352614]">{formatNumber(totalVotes)}</p>
+              </article>
+              <article className="rounded-[18px] border border-[rgba(120,88,52,0.2)] bg-[rgba(255,252,246,0.9)] p-4">
+                <p className="text-[10px] uppercase tracking-[0.24em] text-[#7a5a37]">1st Place</p>
+                <p className="mt-2 text-sm font-semibold text-[#352614]">{winnerShowcase[0]?.title ?? "미집계"}</p>
+              </article>
+              <article className="rounded-[18px] border border-[rgba(120,88,52,0.2)] bg-[rgba(255,252,246,0.9)] p-4">
+                <p className="text-[10px] uppercase tracking-[0.24em] text-[#7a5a37]">Season Status</p>
+                <p className="mt-2 text-sm font-semibold text-[#352614]">결과 확정 / 아카이브 공개</p>
+              </article>
             </div>
           </div>
         </section>
-          )}
+
+        <section className="mt-8 grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
+          <article className="rounded-[30px] border border-[rgba(120,88,52,0.24)] bg-[rgba(252,248,241,0.92)] p-8 shadow-[var(--shadow)]">
+            <h2 className="font-[var(--font-display)] text-3xl text-[#352614]">Archive Gallery</h2>
+            <p className="mt-2 text-sm text-[#634a31]">종료된 콘테스트 작품과 최종 결과를 보관합니다.</p>
+            {renderEntryGrid("ENDED", "아카이브 작품이 없습니다.", 6, { compact: true })}
+          </article>
+
+          <aside className="grid gap-6">
+            <article id="ended-winners" className="rounded-[30px] border border-[rgba(120,88,52,0.24)] bg-[rgba(252,248,241,0.92)] p-8 shadow-[var(--shadow)]">
+              <h2 className="font-[var(--font-display)] text-2xl text-[#352614]">Winner Snapshot</h2>
+              <div className="mt-4 grid gap-3">
+                {winnerShowcase.map((winner) => (
+                  <div key={winner.entryId} className="rounded-[14px] border border-[rgba(120,88,52,0.2)] bg-white/90 p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#7d5e3d]">{winner.rank}위</p>
+                    <p className="mt-1 text-sm font-semibold text-[#352614]">{winner.title ?? "Untitled"}</p>
+                    <p className="mt-1 text-xs text-[#6f573e]">{winner.artistName} · {winner.voteCount}표</p>
+                  </div>
+                ))}
+                {winnerShowcase.length === 0 && (
+                  <div className="rounded-[14px] border border-[rgba(120,88,52,0.2)] bg-white/90 px-4 py-3 text-sm text-[#6f573e]">
+                    아직 최종 수상작 데이터가 없습니다.
+                  </div>
+                )}
+              </div>
+            </article>
+
+            {renderRankingPanel("Final Ranking", "최종 집계 기준 랭킹입니다.", "archive")}
+
+            <article className="rounded-[30px] border border-[rgba(120,88,52,0.24)] bg-[rgba(252,248,241,0.92)] p-8 shadow-[var(--shadow)]">
+              <h2 className="font-[var(--font-display)] text-2xl text-[#352614]">Post Season Notes</h2>
+              <ul className="mt-4 grid gap-2 text-sm text-[#634a31]">
+                {phaseActionBoard.ENDED.map((item) => (
+                  <li key={`ended-${item.kicker}`} className="rounded-[12px] border border-[rgba(120,88,52,0.2)] bg-white/90 px-3 py-2">
+                    {item.title} - {item.description}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          </aside>
+        </section>
+      </>
+    );
+  };
+
+  return (
+    <PageShell>
+      <TopNav />
+
+      {isLoading ? (
+        <section className="mt-10 grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
+            <Skeleton className="h-5 w-28 rounded-full" />
+            <Skeleton className="mt-4 h-10 w-2/3 rounded-[16px]" />
+            <SkeletonText className="mt-4" lines={3} />
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <Skeleton className="h-12 rounded-[14px]" />
+              <Skeleton className="h-12 rounded-[14px]" />
+              <Skeleton className="h-12 rounded-[14px]" />
+              <Skeleton className="h-12 rounded-[14px]" />
+            </div>
+          </div>
+          <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
+            <Skeleton className="h-7 w-40 rounded-[14px]" />
+            <SkeletonText className="mt-4" lines={5} />
+          </div>
+        </section>
+      ) : (
+        <>
+          {contest && <>{renderPhaseLayout()}</>}
+
           {!contest && (
-            <div className="mt-10 rounded-[28px] border border-[color:var(--line)] bg-white/70 px-6 py-6 text-sm text-[color:var(--muted)] shadow-[var(--shadow)]">
+            <div className="mt-10 rounded-[28px] border border-[color:var(--line)] bg-white/75 px-6 py-6 text-sm text-[color:var(--muted)] shadow-[var(--shadow)]">
               콘테스트 정보를 불러오지 못했습니다.
               {error ? ` (${error})` : ""}
             </div>
@@ -471,9 +1217,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                     <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">
                       Test Payment
                     </p>
-                    <h2 className="mt-2 font-[var(--font-display)] text-2xl">
-                      출품권 결제
-                    </h2>
+                    <h2 className="mt-2 font-[var(--font-display)] text-2xl">출품권 결제</h2>
                     <p className="mt-2 text-sm text-[color:var(--muted)]">
                       실제 결제는 진행되지 않으며, 테스트 UI입니다.
                     </p>
@@ -492,8 +1236,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                   </div>
 
                   <div className="rounded-[18px] border border-[color:var(--line)] bg-[color:var(--chip)] px-4 py-3 text-sm text-[color:var(--canvas-ink)]">
-                    참가비{" "}
-                    <strong>{formatNumber(contest.entryFee)}원</strong>
+                    참가비 <strong>{formatNumber(contest.entryFee)}원</strong>
                   </div>
 
                   <div className="grid gap-2">
@@ -547,15 +1290,9 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
 
             {paymentStep === "processing" && (
               <>
-                <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">
-                  Processing
-                </p>
-                <h2 className="mt-3 font-[var(--font-display)] text-2xl">
-                  결제를 처리하고 있습니다.
-                </h2>
-                <p className="mt-2 text-sm text-[color:var(--muted)]">
-                  잠시만 기다려주세요.
-                </p>
+                <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">Processing</p>
+                <h2 className="mt-3 font-[var(--font-display)] text-2xl">결제를 처리하고 있습니다.</h2>
+                <p className="mt-2 text-sm text-[color:var(--muted)]">잠시만 기다려주세요.</p>
                 <div className="mt-6 flex items-center gap-3 text-xs text-[color:var(--muted)]">
                   <div className="spinner" />
                   <span>출품권을 발급 중입니다.</span>
@@ -565,12 +1302,8 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
 
             {paymentStep === "confirm" && (
               <>
-                <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">
-                  Payment Complete
-                </p>
-                <h2 className="mt-3 font-[var(--font-display)] text-2xl">
-                  출품권 결제가 완료되었습니다.
-                </h2>
+                <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">Payment Complete</p>
+                <h2 className="mt-3 font-[var(--font-display)] text-2xl">출품권 결제가 완료되었습니다.</h2>
                 <p className="mt-2 text-sm text-[color:var(--muted)]">
                   테스트 결제이므로 실제 승인/청구는 발생하지 않습니다.
                 </p>
@@ -591,8 +1324,263 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        .phase-upcoming-page,
+        .phase-submission-page,
+        .phase-voting-page,
+        .phase-ended-page {
+          border: 1px solid rgba(27, 22, 16, 0.09);
+          box-shadow: 0 20px 48px rgba(17, 14, 11, 0.08);
+          isolation: isolate;
+        }
+
+        .phase-upcoming-page::before,
+        .phase-submission-page::before,
+        .phase-voting-page::before,
+        .phase-ended-page::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          pointer-events: none;
+          border-radius: inherit;
+          z-index: 0;
+        }
+
+        .phase-upcoming-page {
+          background: #faf6ef;
+          border-color: rgba(181, 119, 76, 0.22);
+        }
+        .phase-upcoming-page::before {
+          background-image:
+            radial-gradient(circle at 12% 14%, rgba(181, 119, 76, 0.16) 0%, rgba(181, 119, 76, 0) 36%),
+            radial-gradient(circle at 90% 88%, rgba(200, 162, 118, 0.12) 0%, rgba(200, 162, 118, 0) 32%),
+            linear-gradient(120deg, rgba(145, 101, 62, 0.05) 0%, rgba(145, 101, 62, 0) 42%);
+        }
+
+        .phase-submission-page {
+          background: #eef9f6;
+          border-color: rgba(12, 105, 97, 0.22);
+        }
+        .phase-submission-page::before {
+          background-image:
+            linear-gradient(rgba(12, 105, 97, 0.08) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(12, 105, 97, 0.08) 1px, transparent 1px),
+            radial-gradient(circle at 88% 10%, rgba(77, 159, 151, 0.18) 0%, rgba(77, 159, 151, 0) 30%);
+          background-size: 24px 24px, 24px 24px, auto;
+          opacity: 0.62;
+        }
+
+        .phase-voting-page {
+          background: #f3f9ff;
+          border-color: rgba(126, 157, 211, 0.28);
+        }
+        .phase-voting-page::before {
+          background-image:
+            radial-gradient(circle at 0% 0%, rgba(125, 165, 222, 0.16) 0%, rgba(125, 165, 222, 0) 40%),
+            radial-gradient(circle at 100% 100%, rgba(173, 205, 244, 0.14) 0%, rgba(173, 205, 244, 0) 36%),
+            linear-gradient(180deg, rgba(246, 251, 255, 0.84) 0%, rgba(246, 251, 255, 0.4) 100%);
+        }
+
+        .phase-ended-page {
+          background: #f4ede2;
+          border-color: rgba(120, 88, 52, 0.24);
+        }
+        .phase-ended-page::before {
+          background-image:
+            radial-gradient(circle at 90% 8%, rgba(120, 88, 52, 0.18) 0%, rgba(120, 88, 52, 0) 40%),
+            radial-gradient(circle at 10% 88%, rgba(158, 121, 84, 0.16) 0%, rgba(158, 121, 84, 0) 32%),
+            linear-gradient(140deg, rgba(148, 113, 77, 0.06) 0%, rgba(148, 113, 77, 0) 34%);
+          opacity: 0.9;
+        }
+
+        .phase-upcoming-enter {
+          animation: upcoming-enter 520ms ease both;
+        }
+        .phase-upcoming-card {
+          animation: upcoming-card 360ms ease both;
+        }
+        .phase-upcoming-button {
+          box-shadow: 0 6px 16px rgba(194, 123, 77, 0.14);
+        }
+
+        .phase-submission-enter {
+          animation: submission-enter 360ms ease both;
+        }
+        .phase-submission-card {
+          animation: submission-card 280ms ease both;
+        }
+        .phase-submission-button {
+          transform-origin: center;
+        }
+        .phase-submission-button:hover {
+          transform: translateY(-1px) scale(1.01);
+        }
+
+        .phase-voting-enter {
+          animation: voting-enter 320ms ease both;
+        }
+        .phase-voting-card {
+          animation: voting-card 240ms ease both;
+        }
+        .phase-voting-button:hover {
+          box-shadow: 0 8px 20px rgba(39, 72, 120, 0.18);
+        }
+
+        .phase-ended-enter {
+          animation: ended-enter 560ms ease both;
+        }
+        .phase-ended-card {
+          animation: ended-card 420ms ease both;
+        }
+        .phase-ended-button:hover {
+          filter: brightness(1.05);
+        }
+
+        @keyframes upcoming-enter {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+            filter: blur(2px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+            filter: blur(0);
+          }
+        }
+        @keyframes upcoming-card {
+          from {
+            opacity: 0;
+            transform: translateY(12px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes submission-enter {
+          from {
+            opacity: 0;
+            transform: translateX(-6px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        @keyframes submission-card {
+          from {
+            opacity: 0;
+            transform: translateY(6px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes voting-enter {
+          from {
+            opacity: 0;
+            transform: translateY(6px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes voting-card {
+          from {
+            opacity: 0;
+            transform: translateY(6px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        @keyframes ended-enter {
+          from {
+            opacity: 0;
+            transform: translateY(8px);
+            filter: saturate(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+            filter: saturate(1);
+          }
+        }
+        @keyframes ended-card {
+          from {
+            opacity: 0;
+            transform: translateY(6px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .phase-upcoming-enter,
+          .phase-upcoming-card,
+          .phase-submission-enter,
+          .phase-submission-card,
+          .phase-voting-enter,
+          .phase-voting-card,
+          .phase-ended-enter,
+          .phase-ended-card {
+            animation: none !important;
+          }
+        }
+      `}</style>
     </PageShell>
   );
+}
+
+function formatSchedule(value?: string | null): string {
+  if (!value) {
+    return "미정";
+  }
+  return value.replace("T", " ").slice(0, 16);
+}
+
+function formatCountdown(value?: string | null): string {
+  if (!value) {
+    return "D-?";
+  }
+  const target = new Date(value).getTime();
+  if (Number.isNaN(target)) {
+    return "D-?";
+  }
+  const diff = Math.ceil((target - Date.now()) / (1000 * 60 * 60 * 24));
+  if (diff > 0) {
+    return `D-${diff}`;
+  }
+  if (diff === 0) {
+    return "D-Day";
+  }
+  return `D+${Math.abs(diff)}`;
+}
+
+function calculatePeriodProgress(startAt?: string | null, endAt?: string | null): number {
+  if (!startAt || !endAt) {
+    return 0;
+  }
+  const start = new Date(startAt).getTime();
+  const end = new Date(endAt).getTime();
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
+    return 0;
+  }
+  const now = Date.now();
+  if (now <= start) {
+    return 0;
+  }
+  if (now >= end) {
+    return 100;
+  }
+  return Math.round(((now - start) / (end - start)) * 100);
 }
 
 function resolveUploadError(result: ImageUploadResult): string {

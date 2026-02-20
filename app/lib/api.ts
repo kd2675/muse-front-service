@@ -252,6 +252,14 @@ export async function postJson<T>(
   return requestJson("POST", path, body, config);
 }
 
+export async function putJson<T>(
+  path: string,
+  body?: unknown,
+  config?: AxiosRequestConfig,
+): Promise<ApiResult<T>> {
+  return requestJson("PUT", path, body, config);
+}
+
 export async function postForm<T>(
   path: string,
   form: FormData,

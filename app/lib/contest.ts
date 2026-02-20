@@ -1,10 +1,16 @@
-import { fetchJson, postJson } from "./api";
+import { fetchJson, postJson, putJson } from "./api";
 import type { ResponseEnvelope } from "../types/response";
 import type {
+  AdminContest,
+  AdminContestUpsertRequest,
   ContestDetail,
   ContestEntry,
   ContestEntryCreditStatus,
+  ContestFinalizeResult,
+  ContestPublicEntry,
+  ContestRankingItem,
   ContestSummary,
+  ContestVoteResponse,
 } from "../types/contest";
 
 export type ContestListResult = {
@@ -100,7 +106,7 @@ export async function purchaseEntryCredit(
 }
 
 export type ContestEntryResult = {
-  data: ContestEntry;
+  data: ContestEntry | null;
   error?: string;
 };
 
@@ -121,13 +127,167 @@ export async function submitContestEntry(
 
   if (!data?.data) {
     return {
-      data: {
-        contestId: id,
-        entryId: "temp",
-        fileName: payload.fileName ?? "unknown",
-        imageUrl: payload.imageUrl,
-        status: "SUBMITTED",
-      },
+      data: null,
+      error: backendMapped ?? backendMessage ?? error,
+    };
+  }
+
+  return { data: data.data };
+}
+
+export type ContestEntriesResult = {
+  data: ContestPublicEntry[];
+  error?: string;
+};
+
+export async function getContestEntries(
+  id: number,
+): Promise<ContestEntriesResult> {
+  const { data, error, backendMapped, backendMessage } =
+    await fetchJson<ResponseEnvelope<ContestPublicEntry[]>>(
+      `/api/muse/v1/contests/${id}/entries`,
+    );
+
+  if (!data?.data) {
+    return {
+      data: [],
+      error: backendMapped ?? backendMessage ?? error,
+    };
+  }
+
+  return { data: data.data };
+}
+
+export type ContestVoteResult = {
+  data: ContestVoteResponse | null;
+  error?: string;
+};
+
+export async function voteContestEntry(
+  id: number,
+  payload: { entryId: string },
+): Promise<ContestVoteResult> {
+  const { data, error, backendMapped, backendMessage } =
+    await postJson<ResponseEnvelope<ContestVoteResponse>>(
+      `/api/muse/v1/contests/${id}/votes`,
+      payload,
+    );
+
+  if (!data?.data) {
+    return {
+      data: null,
+      error: backendMapped ?? backendMessage ?? error,
+    };
+  }
+
+  return { data: data.data };
+}
+
+export type ContestRankingResult = {
+  data: ContestRankingItem[];
+  error?: string;
+};
+
+export async function getContestRanking(
+  id: number,
+): Promise<ContestRankingResult> {
+  const { data, error, backendMapped, backendMessage } =
+    await fetchJson<ResponseEnvelope<ContestRankingItem[]>>(
+      `/api/muse/v1/contests/${id}/ranking`,
+    );
+
+  if (!data?.data) {
+    return {
+      data: [],
+      error: backendMapped ?? backendMessage ?? error,
+    };
+  }
+
+  return { data: data.data };
+}
+
+export type AdminContestListResult = {
+  data: AdminContest[];
+  error?: string;
+};
+
+export async function getAdminContestList(): Promise<AdminContestListResult> {
+  const { data, error, backendMapped, backendMessage } =
+    await fetchJson<ResponseEnvelope<AdminContest[]>>(
+      "/api/muse/v1/admin/contests",
+    );
+
+  if (!data?.data) {
+    return {
+      data: [],
+      error: backendMapped ?? backendMessage ?? error,
+    };
+  }
+
+  return { data: data.data };
+}
+
+export type AdminContestResult = {
+  data: AdminContest | null;
+  error?: string;
+};
+
+export async function createAdminContest(
+  payload: AdminContestUpsertRequest,
+): Promise<AdminContestResult> {
+  const { data, error, backendMapped, backendMessage } =
+    await postJson<ResponseEnvelope<AdminContest>>(
+      "/api/muse/v1/admin/contests",
+      payload,
+    );
+
+  if (!data?.data) {
+    return {
+      data: null,
+      error: backendMapped ?? backendMessage ?? error,
+    };
+  }
+
+  return { data: data.data };
+}
+
+export async function updateAdminContest(
+  id: number,
+  payload: AdminContestUpsertRequest,
+): Promise<AdminContestResult> {
+  const { data, error, backendMapped, backendMessage } =
+    await putJson<ResponseEnvelope<AdminContest>>(
+      `/api/muse/v1/admin/contests/${id}`,
+      payload,
+    );
+
+  if (!data?.data) {
+    return {
+      data: null,
+      error: backendMapped ?? backendMessage ?? error,
+    };
+  }
+
+  return { data: data.data };
+}
+
+export type ContestFinalizeApiResult = {
+  data: ContestFinalizeResult | null;
+  error?: string;
+};
+
+export async function finalizeContest(
+  id: number,
+): Promise<ContestFinalizeApiResult> {
+  const { data, error, backendMapped, backendMessage } =
+    await postJson<ResponseEnvelope<ContestFinalizeResult>>(
+      `/api/muse/v1/admin/contests/${id}/finalize`,
+      {},
+    );
+
+  if (!data?.data) {
+    return {
+      data: null,
       error: backendMapped ?? backendMessage ?? error,
     };
   }

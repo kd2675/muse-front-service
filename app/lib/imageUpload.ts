@@ -37,7 +37,7 @@ function extractPath(responseBody?: string): string | undefined {
     return undefined;
   }
   if (trimmed.startsWith(SUCCESS_PREFIX)) {
-    return stripLeadingSlash(trimmed.slice(SUCCESS_PREFIX.length()).trim());
+    return stripLeadingSlash(trimmed.slice(SUCCESS_PREFIX.length).trim());
   }
   return stripLeadingSlash(trimmed);
 }

@@ -1,11 +1,11 @@
-import ContestDetailClient from "./ContestDetailClient";
 import { notFound } from "next/navigation";
+import ContestGalleryClient from "./ContestGalleryClient";
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-export default async function ContestDetailPage({ params }: PageProps) {
+export default async function ContestGalleryPage({ params }: PageProps) {
   const { id } = await params;
   const parsedId = Number(id);
 
@@ -13,5 +13,6 @@ export default async function ContestDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  return <ContestDetailClient id={parsedId} />;
+  return <ContestGalleryClient id={parsedId} />;
 }
+

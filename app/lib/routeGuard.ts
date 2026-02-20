@@ -2,15 +2,18 @@
 
 import { getAccessToken, getUserFromToken } from "./auth";
 
-export const PROTECTED_PREFIXES = ["/profile"];
+export const PROTECTED_PREFIXES = ["/profile", "/admin"];
 
 export const ROLE_REQUIREMENTS: Record<string, string[]> = {
   "/profile": ["USER", "ADMIN"],
+  "/admin": ["ADMIN"],
 };
 
 export function isProtectedPath(pathname: string) {
-  return PROTECTED_PREFIXES.some((prefix) =>
+  return (
+    PROTECTED_PREFIXES.some((prefix) =>
     pathname === prefix || pathname.startsWith(`${prefix}/`),
+    )
   );
 }
 

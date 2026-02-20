@@ -1,3 +1,5 @@
+export type ContestPhase = "UPCOMING" | "SUBMISSION" | "VOTING" | "ENDED";
+
 export type ContestSummary = {
   id: number;
   theme: string;
@@ -6,6 +8,11 @@ export type ContestSummary = {
   prizePool: number;
   daysLeft: number;
   status: "ACTIVE" | "ENDED" | "UPCOMING";
+  phase: ContestPhase;
+  submissionStartAt?: string | null;
+  submissionEndAt?: string | null;
+  votingStartAt?: string | null;
+  votingEndAt?: string | null;
 };
 
 export type ContestDetail = {
@@ -17,6 +24,11 @@ export type ContestDetail = {
   prizePool: number;
   daysLeft: number;
   status: "ACTIVE" | "ENDED" | "UPCOMING";
+  phase: ContestPhase;
+  submissionStartAt?: string | null;
+  submissionEndAt?: string | null;
+  votingStartAt?: string | null;
+  votingEndAt?: string | null;
   participationCount: number;
   rules: string[];
 };
@@ -45,4 +57,78 @@ export type ContestEntrySummary = {
   imageUrl?: string | null;
   status: "SUBMITTED" | "REVIEWING" | "APPROVED" | "REJECTED";
   submittedAt: string;
+};
+
+export type ContestPublicEntry = {
+  entryId: string;
+  contestId: number;
+  title?: string | null;
+  imageUrl?: string | null;
+  artistName: string;
+  status: "SUBMITTED" | "REVIEWING" | "APPROVED" | "REJECTED";
+  submittedAt: string;
+};
+
+export type ContestRankingItem = {
+  rank: number;
+  entryId: string;
+  title?: string | null;
+  imageUrl?: string | null;
+  artistName: string;
+  voteCount: number;
+};
+
+export type ContestVoteResponse = {
+  contestId: number;
+  selectedEntryId: string;
+  selectedEntryVoteCount: number;
+};
+
+export type AdminContestStatus = "UPCOMING" | "ACTIVE" | "ENDED";
+
+export type AdminContest = {
+  id: number;
+  theme: string;
+  description?: string | null;
+  period: string;
+  entryFee: number;
+  prizePool: number;
+  daysLeft: number;
+  status: AdminContestStatus;
+  phase: ContestPhase;
+  submissionStartAt?: string | null;
+  submissionEndAt?: string | null;
+  votingStartAt?: string | null;
+  votingEndAt?: string | null;
+  participationCount: number;
+  rules: string[];
+};
+
+export type AdminContestUpsertRequest = {
+  theme: string;
+  description?: string;
+  entryFee: number;
+  prizePool: number;
+  submissionStartAt: string;
+  submissionEndAt: string;
+  votingStartAt: string;
+  votingEndAt: string;
+  status: AdminContestStatus;
+  rules: string[];
+};
+
+export type ContestFinalizeWinner = {
+  rank: number;
+  entryId: string;
+  title?: string | null;
+  artistName: string;
+  voteCount: number;
+  prize: number;
+};
+
+export type ContestFinalizeResult = {
+  contestId: number;
+  phase: ContestPhase;
+  finalizedAt: string;
+  winners: ContestFinalizeWinner[];
 };

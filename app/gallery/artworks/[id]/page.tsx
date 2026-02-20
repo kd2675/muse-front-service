@@ -1,14 +1,16 @@
 import ArtworkClient from "./ArtworkClient";
+import { notFound } from "next/navigation";
 
 type PageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
-export default function ArtworkPage({ params }: PageProps) {
-  const parsedId = Number(params.id);
+export default async function ArtworkPage({ params }: PageProps) {
+  const { id } = await params;
+  const parsedId = Number(id);
 
-  if (Number.isNaN(parsedId)) {
-    return <ArtworkClient id={201} />;
+  if (!Number.isInteger(parsedId) || parsedId <= 0) {
+    notFound();
   }
 
   return <ArtworkClient id={parsedId} />;
