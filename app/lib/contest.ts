@@ -10,6 +10,7 @@ import type {
   ContestPublicEntry,
   ContestRankingItem,
   ContestSummary,
+  AdminContestEntryReviewStatus,
   ContestVoteResponse,
 } from "../types/contest";
 
@@ -117,6 +118,9 @@ export async function submitContestEntry(
     description?: string;
     fileName: string;
     imageUrl: string;
+    fileSizeBytes: number;
+    imageWidthPx: number;
+    imageHeightPx: number;
   },
 ): Promise<ContestEntryResult> {
   const { data, error, backendMapped, backendMessage } =
@@ -283,6 +287,55 @@ export async function finalizeContest(
     await postJson<ResponseEnvelope<ContestFinalizeResult>>(
       `/api/muse/v1/admin/contests/${id}/finalize`,
       {},
+    );
+
+  if (!data?.data) {
+    return {
+      data: null,
+      error: backendMapped ?? backendMessage ?? error,
+    };
+  }
+
+  return { data: data.data };
+}
+
+export type AdminContestEntriesResult = {
+  data: ContestPublicEntry[];
+  error?: string;
+};
+
+export async function getAdminContestEntries(
+  id: number,
+): Promise<AdminContestEntriesResult> {
+  const { data, error, backendMapped, backendMessage } =
+    await fetchJson<ResponseEnvelope<ContestPublicEntry[]>>(
+      `/api/muse/v1/admin/contests/${id}/entries`,
+    );
+
+  if (!data?.data) {
+    return {
+      data: [],
+      error: backendMapped ?? backendMessage ?? error,
+    };
+  }
+
+  return { data: data.data };
+}
+
+export type AdminContestEntryUpdateResult = {
+  data: ContestPublicEntry | null;
+  error?: string;
+};
+
+export async function updateAdminContestEntryStatus(
+  contestId: number,
+  entryId: string,
+  status: AdminContestEntryReviewStatus,
+): Promise<AdminContestEntryUpdateResult> {
+  const { data, error, backendMapped, backendMessage } =
+    await putJson<ResponseEnvelope<ContestPublicEntry>>(
+      `/api/muse/v1/admin/contests/${contestId}/entries/${entryId}/status`,
+      { status },
     );
 
   if (!data?.data) {

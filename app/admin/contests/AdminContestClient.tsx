@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import PageShell from "../../components/PageShell";
 import TopNav from "../../components/TopNav";
 import { Skeleton } from "../../components/Skeleton";
@@ -11,7 +12,8 @@ import {
   getAdminContestList,
   updateAdminContest,
 } from "../../lib/contest";
-import { getUserFromToken } from "../../lib/auth";
+import { getUserFromToken, isAdminRole } from "../../lib/auth";
+import { adminContestReviewRoute } from "../../lib/router";
 import { useAppDispatch } from "../../store/hooks";
 import { showToast } from "../../store/uiSlice";
 import type {
@@ -25,9 +27,26 @@ import type {
 const phaseLabel: Record<ContestPhase, string> = {
   UPCOMING: "출품 대기",
   SUBMISSION: "출품 진행",
-  VOTING: "투표 진행",
+  REVIEW: "심사 중",
+  VOTING: "전시 중",
   ENDED: "종료",
 };
+
+function phaseDisplayPriority(phase: ContestPhase): number {
+  if (phase === "VOTING") {
+    return 0;
+  }
+  if (phase === "REVIEW") {
+    return 1;
+  }
+  if (phase === "SUBMISSION") {
+    return 2;
+  }
+  if (phase === "UPCOMING") {
+    return 3;
+  }
+  return 4;
+}
 
 const statusOptions: AdminContestStatus[] = ["UPCOMING", "ACTIVE", "ENDED"];
 
@@ -55,7 +74,7 @@ const defaultForm: FormState = {
   votingEndAt: "",
   status: "ACTIVE",
   rulesText:
-    "출품권 1개당 1회 출품 가능 (보유 시 횟수 제한 없음)\n타인의 권리를 침해하는 작품 금지",
+    "해당 콘테스트 출품권 1개당 1회 출품 가능 (보유 시 횟수 제한 없음)\n출품권은 콘테스트별로 별도 관리되며 다른 콘테스트로 이전 불가\n타인의 권리를 침해하는 작품 금지",
 };
 
 function toDateTimeLocal(value?: string | null): string {
@@ -109,7 +128,7 @@ function validateForm(form: FormState): string | null {
     return "테마를 입력해주세요.";
   }
   if (!form.submissionStartAt || !form.submissionEndAt || !form.votingStartAt || !form.votingEndAt) {
-    return "출품/투표 기간을 모두 입력해주세요.";
+    return "출품/전시 기간을 모두 입력해주세요.";
   }
 
   const submissionStart = new Date(form.submissionStartAt);
@@ -121,10 +140,10 @@ function validateForm(form: FormState): string | null {
     return "출품 시작은 출품 종료보다 빨라야 합니다.";
   }
   if (submissionEnd > votingStart) {
-    return "출품 종료는 투표 시작보다 늦을 수 없습니다.";
+    return "출품 종료는 전시 시작보다 늦을 수 없습니다.";
   }
   if (!(votingStart < votingEnd)) {
-    return "투표 시작은 투표 종료보다 빨라야 합니다.";
+    return "전시 시작은 전시 종료보다 빨라야 합니다.";
   }
 
   const entryFee = Number(form.entryFee);
@@ -148,6 +167,7 @@ function validateForm(form: FormState): string | null {
 }
 
 export default function AdminContestClient() {
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<"create" | "edit">("create");
@@ -163,6 +183,18 @@ export default function AdminContestClient() {
   });
 
   const contests = useMemo(() => data?.data ?? [], [data?.data]);
+  const sortedContests = useMemo(
+    () =>
+      [...contests].sort((a, b) => {
+        const priorityDiff =
+          phaseDisplayPriority(a.phase) - phaseDisplayPriority(b.phase);
+        if (priorityDiff !== 0) {
+          return priorityDiff;
+        }
+        return a.id - b.id;
+      }),
+    [contests],
+  );
   const loadError = data?.error;
 
   const selectedContest = useMemo(
@@ -213,7 +245,7 @@ export default function AdminContestClient() {
     },
   });
 
-  if (role !== "ADMIN") {
+  if (!isAdminRole(role)) {
     return (
       <PageShell>
         <TopNav />
@@ -259,7 +291,7 @@ export default function AdminContestClient() {
             </div>
           ) : (
             <div className="mt-6 grid gap-3">
-              {contests.map((contest) => {
+              {sortedContests.map((contest) => {
                 const isSelected = contest.id === selectedContestId;
                 return (
                   <button
@@ -292,7 +324,7 @@ export default function AdminContestClient() {
                   </button>
                 );
               })}
-              {!isLoading && contests.length === 0 && (
+              {!isLoading && sortedContests.length === 0 && (
                 <p className="rounded-[18px] border border-[color:var(--line)] bg-white/80 px-4 py-3 text-sm text-[color:var(--muted)]">
                   등록된 콘테스트가 없습니다.
                 </p>
@@ -349,6 +381,18 @@ export default function AdminContestClient() {
           <h1 className="mt-2 font-[var(--font-display)] text-3xl">
             콘테스트 관리
           </h1>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="rounded-full border border-[#1d4ed8] bg-[#2563eb] px-4 py-2 text-xs font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.25)] transition hover:bg-[#1d4ed8]"
+              onClick={() => router.push(adminContestReviewRoute(selectedContest?.id))}
+            >
+              출품 심사 페이지로 이동
+            </button>
+            <p className="self-center text-xs text-[color:var(--muted)]">
+              대량 출품 심사는 전용 화면에서 상태 필터로 처리합니다.
+            </p>
+          </div>
 
           <form
             className="mt-6 grid gap-4"
@@ -435,7 +479,7 @@ export default function AdminContestClient() {
                 />
               </label>
               <label className="grid gap-2 text-sm">
-                <span>투표 시작</span>
+                <span>전시 시작</span>
                 <input
                   type="datetime-local"
                   className="rounded-[14px] border border-[color:var(--line)] bg-white px-4 py-3"
@@ -446,7 +490,7 @@ export default function AdminContestClient() {
                 />
               </label>
               <label className="grid gap-2 text-sm">
-                <span>투표 종료</span>
+                <span>전시 종료</span>
                 <input
                   type="datetime-local"
                   className="rounded-[14px] border border-[color:var(--line)] bg-white px-4 py-3"

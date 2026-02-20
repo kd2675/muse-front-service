@@ -1,4 +1,4 @@
-export type ContestPhase = "UPCOMING" | "SUBMISSION" | "VOTING" | "ENDED";
+export type ContestPhase = "UPCOMING" | "SUBMISSION" | "REVIEW" | "VOTING" | "ENDED";
 
 export type ContestSummary = {
   id: number;
@@ -68,6 +68,8 @@ export type ContestPublicEntry = {
   status: "SUBMITTED" | "REVIEWING" | "APPROVED" | "REJECTED";
   submittedAt: string;
 };
+
+export type AdminContestEntryReviewStatus = "REVIEWING" | "APPROVED" | "REJECTED";
 
 export type ContestRankingItem = {
   rank: number;

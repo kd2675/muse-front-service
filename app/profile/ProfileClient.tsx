@@ -1,11 +1,13 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import PageShell from "../components/PageShell";
 import TopNav from "../components/TopNav";
 import { getProfileSummary } from "../lib/profile";
 import { Skeleton, SkeletonText } from "../components/Skeleton";
 import { deleteEntry, getMyEntries } from "../lib/entries";
+import { getContestList } from "../lib/contest";
 import { showToast } from "../store/uiSlice";
 import { useAppDispatch } from "../store/hooks";
 
@@ -13,6 +15,7 @@ const formatNumber = (value: number) => value.toLocaleString("ko-KR");
 
 export default function ProfileClient() {
   const dispatch = useAppDispatch();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["profile", "summary"],
@@ -24,6 +27,10 @@ export default function ProfileClient() {
   } = useQuery({
     queryKey: ["entries"],
     queryFn: getMyEntries,
+  });
+  const { data: contestsData } = useQuery({
+    queryKey: ["contests"],
+    queryFn: getContestList,
   });
 
   const deleteMutation = useMutation({
@@ -45,12 +52,25 @@ export default function ProfileClient() {
   const error = data?.error;
   const entries = entriesData?.data ?? [];
   const entriesError = entriesData?.error;
+  const contests = contestsData?.data ?? [];
 
   const statusLabel: Record<string, string> = {
     SUBMITTED: "제출 완료",
     REVIEWING: "검토 중",
     APPROVED: "승인",
     REJECTED: "반려",
+  };
+
+  const handleNewEntry = () => {
+    const submissionContest = contests.find(
+      (contest) => contest.phase === "SUBMISSION",
+    );
+    if (submissionContest) {
+      router.push(`/contest/${submissionContest.id}?tab=contest`);
+      return;
+    }
+    dispatch(showToast("현재 출품 가능한 콘테스트가 없습니다. 목록으로 이동합니다."));
+    router.push("/contest?tab=contest");
   };
 
   return (
@@ -69,7 +89,6 @@ export default function ProfileClient() {
             <div className="mt-6 grid grid-cols-2 gap-4">
               {Array.from({ length: 4 }).map((_, index) => (
                 <div
-                  // eslint-disable-next-line react/no-array-index-key
                   key={index}
                   className="rounded-[20px] border border-[color:var(--line)] bg-white/80 p-4"
                 >
@@ -87,7 +106,6 @@ export default function ProfileClient() {
               <div className="mt-6 grid gap-4 sm:grid-cols-2">
                 {Array.from({ length: 4 }).map((_, index) => (
                   <div
-                    // eslint-disable-next-line react/no-array-index-key
                     key={index}
                     className="rounded-[22px] border border-[color:var(--line)] bg-white/80 p-4"
                   >
@@ -105,7 +123,6 @@ export default function ProfileClient() {
               <div className="mt-6 grid gap-4">
                 {Array.from({ length: 2 }).map((_, index) => (
                   <div
-                    // eslint-disable-next-line react/no-array-index-key
                     key={index}
                     className="flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-[color:var(--line)] bg-white/80 p-4"
                   >
@@ -128,7 +145,6 @@ export default function ProfileClient() {
               <div className="mt-6 grid gap-4">
                 {Array.from({ length: 3 }).map((_, index) => (
                   <div
-                    // eslint-disable-next-line react/no-array-index-key
                     key={index}
                     className="flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-[color:var(--line)] bg-white/80 p-4"
                   >
@@ -243,9 +259,7 @@ export default function ProfileClient() {
                     </div>
                     <button
                       className="rounded-full border border-[color:var(--line)] px-4 py-2 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
-                      onClick={() =>
-                        dispatch(showToast("새 출품하기 기능은 준비 중입니다."))
-                      }
+                      onClick={handleNewEntry}
                     >
                       새 출품하기
                     </button>
@@ -255,7 +269,6 @@ export default function ProfileClient() {
                     <div className="mt-6 grid gap-4">
                       {Array.from({ length: 2 }).map((_, index) => (
                         <div
-                          // eslint-disable-next-line react/no-array-index-key
                           key={index}
                           className="flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-[color:var(--line)] bg-white/80 p-4"
                         >

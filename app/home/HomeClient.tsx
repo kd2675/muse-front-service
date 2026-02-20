@@ -1,17 +1,17 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { getHomeData } from "../lib/home";
-import { useAppDispatch } from "../store/hooks";
-import { showToast } from "../store/uiSlice";
 import TopNav from "../components/TopNav";
 import PageShell from "../components/PageShell";
 import { Skeleton, SkeletonText } from "../components/Skeleton";
+import { APP_ROUTES } from "../lib/router";
 
 const formatNumber = (value: number) => value.toLocaleString("ko-KR");
 
 export default function HomeClient() {
-  const dispatch = useAppDispatch();
+  const router = useRouter();
   const { data, isLoading } = useQuery({
     queryKey: ["home"],
     queryFn: getHomeData,
@@ -66,18 +66,16 @@ export default function HomeClient() {
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <button
+                  type="button"
                   className="rounded-full bg-[color:var(--canvas-ink)] px-5 py-3 text-sm text-white shadow-[var(--shadow)] transition hover:opacity-90"
-                  onClick={() =>
-                    dispatch(showToast("콘테스트 참여 기능은 준비 중입니다."))
-                  }
+                  onClick={() => router.push(APP_ROUTES.contestList)}
                 >
                   이번 콘테스트 참여하기
                 </button>
                 <button
+                  type="button"
                   className="rounded-full border border-[color:var(--line)] px-5 py-3 text-sm text-[color:var(--canvas-ink)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
-                  onClick={() =>
-                    dispatch(showToast("갤러리 이동 기능은 준비 중입니다."))
-                  }
+                  onClick={() => router.push(APP_ROUTES.galleryLobby)}
                 >
                   갤러리 감상하기
                 </button>
@@ -116,10 +114,9 @@ export default function HomeClient() {
                 </p>
               </div>
             <button
+              type="button"
               className="rounded-full border border-[color:var(--line)] px-4 py-2 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
-              onClick={() =>
-                dispatch(showToast("전체 보기 기능은 준비 중입니다."))
-              }
+              onClick={() => router.push(APP_ROUTES.galleryLobby)}
             >
               전체 보기
             </button>
@@ -165,13 +162,7 @@ export default function HomeClient() {
                     key={category.key}
                     className="flex items-center justify-between rounded-[20px] border border-[color:var(--line)] bg-white/80 p-4"
                   >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className="h-12 w-12 rounded-[16px]"
-                        style={{
-                          background: `linear-gradient(135deg, ${category.colorFrom}, ${category.colorTo})`,
-                        }}
-                      />
+                    <div>
                       <div>
                         <p className="text-sm font-semibold">
                           {category.title}
@@ -195,10 +186,9 @@ export default function HomeClient() {
                   Active Contests
                 </h3>
                 <button
+                  type="button"
                   className="rounded-full border border-[color:var(--line)] px-4 py-2 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
-                  onClick={() =>
-                    dispatch(showToast("참가 기능은 준비 중입니다."))
-                  }
+                  onClick={() => router.push(APP_ROUTES.contestList)}
                 >
                   참가하기
                 </button>
@@ -256,10 +246,9 @@ export default function HomeClient() {
                 </p>
               </div>
             <button
+              type="button"
               className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-[color:var(--canvas-ink)]"
-              onClick={() =>
-                dispatch(showToast("시작하기 기능은 준비 중입니다."))
-              }
+              onClick={() => router.push(APP_ROUTES.contestList)}
             >
               지금 시작하기
             </button>

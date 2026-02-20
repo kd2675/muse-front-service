@@ -25,7 +25,6 @@ type AuthSnapshot = {
   status: "unknown" | "in" | "out";
   label: string | null;
   exp: number | null;
-  role: string | null;
 };
 
 const labelMap: Record<TabKey, string> = {
@@ -43,8 +42,8 @@ const pathMap: Record<TabKey, string> = {
 };
 
 function tabFromPath(pathname: string): TabKey {
-  if (pathname.startsWith("/contest")) return "contest";
-  if (pathname.startsWith("/gallery")) return "gallery";
+  if (pathname.startsWith("/contest") || pathname.startsWith("/admin/contests")) return "contest";
+  if (pathname.startsWith("/gallery") || pathname.startsWith("/admin/gallery")) return "gallery";
   if (pathname.startsWith("/profile")) return "profile";
   return "home";
 }
@@ -63,7 +62,6 @@ export default function TopNav() {
     status: "unknown",
     label: null,
     exp: null,
-    role: null,
   });
   const [isHydrated, setIsHydrated] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -72,7 +70,6 @@ export default function TopNav() {
     status: authStatus,
     label: userLabel,
     exp: tokenExp,
-    role: userRole,
   } = authSnapshot;
 
   const queryTab = searchParams.get("tab");
@@ -100,7 +97,7 @@ export default function TopNav() {
       const user = getUserFromToken();
       const exp = typeof user?.exp === "number" ? user.exp : null;
       if (exp && isTokenExpired(exp)) {
-        setAuthSnapshot({ status: "out", label: null, exp: null, role: null });
+        setAuthSnapshot({ status: "out", label: null, exp: null });
         clearAccessToken();
         return;
       }
@@ -108,7 +105,6 @@ export default function TopNav() {
         status: token ? "in" : "out",
         label: user?.name ?? user?.email ?? null,
         exp,
-        role: user?.role ?? null,
       });
     };
     setIsHydrated(true);
@@ -127,12 +123,12 @@ export default function TopNav() {
       return;
     }
     if (isTokenExpired(tokenExp)) {
-      setAuthSnapshot({ status: "out", label: null, exp: null, role: null });
+      setAuthSnapshot({ status: "out", label: null, exp: null });
       clearAccessToken();
       return;
     }
     return scheduleTokenExpiry(() => {
-      setAuthSnapshot({ status: "out", label: null, exp: null, role: null });
+      setAuthSnapshot({ status: "out", label: null, exp: null });
       clearAccessToken();
     }, tokenExp);
   }, [isHydrated, tokenExp]);
@@ -197,24 +193,6 @@ export default function TopNav() {
     setIsMenuOpen(false);
   };
 
-  const handleAdmin = () => {
-    const target = "/admin/contests";
-    const guard = canAccessPath(target);
-    if (!guard.allowed) {
-      dispatch(setPendingPath(target));
-      if (guard.reason === "ROLE") {
-        dispatch(showToast("권한이 없습니다."));
-        router.push("/?tab=home");
-        return;
-      }
-      dispatch(showToast("로그인이 필요한 기능입니다."));
-      router.push("/login");
-      return;
-    }
-    router.push(target);
-    setIsMenuOpen(false);
-  };
-
   return (
     <header className="relative flex flex-col gap-4 md:flex-row md:flex-wrap md:items-center md:justify-between">
       <div className="flex items-center justify-between">
@@ -251,14 +229,6 @@ export default function TopNav() {
               <span className="rounded-full border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)]">
                 {userLabel}
               </span>
-            )}
-            {authStatus === "in" && userRole === "ADMIN" && (
-              <button
-                className="rounded-full border border-[color:var(--line)] px-4 py-2 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
-                onClick={handleAdmin}
-              >
-                Admin
-              </button>
             )}
             {authStatus === "in" ? (
               <button
@@ -330,14 +300,6 @@ export default function TopNav() {
                 <span className="rounded-full border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)]">
                   {userLabel}
                 </span>
-              )}
-              {authStatus === "in" && userRole === "ADMIN" && (
-                <button
-                  className="rounded-full border border-[color:var(--line)] px-4 py-2 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
-                  onClick={handleAdmin}
-                >
-                  Admin
-                </button>
               )}
               {authStatus === "in" ? (
                 <button

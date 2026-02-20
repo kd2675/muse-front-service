@@ -10,8 +10,9 @@ import { setPendingPath, showToast } from "../store/uiSlice";
 import { useAppDispatch } from "../store/hooks";
 import { getContestList, purchaseEntryCredit } from "../lib/contest";
 import { Skeleton, SkeletonText } from "../components/Skeleton";
-import { getAccessToken } from "../lib/auth";
+import { getAccessToken, getUserFromToken, isAdminRole } from "../lib/auth";
 import { useBodyScrollLock } from "../lib/useBodyScrollLock";
+import { APP_ROUTES } from "../lib/router";
 
 const formatNumber = (value: number) => value.toLocaleString("ko-KR");
 
@@ -23,13 +24,31 @@ const statusLabel: Record<string, string> = {
 const phaseLabel: Record<string, string> = {
   UPCOMING: "출품 대기",
   SUBMISSION: "출품 진행 중",
+  REVIEW: "심사 중",
   VOTING: "전시 중",
   ENDED: "종료",
 };
 
+function phaseDisplayPriority(phase: string): number {
+  if (phase === "VOTING") {
+    return 0;
+  }
+  if (phase === "REVIEW") {
+    return 1;
+  }
+  if (phase === "SUBMISSION") {
+    return 2;
+  }
+  if (phase === "UPCOMING") {
+    return 3;
+  }
+  return 4;
+}
+
 export default function ContestClient() {
   const dispatch = useAppDispatch();
   const router = useRouter();
+  const [listTab, setListTab] = useState<"LIVE" | "ARCHIVE">("LIVE");
   const [paymentStep, setPaymentStep] = useState<
     "closed" | "payment" | "confirm"
   >("closed");
@@ -38,20 +57,42 @@ export default function ContestClient() {
   );
   const [paymentMethod, setPaymentMethod] = useState("card");
   useBodyScrollLock(paymentStep !== "closed");
+  const isAdmin = isAdminRole(getUserFromToken()?.role);
   const { data, isLoading } = useQuery({
     queryKey: ["contests"],
     queryFn: getContestList,
   });
 
   const contests = useMemo(() => data?.data ?? [], [data?.data]);
-  const exhibitionCount = useMemo(
-    () => contests.filter((contest) => contest.phase === "VOTING").length,
+  const sortedContests = useMemo(
+    () =>
+      [...contests].sort((a, b) => {
+        const priorityDiff =
+          phaseDisplayPriority(a.phase) - phaseDisplayPriority(b.phase);
+        if (priorityDiff !== 0) {
+          return priorityDiff;
+        }
+        return a.id - b.id;
+      }),
     [contests],
+  );
+  const exhibitionCount = useMemo(
+    () => sortedContests.filter((contest) => contest.phase === "VOTING").length,
+    [sortedContests],
   );
   const error = data?.error;
   const selectedContest = useMemo(
-    () => contests.find((contest) => contest.id === selectedContestId) ?? null,
-    [contests, selectedContestId],
+    () =>
+      sortedContests.find((contest) => contest.id === selectedContestId) ??
+      null,
+    [selectedContestId, sortedContests],
+  );
+  const filteredContests = useMemo(
+    () =>
+      listTab === "ARCHIVE"
+        ? sortedContests.filter((contest) => contest.phase === "ENDED")
+        : sortedContests.filter((contest) => contest.phase !== "ENDED"),
+    [listTab, sortedContests],
   );
 
   const openPayment = () => {
@@ -65,11 +106,11 @@ export default function ContestClient() {
       dispatch(showToast("콘테스트 목록을 불러오는 중입니다."));
       return;
     }
-    if (contests.length === 0) {
+    if (sortedContests.length === 0) {
       dispatch(showToast("참가 가능한 콘테스트가 없습니다."));
       return;
     }
-    const submissionContest = contests.find(
+    const submissionContest = sortedContests.find(
       (contest) => contest.phase === "SUBMISSION",
     );
     if (!submissionContest) {
@@ -84,6 +125,23 @@ export default function ContestClient() {
   return (
     <PageShell>
       <TopNav />
+      {isAdmin && (
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
+          <button
+            className="inline-flex items-center gap-2 rounded-full border border-[#1d4ed8] bg-[#2563eb] px-4 py-2 text-xs font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.28)] ring-2 ring-blue-100 transition hover:-translate-y-0.5 hover:bg-[#1d4ed8] hover:shadow-[0_14px_28px_rgba(29,78,216,0.34)]"
+            onClick={() => router.push(APP_ROUTES.adminContestManage)}
+          >
+            <span className="rounded-full border border-white/45 px-2 py-0.5 text-[10px] tracking-[0.2em]">ADMIN</span>
+            <span>콘테스트 관리</span>
+          </button>
+          <button
+            className="inline-flex items-center gap-2 rounded-full border border-[#1d4ed8] bg-white px-4 py-2 text-xs font-semibold text-[#1d4ed8] shadow-[0_8px_20px_rgba(37,99,235,0.15)] transition hover:-translate-y-0.5 hover:bg-blue-50"
+            onClick={() => router.push(APP_ROUTES.adminContestReview)}
+          >
+            <span>출품 심사</span>
+          </button>
+        </div>
+      )}
       {isLoading ? (
         <section className="mt-10 rounded-[28px] border border-[color:var(--line)] bg-white/70 p-10 shadow-[var(--shadow)]">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -133,16 +191,41 @@ export default function ContestClient() {
                   </p>
                 )}
               </div>
-            <button
-              className="rounded-full bg-[color:var(--accent)] px-5 py-2 text-sm text-white shadow-[var(--shadow)]"
-              onClick={openPayment}
-            >
-              새 콘테스트 참가
-            </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  className="rounded-full bg-[color:var(--accent)] px-5 py-2 text-sm text-white shadow-[var(--shadow)]"
+                  onClick={openPayment}
+                >
+                  새 콘테스트 참가
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-2 text-sm">
+              <button
+                className={`rounded-full border px-4 py-2 transition ${
+                  listTab === "LIVE"
+                    ? "border-[color:var(--accent)] bg-[color:var(--chip)] text-[color:var(--accent)]"
+                    : "border-[color:var(--line)] text-[color:var(--muted)] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                }`}
+                onClick={() => setListTab("LIVE")}
+              >
+                진행
+              </button>
+              <button
+                className={`rounded-full border px-4 py-2 transition ${
+                  listTab === "ARCHIVE"
+                    ? "border-[color:var(--accent)] bg-[color:var(--chip)] text-[color:var(--accent)]"
+                    : "border-[color:var(--line)] text-[color:var(--muted)] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                }`}
+                onClick={() => setListTab("ARCHIVE")}
+              >
+                아카이브
+              </button>
             </div>
 
             <div className="mt-8 grid gap-4">
-              {contests.map((contest) => (
+              {filteredContests.map((contest) => (
                 <article
                   key={contest.id}
                   className="rounded-[22px] border border-[color:var(--line)] bg-white/80 p-5"
@@ -189,13 +272,18 @@ export default function ContestClient() {
                       href={`/contest/${contest.id}`}
                       className="ml-auto rounded-full border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
                     >
-                      {contest.phase === "VOTING"
-                        ? "전시 보기"
-                        : "상세 보기"}
+                      {contest.phase === "VOTING" ? "전시 보기" : "상세 보기"}
                     </Link>
                   </div>
                 </article>
               ))}
+              {filteredContests.length === 0 && (
+                <div className="rounded-[22px] border border-[color:var(--line)] bg-white/80 px-5 py-4 text-sm text-[color:var(--muted)]">
+                  {listTab === "ARCHIVE"
+                    ? "종료된 콘테스트가 없습니다."
+                    : "진행 중인 콘테스트가 없습니다."}
+                </div>
+              )}
             </div>
           </section>
         </>
@@ -237,7 +325,7 @@ export default function ContestClient() {
                     }
                     className="h-11 rounded-[18px] border border-[color:var(--line)] bg-white px-4 text-sm text-[color:var(--canvas-ink)] focus:border-[color:var(--accent)] focus:outline-none"
                   >
-                    {contests
+                    {sortedContests
                       .filter((contest) => contest.phase === "SUBMISSION")
                       .map((contest) => (
                       <option key={contest.id} value={contest.id}>
@@ -254,6 +342,9 @@ export default function ContestClient() {
                         : 0}
                       원
                     </strong>
+                  </div>
+                  <div className="rounded-[18px] border border-[color:var(--line)] bg-white/80 px-4 py-3 text-xs text-[color:var(--muted)]">
+                    출품권은 선택한 콘테스트에만 적립되며, 다른 콘테스트와 공유되지 않습니다.
                   </div>
 
                   <div className="grid gap-2">

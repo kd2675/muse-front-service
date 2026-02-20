@@ -7,22 +7,40 @@ import PageShell from "../../../components/PageShell";
 import TopNav from "../../../components/TopNav";
 import { getArtworkDetail } from "../../../lib/artwork";
 import { Skeleton, SkeletonText } from "../../../components/Skeleton";
-import { useAppDispatch } from "../../../store/hooks";
-import { showToast } from "../../../store/uiSlice";
 
 type ArtworkClientProps = {
   id: number;
 };
 
 const storageKey = (id: number) => `muse:artwork:${id}:view`;
+const bookmarkStorageKey = "muse:artwork:bookmarks";
+
+function readInitialCollected(id: number): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  const raw = window.localStorage.getItem(bookmarkStorageKey);
+  if (!raw) {
+    return false;
+  }
+  try {
+    const parsed = JSON.parse(raw) as Record<string, boolean>;
+    return Boolean(parsed[String(id)]);
+  } catch {
+    return false;
+  }
+}
 
 export default function ArtworkClient({ id }: ArtworkClientProps) {
-  const dispatch = useAppDispatch();
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [isTransforming, setIsTransforming] = useState(false);
+  const [isCollected, setIsCollected] = useState(() => readInitialCollected(id));
+  const [isNoteExpanded, setIsNoteExpanded] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const isPanningRef = useRef(false);
+  const wheelIdleTimerRef = useRef<number | null>(null);
   const lastPointRef = useRef({ x: 0, y: 0 });
   const pinchStartRef = useRef<{ distance: number; zoom: number } | null>(null);
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(
@@ -35,42 +53,18 @@ export default function ArtworkClient({ id }: ArtworkClientProps) {
 
   const artwork = data?.data ?? null;
   const error = data?.error;
-  const relatedWorks = artwork
-    ? [
-        {
-          id: artwork.id + 1,
-          title: `${artwork.category} Drift`,
-          artist: artwork.artist,
-          colorFrom: artwork.colorTo,
-          colorTo: artwork.colorFrom,
-        },
-        {
-          id: artwork.id + 2,
-          title: `${artwork.category} Bloom`,
-          artist: artwork.artist,
-          colorFrom: artwork.colorFrom,
-          colorTo: "#D0C4B1",
-        },
-        {
-          id: artwork.id + 3,
-          title: `${artwork.category} Frame`,
-          artist: artwork.artist,
-          colorFrom: "#1E2A35",
-          colorTo: "#6B7C93",
-        },
-      ]
-    : [];
+  const relatedWorks = artwork?.relatedWorks ?? [];
   const maxZoom = 2.4;
   const minZoom = 1;
 
   const clampOffset = useCallback(
-    (next: { x: number; y: number }) => {
+    (next: { x: number; y: number }, targetZoom = zoom) => {
       const rect = containerRef.current?.getBoundingClientRect();
       if (!rect) {
         return next;
       }
-      const maxX = ((zoom - 1) * rect.width) / 2;
-      const maxY = ((zoom - 1) * rect.height) / 2;
+      const maxX = ((targetZoom - 1) * rect.width) / 2;
+      const maxY = ((targetZoom - 1) * rect.height) / 2;
       return {
         x: Math.max(-maxX, Math.min(maxX, next.x)),
         y: Math.max(-maxY, Math.min(maxY, next.y)),
@@ -79,6 +73,7 @@ export default function ArtworkClient({ id }: ArtworkClientProps) {
     [zoom],
   );
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const raw = window.sessionStorage.getItem(storageKey(id));
     if (!raw) {
@@ -90,25 +85,55 @@ export default function ArtworkClient({ id }: ArtworkClientProps) {
         rotation?: number;
         offset?: { x: number; y: number };
       };
+      let restoredZoom = minZoom;
       if (typeof saved.zoom === "number") {
-        setZoom(Math.max(minZoom, Math.min(maxZoom, saved.zoom)));
+        restoredZoom = Math.max(minZoom, Math.min(maxZoom, saved.zoom));
+        setZoom(restoredZoom);
       }
       if (typeof saved.rotation === "number") {
         setRotation(saved.rotation % 360);
       }
       if (saved.offset) {
-        setOffset((prev) => clampOffset(saved.offset ?? prev));
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (!rect) {
+          setOffset(saved.offset);
+        } else {
+          const maxX = ((restoredZoom - 1) * rect.width) / 2;
+          const maxY = ((restoredZoom - 1) * rect.height) / 2;
+          setOffset({
+            x: Math.max(-maxX, Math.min(maxX, saved.offset.x)),
+            y: Math.max(-maxY, Math.min(maxY, saved.offset.y)),
+          });
+        }
       }
     } catch {
       // ignore invalid cache
     }
-  }, [id, clampOffset, maxZoom, minZoom]);
+  }, [id, maxZoom, minZoom]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     const payload = JSON.stringify({ zoom, rotation, offset });
     window.sessionStorage.setItem(storageKey(id), payload);
   }, [id, zoom, rotation, offset]);
 
+  const toggleCollection = useCallback(() => {
+    const raw = window.localStorage.getItem(bookmarkStorageKey);
+    let nextState = false;
+    try {
+      const parsed = raw ? (JSON.parse(raw) as Record<string, boolean>) : {};
+      nextState = !Boolean(parsed[String(id)]);
+      parsed[String(id)] = nextState;
+      window.localStorage.setItem(bookmarkStorageKey, JSON.stringify(parsed));
+    } catch {
+      const fallback = { [String(id)]: true };
+      nextState = true;
+      window.localStorage.setItem(bookmarkStorageKey, JSON.stringify(fallback));
+    }
+    setIsCollected(nextState);
+  }, [id]);
+
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (zoom === 1) {
       setOffset({ x: 0, y: 0 });
@@ -116,15 +141,40 @@ export default function ArtworkClient({ id }: ArtworkClientProps) {
     }
     setOffset((prev) => clampOffset(prev));
   }, [zoom, clampOffset]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
-  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    const delta = -event.deltaY * 0.001;
+  const applyWheelZoom = useCallback((deltaY: number) => {
+    const delta = -deltaY * 0.001;
+    setIsTransforming(true);
+    if (wheelIdleTimerRef.current !== null) {
+      window.clearTimeout(wheelIdleTimerRef.current);
+    }
+    wheelIdleTimerRef.current = window.setTimeout(() => {
+      setIsTransforming(false);
+      wheelIdleTimerRef.current = null;
+    }, 120);
     setZoom((prev) => {
       const next = Math.max(minZoom, Math.min(maxZoom, prev + delta));
       return Number(next.toFixed(2));
     });
-  };
+  }, [maxZoom, minZoom]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      applyWheelZoom(event.deltaY);
+    };
+
+    container.addEventListener("wheel", onWheel, { passive: false });
+    return () => {
+      container.removeEventListener("wheel", onWheel);
+    };
+  }, [applyWheelZoom]);
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -141,6 +191,7 @@ export default function ArtworkClient({ id }: ArtworkClientProps) {
       );
       pinchStartRef.current = { distance, zoom };
       isPanningRef.current = false;
+      setIsTransforming(true);
       return;
     }
 
@@ -148,6 +199,7 @@ export default function ArtworkClient({ id }: ArtworkClientProps) {
       return;
     }
     isPanningRef.current = true;
+    setIsTransforming(true);
     lastPointRef.current = { x: event.clientX, y: event.clientY };
   };
 
@@ -190,10 +242,21 @@ export default function ArtworkClient({ id }: ArtworkClientProps) {
     if (pointersRef.current.size < 2) {
       pinchStartRef.current = null;
     }
+    if (pointersRef.current.size === 0) {
+      setIsTransforming(false);
+    }
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (wheelIdleTimerRef.current !== null) {
+        window.clearTimeout(wheelIdleTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <PageShell>
@@ -245,7 +308,6 @@ export default function ArtworkClient({ id }: ArtworkClientProps) {
             <div
               ref={containerRef}
               className="overflow-hidden rounded-[22px] border border-[color:var(--line)] bg-white/80"
-              onWheel={handleWheel}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
@@ -256,12 +318,24 @@ export default function ArtworkClient({ id }: ArtworkClientProps) {
               <div
                 className="h-[360px] w-full"
                 style={{
-                  background: `linear-gradient(135deg, ${artwork.colorFrom}, ${artwork.colorTo})`,
                   transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom}) rotate(${rotation}deg)`,
-                  transition: "transform 0.2s ease",
-                  cursor: zoom > 1 ? "grab" : "default",
+                  transition: isTransforming ? "none" : "transform 0.18s ease-out",
+                  cursor: zoom > 1 ? (isTransforming ? "grabbing" : "grab") : "default",
                 }}
-              />
+              >
+                {artwork.imageUrl ? (
+                  <img
+                    src={artwork.imageUrl}
+                    alt={artwork.title}
+                    className="h-full w-full object-cover select-none"
+                    draggable={false}
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-white text-sm text-[color:var(--muted)]">
+                    이미지 없음
+                  </div>
+                )}
+              </div>
             </div>
             <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-[color:var(--muted)]">
               <button
@@ -310,11 +384,9 @@ export default function ArtworkClient({ id }: ArtworkClientProps) {
               </div>
               <button
                 className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm text-white shadow-[var(--shadow)]"
-                onClick={() =>
-                  dispatch(showToast("컬렉션 저장 기능은 준비 중입니다."))
-                }
+                onClick={toggleCollection}
               >
-                컬렉션 저장
+                {isCollected ? "컬렉션 저장됨" : "컬렉션 저장"}
               </button>
             </div>
             <p className="mt-6 text-sm text-[color:var(--muted)]">
@@ -381,15 +453,22 @@ export default function ArtworkClient({ id }: ArtworkClientProps) {
               </h2>
               <p className="mt-2 text-sm text-[color:var(--muted)]">
                 {artwork.title}는 빛의 잔향과 텍스처를 통해 감상자의 시선을
-                집중시키는 작품입니다.
+                집중시키는 작품입니다. 구조적 대비와 미세한 색온도 차이를 함께
+                보면 작품의 깊이가 더 선명해집니다.
               </p>
+              {isNoteExpanded && (
+                <p className="mt-3 text-sm leading-6 text-[color:var(--muted)]">
+                  수평/수직 요소가 교차하는 지점을 중심으로 하이라이트가 퍼지며,
+                  시선이 프레임 안에서 순환하도록 구성되어 있습니다. 감상 시
+                  하이라이트 영역의 경계와 어두운 면의 질감 차이를 번갈아 보면
+                  의도한 리듬을 더 잘 확인할 수 있습니다.
+                </p>
+              )}
               <button
                 className="mt-6 rounded-full border border-[color:var(--line)] px-4 py-2 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
-                onClick={() =>
-                  dispatch(showToast("전체 노트 보기 기능은 준비 중입니다."))
-                }
+                onClick={() => setIsNoteExpanded((prev) => !prev)}
               >
-                전체 노트 보기
+                {isNoteExpanded ? "노트 접기" : "전체 노트 보기"}
               </button>
             </div>
             <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
@@ -400,26 +479,37 @@ export default function ArtworkClient({ id }: ArtworkClientProps) {
                 {artwork.artist}의 다른 작품을 확인하세요.
               </p>
               <div className="mt-6 grid gap-4">
-                {relatedWorks.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={`/gallery/artworks/${item.id}`}
-                    className="block rounded-[22px] border border-[color:var(--line)] bg-white/80 p-4 transition hover:border-[color:var(--accent)] hover:shadow-[var(--shadow)]"
-                  >
-                    <div
-                      className="h-20 w-full rounded-[16px]"
-                      style={{
-                        background: `linear-gradient(140deg, ${item.colorFrom}, ${item.colorTo})`,
-                      }}
-                    />
-                    <p className="mt-3 text-xs text-[color:var(--muted)]">
-                      {item.artist}
-                    </p>
-                    <h3 className="mt-1 font-[var(--font-display)] text-lg">
-                      {item.title}
-                    </h3>
-                  </Link>
-                ))}
+                {relatedWorks.length > 0 ? (
+                  relatedWorks.map((item) => (
+                    <Link
+                      key={item.id}
+                      href={`/gallery/artworks/${item.id}`}
+                      className="block rounded-[22px] border border-[color:var(--line)] bg-white/80 p-4 transition hover:border-[color:var(--accent)] hover:shadow-[var(--shadow)]"
+                    >
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt={item.title}
+                          className="h-20 w-full rounded-[16px] object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-20 w-full items-center justify-center rounded-[16px] border border-dashed border-[color:var(--line)] bg-white text-xs text-[color:var(--muted)]">
+                          이미지 없음
+                        </div>
+                      )}
+                      <p className="mt-3 text-xs text-[color:var(--muted)]">
+                        {item.artist}
+                      </p>
+                      <h3 className="mt-1 font-[var(--font-display)] text-lg">
+                        {item.title}
+                      </h3>
+                    </Link>
+                  ))
+                ) : (
+                  <div className="rounded-[20px] border border-[color:var(--line)] bg-white/80 px-4 py-3 text-xs text-[color:var(--muted)]">
+                    연관 작품이 아직 없습니다.
+                  </div>
+                )}
               </div>
             </div>
           </div>

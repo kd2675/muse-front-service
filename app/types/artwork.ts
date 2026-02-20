@@ -4,6 +4,7 @@ export type ArtworkDetail = {
   artist: string;
   category: string;
   description: string;
+  imageUrl?: string | null;
   colorFrom: string;
   colorTo: string;
   exif: {
@@ -14,4 +15,12 @@ export type ArtworkDetail = {
     shutterSpeed: string;
     iso: string;
   };
+  relatedWorks: Array<{
+    id: number;
+    title: string;
+    artist: string;
+    imageUrl?: string | null;
+    colorFrom: string;
+    colorTo: string;
+  }>;
 };

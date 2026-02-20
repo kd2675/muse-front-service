@@ -13,6 +13,34 @@ export type AuthUser = {
   role?: string;
 };
 
+export function normalizeRole(role?: string | null): string | null {
+  if (!role) {
+    return null;
+  }
+  const normalized = role.trim().toUpperCase();
+  if (normalized.startsWith("ROLE_")) {
+    return normalized.slice(5);
+  }
+  return normalized;
+}
+
+export function hasAnyRole(
+  role: string | null | undefined,
+  requiredRoles: string[],
+): boolean {
+  const normalizedRole = normalizeRole(role);
+  if (!normalizedRole) {
+    return false;
+  }
+  return requiredRoles.some(
+    (required) => normalizeRole(required) === normalizedRole,
+  );
+}
+
+export function isAdminRole(role?: string | null): boolean {
+  return hasAnyRole(role, ["ADMIN"]);
+}
+
 export function getAccessToken(): string | null {
   if (typeof window === "undefined") {
     return null;

@@ -19,8 +19,6 @@ export type HomePayload = {
     title: string;
     description: string;
     itemCount: number;
-    colorFrom: string;
-    colorTo: string;
   }>;
   activeContests: Array<{
     id: number;

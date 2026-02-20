@@ -9,6 +9,9 @@ import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { setPendingPath, showToast } from "../store/uiSlice";
 import PageShell from "../components/PageShell";
 
+const AUTH_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+
 export default function LoginPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -47,7 +50,7 @@ export default function LoginPage() {
   }, [dispatch, pendingPath, router, token]);
 
   const handleNaverLogin = () => {
-    window.location.href = "http://localhost:8080/oauth2/authorize/naver";
+    window.location.href = `${AUTH_BASE_URL}/oauth2/authorize/naver`;
   };
 
   if (isProcessing) {

@@ -25,7 +25,7 @@ type ContestDetailClientProps = {
   id: number;
 };
 
-type ContestPhaseKey = "UPCOMING" | "SUBMISSION" | "VOTING" | "ENDED";
+type ContestPhaseKey = "UPCOMING" | "SUBMISSION" | "REVIEW" | "VOTING" | "ENDED";
 type EntryRenderMode = ContestPhaseKey;
 type PhasePlaybookItem = {
   kicker: string;
@@ -45,6 +45,26 @@ type PhaseTone = {
 };
 
 const formatNumber = (value: number) => value.toLocaleString("ko-KR");
+const MIN_IMAGE_RESOLUTION_PX = 3000;
+const MAX_UPLOAD_SIZE_BYTES = 100 * 1024 * 1024;
+
+async function readImageMeta(file: File): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      const width = image.naturalWidth;
+      const height = image.naturalHeight;
+      URL.revokeObjectURL(objectUrl);
+      resolve({ width, height });
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("이미지 해상도를 확인할 수 없습니다."));
+    };
+    image.src = objectUrl;
+  });
+}
 
 const entryStatusLabel: Record<string, string> = {
   SUBMITTED: "제출 완료",
@@ -63,6 +83,11 @@ const phaseMeta: Record<ContestPhaseKey, { label: string; title: string; note: s
     label: "출품 진행 중",
     title: "출품 스튜디오",
     note: "출품권 결제 후 작품을 등록할 수 있습니다.",
+  },
+  REVIEW: {
+    label: "심사 중",
+    title: "심사 큐 운영",
+    note: "출품이 마감되었습니다. 전시 공개 전 심사 상태를 확정하는 단계입니다.",
   },
   VOTING: {
     label: "전시 중",
@@ -98,7 +123,7 @@ const phaseActionBoard: Record<ContestPhaseKey, PhasePlaybookItem[]> = {
     {
       kicker: "PAY",
       title: "출품권 확보",
-      description: "출품권 1개당 1회 제출됩니다. 제출 수량에 맞게 먼저 결제하세요.",
+      description: "해당 콘테스트 출품권 1개당 1회 제출됩니다. 제출 수량에 맞게 먼저 결제하세요.",
     },
     {
       kicker: "UPLOAD",
@@ -109,6 +134,23 @@ const phaseActionBoard: Record<ContestPhaseKey, PhasePlaybookItem[]> = {
       kicker: "VERIFY",
       title: "등록 상태 확인",
       description: "등록 후 상태값(제출 완료/검토 중)을 확인하고 마감 전 보완하세요.",
+    },
+  ],
+  REVIEW: [
+    {
+      kicker: "LOCK",
+      title: "출품 마감",
+      description: "새로운 출품은 마감되었습니다. 기존 접수작의 심사를 진행합니다.",
+    },
+    {
+      kicker: "REVIEW",
+      title: "상태 확정",
+      description: "미선택/검토중 출품을 승인 또는 반려로 확정해 전시 노출 대상을 정리하세요.",
+    },
+    {
+      kicker: "READY",
+      title: "전시 준비",
+      description: "심사가 완료되면 전시 기간에 맞춰 공개 및 투표가 활성화됩니다.",
     },
   ],
   VOTING: [
@@ -158,6 +200,11 @@ const phaseSubmitMeta: Record<ContestPhaseKey, PhasePanelMeta> = {
     title: "출품 등록 데스크",
     description: "지금 출품이 열려 있습니다. 결제 후 작품 등록을 완료하세요.",
   },
+  REVIEW: {
+    kicker: "Review Live",
+    title: "심사 진행 데스크",
+    description: "출품이 마감되었습니다. 관리자 심사 확정 후 전시가 공개됩니다.",
+  },
   VOTING: {
     kicker: "Submission Closed",
     title: "출품 마감 데스크",
@@ -187,6 +234,14 @@ const phaseTone: Record<ContestPhaseKey, PhaseTone> = {
     secondaryButtonClass:
       "rounded-full border border-[rgba(11,91,91,0.35)] bg-white/90 px-5 py-3 text-sm text-[color:var(--accent)] transition hover:bg-[rgba(11,91,91,0.08)]",
   },
+  REVIEW: {
+    titleClass: "font-[var(--font-display)] tracking-[0.002em]",
+    leadClass: "text-sm leading-relaxed text-[color:var(--muted)]",
+    primaryButtonClass:
+      "rounded-full border border-[rgba(153,127,48,0.34)] bg-[rgba(255,244,208,0.9)] px-5 py-3 text-sm text-[#6c560f] transition hover:bg-[rgba(247,229,169,0.95)]",
+    secondaryButtonClass:
+      "rounded-full border border-[rgba(153,127,48,0.3)] bg-white/90 px-5 py-3 text-sm text-[#7b6118] transition hover:bg-[rgba(255,248,222,0.95)]",
+  },
   VOTING: {
     titleClass: "font-[var(--font-display)] tracking-[0.002em]",
     leadClass: "text-sm leading-relaxed text-[color:var(--muted)]",
@@ -212,6 +267,11 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [fileMeta, setFileMeta] = useState<{
+    width: number;
+    height: number;
+    sizeBytes: number;
+  } | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStage, setUploadStage] = useState<"idle" | "uploading" | "saving" | "done">("idle");
@@ -294,6 +354,9 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
       if (!file) {
         throw new Error("파일을 선택해주세요.");
       }
+      if (!fileMeta) {
+        throw new Error("파일 정보를 확인한 뒤 다시 시도해주세요.");
+      }
       setUploadStage("uploading");
       setUploadProgress(0);
       const uploadResult = await uploadImage(file, {
@@ -309,6 +372,9 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
         description,
         fileName: file.name,
         imageUrl: uploadResult.imageUrl,
+        fileSizeBytes: fileMeta.sizeBytes,
+        imageWidthPx: fileMeta.width,
+        imageHeightPx: fileMeta.height,
       });
     },
     onMutate: () => {
@@ -369,6 +435,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
 
   const isUpcomingPhase = phase === "UPCOMING";
   const isSubmissionPhase = phase === "SUBMISSION";
+  const isReviewPhase = phase === "REVIEW";
   const isVotingPhase = phase === "VOTING";
 
   const canSubmit = hasToken && isSubmissionPhase && credits > 0;
@@ -470,6 +537,8 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
     return (
       <div className={`mt-5 grid gap-4 ${compact ? "md:grid-cols-3" : "sm:grid-cols-2"}`}>
         {visibleEntries.map((entry) => {
+          const isPrivateBeforeExhibition = mode === "UPCOMING" || mode === "SUBMISSION" || mode === "REVIEW";
+          const showVoteCountBadge = mode === "VOTING" || mode === "ENDED";
           const isVotingEntry = pendingVoteEntryId === entry.entryId;
           const currentRank = rankMap.get(entry.entryId);
           const isTopThree = mode === "ENDED" && currentRank !== undefined && currentRank <= 3;
@@ -479,6 +548,8 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
               ? "border-[rgba(123,157,212,0.32)] bg-[rgba(248,252,255,0.95)]"
               : mode === "UPCOMING"
                 ? "border-dashed border-[rgba(194,123,77,0.3)] bg-[rgba(255,250,245,0.9)]"
+                : mode === "REVIEW"
+                  ? "border-[rgba(153,127,48,0.3)] bg-[rgba(255,250,232,0.92)]"
                 : mode === "ENDED"
                   ? "border-[rgba(123,91,52,0.28)] bg-[rgba(252,248,241,0.92)]"
                   : "border-[rgba(11,91,91,0.26)] bg-[rgba(245,252,251,0.92)]";
@@ -487,6 +558,8 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
               ? "phase-upcoming-card transition duration-300 hover:-translate-y-0.5"
               : mode === "SUBMISSION"
                 ? "phase-submission-card transition duration-250 hover:-translate-y-0.5"
+                : mode === "REVIEW"
+                  ? "phase-upcoming-card transition duration-250 hover:-translate-y-0.5"
                 : mode === "VOTING"
                   ? "phase-voting-card transition duration-200 hover:-translate-y-1 hover:shadow-[0_12px_22px_rgba(39,72,120,0.1)]"
                   : "phase-ended-card transition duration-300 hover:-translate-y-0.5";
@@ -510,7 +583,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                     </div>
                   )}
                 </Link>
-              ) : (
+              ) : isPrivateBeforeExhibition ? null : (
                 <div className="relative">
                   {entry.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -521,11 +594,6 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                     />
                   ) : (
                     <div className="h-44 w-full bg-[color:var(--chip)]" />
-                  )}
-                  {mode === "UPCOMING" && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-[rgba(30,22,16,0.22)] text-[11px] uppercase tracking-[0.28em] text-white/90">
-                      Preview Only
-                    </div>
                   )}
                   {isTopThree && (
                     <div className="absolute left-3 top-3 rounded-full bg-[rgba(123,91,52,0.88)] px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-white">
@@ -541,11 +609,11 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                   </Link>
                 ) : (
                   <p className={`truncate text-base font-semibold ${isVotingMode ? "text-[#1f3552]" : "text-[color:var(--canvas-ink)]"}`}>
-                    {entry.title ?? "Untitled"}
+                    {isPrivateBeforeExhibition ? entry.artistName : entry.title ?? "Untitled"}
                   </p>
                 )}
                 <p className={`mt-1 text-xs ${isVotingMode ? "text-[#5a759d]" : "text-[color:var(--muted)]"}`}>
-                  {entry.artistName} · {entry.submittedAt}
+                  {isPrivateBeforeExhibition ? `접수 시각 ${entry.submittedAt}` : `${entry.artistName} · ${entry.submittedAt}`}
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
                   <span
@@ -557,15 +625,17 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                   >
                     {entryStatusLabel[entry.status] ?? entry.status}
                   </span>
-                  <span
-                    className={`rounded-full border px-2 py-1 ${
-                      isVotingMode
-                        ? "border-[rgba(123,157,212,0.3)] text-[#53739b]"
-                        : "border-[color:var(--line)] text-[color:var(--muted)]"
-                    }`}
-                  >
-                    득표 {voteCountMap.get(entry.entryId) ?? 0}
-                  </span>
+                  {showVoteCountBadge && (
+                    <span
+                      className={`rounded-full border px-2 py-1 ${
+                        isVotingMode
+                          ? "border-[rgba(123,157,212,0.3)] text-[#53739b]"
+                          : "border-[color:var(--line)] text-[color:var(--muted)]"
+                      }`}
+                    >
+                      득표 {voteCountMap.get(entry.entryId) ?? 0}
+                    </span>
+                  )}
                 </div>
                 {mode === "VOTING" ? (
                   <div className="mt-4 grid gap-2">
@@ -586,9 +656,11 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                 ) : (
                   <div className="mt-4 rounded-full border border-[color:var(--line)] px-3 py-2 text-center text-xs text-[color:var(--muted)]">
                     {mode === "UPCOMING"
-                      ? "오픈 전 미리보기"
+                      ? "전시 시작 전 비공개"
                       : mode === "SUBMISSION"
-                        ? "심사/공개 대기"
+                        ? "전시 시작 후 공개"
+                        : mode === "REVIEW"
+                          ? "심사 진행 중 비공개"
                         : "전시 아카이브"}
                   </div>
                 )}
@@ -701,7 +773,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
 
       {needsCredit && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-[color:var(--line)] bg-white/80 px-4 py-3 text-xs text-[color:var(--muted)]">
-          <div>출품권이 없습니다. 결제 1회당 출품권 1개가 추가됩니다.</div>
+          <div>해당 콘테스트 출품권이 없습니다. 결제 1회당 이 콘테스트 출품권 1개가 추가됩니다.</div>
           <button
             className="rounded-full border border-[color:var(--accent)] px-4 py-2 text-xs text-[color:var(--accent)] transition hover:bg-[color:var(--accent)] hover:text-white"
             onClick={openPayment}
@@ -748,32 +820,66 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
               setUploadError(null);
               setUploadProgress(0);
               setUploadStage("idle");
+              setFileMeta(null);
               setUploadedImageUrl(null);
               return;
             }
             const allowed = ["image/jpeg", "image/png", "image/jpg"];
-            const maxSize = 100 * 1024 * 1024;
             if (!allowed.includes(selected.type)) {
               setFile(null);
+              setFileMeta(null);
               setUploadError("JPEG/PNG 파일만 업로드 가능합니다.");
               setUploadStage("idle");
               setUploadProgress(0);
               setUploadedImageUrl(null);
               return;
             }
-            if (selected.size > maxSize) {
+            if (selected.size > MAX_UPLOAD_SIZE_BYTES) {
               setFile(null);
+              setFileMeta(null);
               setUploadError("파일 용량은 100MB 이하만 가능합니다.");
               setUploadStage("idle");
               setUploadProgress(0);
               setUploadedImageUrl(null);
               return;
             }
-            setUploadError(null);
+            setFile(null);
+            setFileMeta(null);
+            setUploadError("이미지 해상도를 확인 중입니다.");
             setUploadProgress(0);
             setUploadStage("idle");
             setUploadedImageUrl(null);
-            setFile(selected);
+            void (async () => {
+              try {
+                const imageMeta = await readImageMeta(selected);
+                if (
+                  imageMeta.width < MIN_IMAGE_RESOLUTION_PX ||
+                  imageMeta.height < MIN_IMAGE_RESOLUTION_PX
+                ) {
+                  setFile(null);
+                  setFileMeta(null);
+                  setUploadError(
+                    `이미지 해상도는 최소 ${MIN_IMAGE_RESOLUTION_PX}px x ${MIN_IMAGE_RESOLUTION_PX}px 이상이어야 합니다.`,
+                  );
+                  return;
+                }
+                setFile(selected);
+                setFileMeta({
+                  width: imageMeta.width,
+                  height: imageMeta.height,
+                  sizeBytes: selected.size,
+                });
+                setUploadError(null);
+              } catch (metaError) {
+                const message =
+                  metaError instanceof Error
+                    ? metaError.message
+                    : "이미지 해상도를 확인할 수 없습니다.";
+                setFile(null);
+                setFileMeta(null);
+                setUploadError(message);
+              }
+            })();
           }}
           className="text-xs text-[color:var(--muted)]"
           disabled={!canSubmit}
@@ -802,6 +908,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
         {file && (
           <div className="rounded-[16px] border border-[color:var(--line)] bg-white/80 px-4 py-2 text-xs text-[color:var(--muted)]">
             선택된 파일: {file.name} ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+            {fileMeta && ` · ${fileMeta.width} x ${fileMeta.height}px`}
           </div>
         )}
 
@@ -908,11 +1015,11 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
               className="rounded-[30px] border border-[rgba(181,119,76,0.2)] bg-[rgba(255,253,249,0.94)] p-8 shadow-[var(--shadow)]"
             >
               <div className="flex items-center justify-between gap-3">
-                <h2 className="font-[var(--font-display)] text-3xl text-[#2a1d13]">Preview Wall</h2>
-                <span className="rounded-full border border-[rgba(181,119,76,0.24)] bg-white/90 px-3 py-1 text-xs text-[#806042]">Read-only</span>
+                <h2 className="font-[var(--font-display)] text-3xl text-[#2a1d13]">Private Queue</h2>
+                <span className="rounded-full border border-[rgba(181,119,76,0.24)] bg-white/90 px-3 py-1 text-xs text-[#806042]">Private</span>
               </div>
-              <p className="mt-2 text-sm text-[#715640]">전시 시작 전 공개 가능한 샘플/티저 작품을 확인할 수 있습니다.</p>
-              {renderEntryGrid("UPCOMING", "오픈 예정 전시 작품이 아직 없습니다.", 6, { compact: true })}
+              <p className="mt-2 text-sm text-[#715640]">전시 시작 전까지 출품작 썸네일과 정보는 비공개로 유지됩니다.</p>
+              {renderEntryGrid("UPCOMING", "비공개 대기 중인 출품작이 없습니다.", 6, { compact: true })}
             </article>
           </section>
         </>
@@ -939,7 +1046,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                   </button>
                   {hasToken && (
                     <span className="rounded-full border border-[rgba(12,105,97,0.24)] bg-white px-3 py-1 text-xs text-[#29635d]">
-                      보유 출품권 {credits}개
+                      이 콘테스트 보유 출품권 {credits}개
                     </span>
                   )}
                 </div>
@@ -966,7 +1073,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                 <article className="rounded-[18px] border border-[rgba(12,105,97,0.2)] bg-[rgba(250,255,254,0.9)] p-4">
                   <p className="text-[10px] uppercase tracking-[0.24em] text-[#2b6c64]">Entry Fee</p>
                   <p className="mt-2 text-3xl font-semibold text-[#103f3b]">{formatNumber(contest?.entryFee ?? 0)}원</p>
-                  <p className="mt-1 text-xs text-[#2f6f68]">출품권 1개 = 출품 1회</p>
+                  <p className="mt-1 text-xs text-[#2f6f68]">해당 콘테스트 출품권 1개 = 해당 콘테스트 출품 1회</p>
                 </article>
               </div>
             </div>
@@ -993,8 +1100,84 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
               {renderRankingPanel("전시 전 랭킹", "전시 시작 후 실시간 랭킹이 활성화됩니다.", "studio")}
               <article className="rounded-[30px] border border-[rgba(12,105,97,0.2)] bg-[rgba(244,255,252,0.9)] p-8 shadow-[var(--shadow)]">
                 <h2 className="font-[var(--font-display)] text-2xl text-[#103f3b]">Submission Queue</h2>
-                <p className="mt-2 text-sm text-[#2f6f68]">현재 제출된 작품의 공개 대기/검토 상태를 확인합니다.</p>
-                {renderEntryGrid("SUBMISSION", "아직 등록된 출품작이 없습니다.", 4)}
+                <p className="mt-2 text-sm text-[#2f6f68]">출품 기간에는 작품이 비공개로 접수되며 전시 시작 후 공개됩니다.</p>
+                {renderEntryGrid("SUBMISSION", "접수된 출품작이 아직 없습니다.", 4)}
+              </article>
+            </aside>
+          </section>
+        </>
+      );
+    }
+
+    if (isReviewPhase) {
+      return (
+        <>
+          <section className="phase-submission-page phase-submission-enter relative mt-10 overflow-hidden rounded-[34px] p-6 md:p-10">
+            <div className="relative z-10">
+              <header className="rounded-[26px] border border-[rgba(153,127,48,0.26)] bg-[rgba(255,251,237,0.93)] p-6 shadow-[0_16px_32px_rgba(104,82,22,0.1)] md:p-8">
+                <p className="inline-flex rounded-full border border-[rgba(153,127,48,0.34)] bg-white px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-[#6f5714]">
+                  REVIEW CONSOLE
+                </p>
+                <h1 className={`mt-4 text-4xl leading-tight text-[#4f3d0d] md:text-5xl ${tone.titleClass}`}>{contest?.theme}</h1>
+                <p className="mt-3 text-sm leading-relaxed text-[#6e5b26]">{phaseInfo.note}</p>
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <span className="rounded-full border border-[rgba(153,127,48,0.28)] bg-white px-3 py-1 text-xs text-[#6e5b26]">
+                    출품 마감 · 심사 진행
+                  </span>
+                  <span className="rounded-full border border-[rgba(153,127,48,0.28)] bg-white px-3 py-1 text-xs text-[#6e5b26]">
+                    심사 기간 진행률 {reviewProgress ?? 0}%
+                  </span>
+                </div>
+              </header>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <article className="rounded-[18px] border border-[rgba(153,127,48,0.24)] bg-[rgba(255,251,240,0.94)] p-4">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-[#7a6420]">Review Progress</p>
+                  <p className="mt-2 text-3xl font-semibold text-[#4f3d0d]">{reviewProgress}%</p>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-[rgba(153,127,48,0.16)]">
+                    <div className="h-full rounded-full bg-[#8a6b19] transition-[width] duration-500" style={{ width: `${reviewProgress}%` }} />
+                  </div>
+                </article>
+                <article className="rounded-[18px] border border-[rgba(153,127,48,0.24)] bg-[rgba(255,251,240,0.94)] p-4">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-[#7a6420]">Review Window</p>
+                  <p className="mt-2 text-xs text-[#6b5620]">{formatSchedule(contest?.submissionEndAt)}</p>
+                  <p className="text-xs text-[#6b5620]">~ {formatSchedule(contest?.votingStartAt)}</p>
+                </article>
+                <article className="rounded-[18px] border border-[rgba(153,127,48,0.24)] bg-[rgba(255,251,240,0.94)] p-4">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-[#7a6420]">Queue Size</p>
+                  <p className="mt-2 text-3xl font-semibold text-[#4f3d0d]">{formatNumber(entries.length)}</p>
+                  <p className="mt-1 text-xs text-[#6b5620]">심사 대상 작품</p>
+                </article>
+                <article className="rounded-[18px] border border-[rgba(153,127,48,0.24)] bg-[rgba(255,251,240,0.94)] p-4">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-[#7a6420]">Exhibition Open</p>
+                  <p className="mt-2 text-3xl font-semibold text-[#4f3d0d]">{votingOpenCountdown}</p>
+                  <p className="mt-1 text-xs text-[#6b5620]">전시 시작 카운트다운</p>
+                </article>
+              </div>
+            </div>
+          </section>
+
+          <section className="mt-8 grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+            <article className="rounded-[30px] border border-[rgba(153,127,48,0.24)] bg-[rgba(255,251,240,0.92)] p-8 shadow-[var(--shadow)]">
+              <h2 className="font-[var(--font-display)] text-3xl text-[#4f3d0d]">Review Checklist</h2>
+              <p className="mt-2 text-sm text-[#6b5620]">전시 공개 전 심사 상태를 확정하세요.</p>
+              <div className="mt-5 grid gap-3">
+                {phaseActionBoard.REVIEW.map((item) => (
+                  <article key={`review-ops-${item.kicker}`} className="rounded-[16px] border border-[rgba(153,127,48,0.22)] bg-white/92 p-4">
+                    <p className="text-[10px] uppercase tracking-[0.26em] text-[#866a1d]">{item.kicker}</p>
+                    <p className="mt-1 text-sm font-semibold text-[#5f4910]">{item.title}</p>
+                    <p className="mt-1 text-xs text-[#7a6428]">{item.description}</p>
+                  </article>
+                ))}
+              </div>
+            </article>
+
+            <aside className="grid gap-6">
+              {renderRankingPanel("전시 전 랭킹", "심사 확정 후 전시가 공개되면 투표 랭킹이 활성화됩니다.", "studio")}
+              <article className="rounded-[30px] border border-[rgba(153,127,48,0.24)] bg-[rgba(255,251,240,0.92)] p-8 shadow-[var(--shadow)]">
+                <h2 className="font-[var(--font-display)] text-2xl text-[#4f3d0d]">Review Queue</h2>
+                <p className="mt-2 text-sm text-[#6b5620]">심사 단계에서는 작품 이미지가 비공개 상태로 유지됩니다.</p>
+                {renderEntryGrid("REVIEW", "심사 대기 작품이 없습니다.", 6)}
               </article>
             </aside>
           </section>
@@ -1235,9 +1418,12 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                     참가 콘테스트: <strong>{contest.theme}</strong>
                   </div>
 
-                  <div className="rounded-[18px] border border-[color:var(--line)] bg-[color:var(--chip)] px-4 py-3 text-sm text-[color:var(--canvas-ink)]">
-                    참가비 <strong>{formatNumber(contest.entryFee)}원</strong>
-                  </div>
+                <div className="rounded-[18px] border border-[color:var(--line)] bg-[color:var(--chip)] px-4 py-3 text-sm text-[color:var(--canvas-ink)]">
+                  참가비 <strong>{formatNumber(contest.entryFee)}원</strong>
+                </div>
+                <div className="rounded-[18px] border border-[color:var(--line)] bg-white/80 px-4 py-3 text-xs text-[color:var(--muted)]">
+                  출품권은 결제한 콘테스트에서만 사용할 수 있으며, 다른 콘테스트로 이동되지 않습니다.
+                </div>
 
                   <div className="grid gap-2">
                     <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--muted)]">
@@ -1311,7 +1497,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                   {contest.theme} 출품권이 추가되었습니다.
                 </div>
                 <div className="mt-3 rounded-[18px] border border-[color:var(--line)] bg-[color:var(--chip)] px-4 py-3 text-sm text-[color:var(--canvas-ink)]">
-                  현재 출품권: <strong>{credits}개</strong>
+                  현재 이 콘테스트 출품권: <strong>{credits}개</strong>
                 </div>
                 <button
                   className="mt-6 w-full rounded-full bg-[color:var(--accent)] px-5 py-3 text-sm text-white shadow-[var(--shadow)] disabled:opacity-60"

@@ -157,17 +157,22 @@ export default function CategoryClient({ categoryKey }: CategoryClientProps) {
               ) : (
                 <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {filtered.map((artwork) => (
-                    <Link
+                      <Link
                       key={artwork.id}
                       href={`/gallery/artworks/${artwork.id}`}
                       className="block rounded-[22px] border border-[color:var(--line)] bg-white/80 p-4 transition hover:border-[color:var(--accent)] hover:shadow-[var(--shadow)]"
-                    >
-                      <div
-                        className="h-28 w-full rounded-[18px]"
-                        style={{
-                          background: `linear-gradient(140deg, ${artwork.colorFrom}, ${artwork.colorTo})`,
-                        }}
-                      />
+                      >
+                        {artwork.imageUrl ? (
+                          <img
+                            src={artwork.imageUrl}
+                            alt={artwork.title}
+                            className="h-28 w-full rounded-[18px] object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-28 w-full items-center justify-center rounded-[18px] border border-dashed border-[color:var(--line)] bg-white text-xs text-[color:var(--muted)]">
+                            이미지 없음
+                          </div>
+                        )}
                       <div className="mt-3 text-xs text-[color:var(--muted)]">
                         {artwork.artist}
                       </div>

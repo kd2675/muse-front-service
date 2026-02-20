@@ -1,6 +1,6 @@
 "use client";
 
-import { getAccessToken, getUserFromToken } from "./auth";
+import { getAccessToken, getUserFromToken, hasAnyRole } from "./auth";
 
 export const PROTECTED_PREFIXES = ["/profile", "/admin"];
 
@@ -33,10 +33,7 @@ export function hasRequiredRole(required: string[] | null): boolean {
     return true;
   }
   const user = getUserFromToken();
-  if (!user?.role) {
-    return false;
-  }
-  return required.includes(user.role);
+  return hasAnyRole(user?.role, required);
 }
 
 export function canAccessPath(pathname: string): {
