@@ -18,7 +18,6 @@ import { useAppDispatch } from "../../store/hooks";
 import { showToast } from "../../store/uiSlice";
 import type {
   AdminContest,
-  AdminContestStatus,
   AdminContestUpsertRequest,
   ContestFinalizeResult,
   ContestPhase,
@@ -48,7 +47,39 @@ function phaseDisplayPriority(phase: ContestPhase): number {
   return 4;
 }
 
-const statusOptions: AdminContestStatus[] = ["UPCOMING", "ACTIVE", "ENDED"];
+function getContestTone(phase: ContestPhase): {
+  cardClass: string;
+  badgeClass: string;
+} {
+  if (phase === "UPCOMING") {
+    return {
+      cardClass: "border-[#7c3aed]/28 bg-[#f5f3ff] hover:border-[#6d28d9]",
+      badgeClass: "border-[#7c3aed]/35 bg-[#ede9fe] text-[#5b21b6]",
+    };
+  }
+  if (phase === "SUBMISSION") {
+    return {
+      cardClass: "border-[#0f766e]/30 bg-[#ecfdf5] hover:border-[#0f766e]",
+      badgeClass: "border-[#0f766e]/40 bg-[#d1fae5] text-[#065f46]",
+    };
+  }
+  if (phase === "REVIEW") {
+    return {
+      cardClass: "border-[#ea580c]/32 bg-[#fff7ed] hover:border-[#c2410c]",
+      badgeClass: "border-[#c2410c]/36 bg-[#fed7aa] text-[#9a3412]",
+    };
+  }
+  if (phase === "VOTING") {
+    return {
+      cardClass: "border-[#2563eb]/30 bg-[#eff6ff] hover:border-[#1d4ed8]",
+      badgeClass: "border-[#2563eb]/35 bg-[#dbeafe] text-[#1e40af]",
+    };
+  }
+  return {
+    cardClass: "border-[#64748b]/25 bg-[#f8fafc] hover:border-[#475569]",
+    badgeClass: "border-[#64748b]/35 bg-[#e2e8f0] text-[#334155]",
+  };
+}
 
 type FormState = {
   theme: string;
@@ -59,7 +90,6 @@ type FormState = {
   submissionEndAt: string;
   votingStartAt: string;
   votingEndAt: string;
-  status: AdminContestStatus;
   rulesText: string;
 };
 
@@ -72,7 +102,6 @@ const defaultForm: FormState = {
   submissionEndAt: "",
   votingStartAt: "",
   votingEndAt: "",
-  status: "ACTIVE",
   rulesText:
     "해당 콘테스트 출품권 1개당 1회 출품 가능 (보유 시 횟수 제한 없음)\n출품권은 콘테스트별로 별도 관리되며 다른 콘테스트로 이전 불가\n타인의 권리를 침해하는 작품 금지",
 };
@@ -98,7 +127,6 @@ function toForm(contest: AdminContest): FormState {
     submissionEndAt: toDateTimeLocal(contest.submissionEndAt),
     votingStartAt: toDateTimeLocal(contest.votingStartAt),
     votingEndAt: toDateTimeLocal(contest.votingEndAt),
-    status: contest.status,
     rulesText: contest.rules.join("\n"),
   };
 }
@@ -118,7 +146,6 @@ function toPayload(form: FormState): AdminContestUpsertRequest {
     submissionEndAt: form.submissionEndAt,
     votingStartAt: form.votingStartAt,
     votingEndAt: form.votingEndAt,
-    status: form.status,
     rules,
   };
 }
@@ -204,6 +231,7 @@ export default function AdminContestClient() {
         : null,
     [contests, mode, selectedContestId],
   );
+  const canFinalizeSelectedContest = selectedContest?.phase === "ENDED";
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -293,13 +321,14 @@ export default function AdminContestClient() {
             <div className="mt-6 grid gap-3">
               {sortedContests.map((contest) => {
                 const isSelected = contest.id === selectedContestId;
+                const tone = getContestTone(contest.phase);
                 return (
                   <button
                     key={contest.id}
                     className={`rounded-[18px] border px-4 py-3 text-left transition ${
                       isSelected
-                        ? "border-[color:var(--accent)] bg-[color:var(--chip)]"
-                        : "border-[color:var(--line)] bg-white/80 hover:border-[color:var(--accent)]"
+                        ? `${tone.cardClass} ring-2 ring-[#2563eb]/35`
+                        : tone.cardClass
                     }`}
                     onClick={() => {
                       setMode("edit");
@@ -309,11 +338,14 @@ export default function AdminContestClient() {
                     }}
                   >
                     <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                      #{contest.id} · {phaseLabel[contest.phase]}
+                      #{contest.id}
                     </p>
                     <p className="mt-1 font-medium">{contest.theme}</p>
                     <p className="mt-1 text-xs text-[color:var(--muted)]">{contest.period}</p>
                     <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-[color:var(--muted)]">
+                      <span className={`rounded-full border px-2 py-1 ${tone.badgeClass}`}>
+                        {phaseLabel[contest.phase]}
+                      </span>
                       <span className="rounded-full border border-[color:var(--line)] px-2 py-1">
                         참가비 {formatNumber(contest.entryFee)}원
                       </span>
@@ -342,12 +374,20 @@ export default function AdminContestClient() {
             <button
               className="mt-6 w-full rounded-full bg-[color:var(--accent-2)] px-4 py-3 text-sm text-white transition hover:opacity-90 disabled:opacity-60"
               onClick={() => finalizeMutation.mutate(selectedContest.id)}
-              disabled={finalizeMutation.isPending}
+              disabled={finalizeMutation.isPending || !canFinalizeSelectedContest}
             >
               {finalizeMutation.isPending
                 ? "결과 확정 중..."
-                : `결과 확정 실행 (#${selectedContest.id})`}
+                : canFinalizeSelectedContest
+                  ? `결과 확정 실행 (#${selectedContest.id})`
+                  : `종료 후 확정 가능 (#${selectedContest.id})`}
             </button>
+          )}
+
+          {selectedContest && !canFinalizeSelectedContest && (
+            <p className="mt-2 text-xs text-[color:var(--muted)]">
+              현재 상태: {phaseLabel[selectedContest.phase]} · 전시 종료 이후에만 결과 확정이 가능합니다.
+            </p>
           )}
 
           {finalizeResult && (
@@ -355,21 +395,27 @@ export default function AdminContestClient() {
               <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                 Finalized #{finalizeResult.contestId}
               </p>
-              <ul className="mt-3 grid gap-2 text-sm">
-                {finalizeResult.winners.map((winner) => (
-                  <li
-                    key={winner.entryId}
-                    className="rounded-[14px] border border-[color:var(--line)] bg-white px-3 py-2"
-                  >
-                    <p className="font-medium">
-                      {winner.rank}등 · {winner.artistName}
-                    </p>
-                    <p className="text-xs text-[color:var(--muted)]">
-                      {winner.title ?? "Untitled"} · {winner.voteCount}표 · {formatNumber(winner.prize)}원
-                    </p>
-                  </li>
-                ))}
-              </ul>
+              {finalizeResult.winners.length === 0 ? (
+                <p className="mt-3 rounded-[14px] border border-[color:var(--line)] bg-white px-3 py-2 text-sm text-[color:var(--muted)]">
+                  확정 완료: 대상 출품작이 없어 수상자 없이 종료 처리되었습니다.
+                </p>
+              ) : (
+                <ul className="mt-3 grid gap-2 text-sm">
+                  {finalizeResult.winners.map((winner) => (
+                    <li
+                      key={winner.entryId}
+                      className="rounded-[14px] border border-[color:var(--line)] bg-white px-3 py-2"
+                    >
+                      <p className="font-medium">
+                        {winner.rank}등 · {winner.artistName}
+                      </p>
+                      <p className="text-xs text-[color:var(--muted)]">
+                        {winner.title ?? "Untitled"} · {winner.voteCount}표 · {formatNumber(winner.prize)}원
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
         </aside>
@@ -501,23 +547,6 @@ export default function AdminContestClient() {
                 />
               </label>
             </div>
-
-            <label className="grid gap-2 text-sm">
-              <span>상태</span>
-              <select
-                className="rounded-[14px] border border-[color:var(--line)] bg-white px-4 py-3"
-                value={form.status}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, status: event.target.value as AdminContestStatus }))
-                }
-              >
-                {statusOptions.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-            </label>
 
             <label className="grid gap-2 text-sm">
               <span>규칙(줄바꿈으로 구분)</span>

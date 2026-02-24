@@ -16,11 +16,6 @@ import { APP_ROUTES } from "../lib/router";
 
 const formatNumber = (value: number) => value.toLocaleString("ko-KR");
 
-const statusLabel: Record<string, string> = {
-  ACTIVE: "진행중",
-  ENDED: "종료",
-  UPCOMING: "예정",
-};
 const phaseLabel: Record<string, string> = {
   UPCOMING: "출품 대기",
   SUBMISSION: "출품 진행 중",
@@ -243,9 +238,7 @@ export default function ContestClient() {
                       </p>
                     </div>
                     <span className="rounded-full bg-[color:var(--chip)] px-3 py-1 text-xs text-[color:var(--accent)]">
-                      {phaseLabel[contest.phase] ??
-                        statusLabel[contest.status] ??
-                        contest.status}
+                      {phaseLabel[contest.phase] ?? contest.phase}
                     </span>
                   </div>
                   <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-[color:var(--muted)]">

@@ -169,20 +169,26 @@ function resolveReviewPriority(contest: AdminContest): ReviewPriority {
   return { code: "P3", rank: 4, label: "심사 완료" };
 }
 
-function getPriorityTone(priorityCode: ReviewPriority["code"], phase: ContestPhase): {
+function getContestTone(phase: ContestPhase): {
   cardClass: string;
   badgeClass: string;
 } {
-  if (priorityCode === "P1") {
+  if (phase === "UPCOMING") {
     return {
-      cardClass: "border-[#0f766e]/35 bg-[#ecfdf5] hover:border-[#0f766e]",
+      cardClass: "border-[#7c3aed]/28 bg-[#f5f3ff] hover:border-[#6d28d9]",
+      badgeClass: "border-[#7c3aed]/35 bg-[#ede9fe] text-[#5b21b6]",
+    };
+  }
+  if (phase === "SUBMISSION") {
+    return {
+      cardClass: "border-[#0f766e]/30 bg-[#ecfdf5] hover:border-[#0f766e]",
       badgeClass: "border-[#0f766e]/40 bg-[#d1fae5] text-[#065f46]",
     };
   }
-  if (priorityCode === "P2") {
+  if (phase === "REVIEW") {
     return {
-      cardClass: "border-[#f59e0b]/30 bg-[#fff7ed] hover:border-[#d97706]",
-      badgeClass: "border-[#d97706]/35 bg-[#ffedd5] text-[#9a3412]",
+      cardClass: "border-[#ea580c]/32 bg-[#fff7ed] hover:border-[#c2410c]",
+      badgeClass: "border-[#c2410c]/36 bg-[#fed7aa] text-[#9a3412]",
     };
   }
   if (phase === "VOTING") {
@@ -192,8 +198,8 @@ function getPriorityTone(priorityCode: ReviewPriority["code"], phase: ContestPha
     };
   }
   return {
-    cardClass: "border-[color:var(--line)] bg-white/90 hover:border-[color:var(--line)]",
-    badgeClass: "border-[color:var(--line)] bg-[color:var(--chip)] text-[color:var(--muted)]",
+    cardClass: "border-[#64748b]/25 bg-[#f8fafc] hover:border-[#475569]",
+    badgeClass: "border-[#64748b]/35 bg-[#e2e8f0] text-[#334155]",
   };
 }
 
@@ -399,7 +405,7 @@ export default function AdminContestReviewClient() {
             <div className="mt-6 grid gap-3">
               {prioritizedContests.map((contest) => {
                 const priority = resolveReviewPriority(contest);
-                const tone = getPriorityTone(priority.code, contest.phase);
+                const tone = getContestTone(contest.phase);
                 return (
                   <button
                     key={contest.id}

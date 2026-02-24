@@ -5,7 +5,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useAppDispatch } from "../store/hooks";
 import { setPendingPath, showToast } from "../store/uiSlice";
 import { canAccessPath } from "../lib/routeGuard";
-import { onAuthExpired } from "../lib/authEvents";
+import { onAuthChanged, onAuthExpired } from "../lib/authEvents";
 import { refreshAccessToken } from "../lib/auth";
 import type { AuthExpireReason } from "../lib/auth";
 
@@ -37,33 +37,46 @@ export default function AuthWatcher() {
 
   useEffect(() => {
     let cancelled = false;
-    const guard = canAccessPath(pathname);
-    if (guard.allowed) {
-      return () => {
-        cancelled = true;
-      };
-    }
-    const redirectPath = `${pathname}${
-      searchParams.toString() ? `?${searchParams.toString()}` : ""
-    }`;
-    dispatch(setPendingPath(redirectPath));
-    if (guard.reason === "ROLE") {
-      dispatch(showToast("권한이 없습니다."));
-      router.push("/?tab=home");
-      return () => {
-        cancelled = true;
-      };
-    }
-    (async () => {
+    let isRefreshing = false;
+
+    const verifyAndRecoverAccess = async () => {
+      const guard = canAccessPath(pathname);
+      if (guard.allowed || cancelled) {
+        return;
+      }
+
+      const redirectPath = `${pathname}${
+        searchParams.toString() ? `?${searchParams.toString()}` : ""
+      }`;
+      dispatch(setPendingPath(redirectPath));
+
+      if (guard.reason === "ROLE") {
+        dispatch(showToast("권한이 없습니다."));
+        router.push("/?tab=home");
+        return;
+      }
+
+      if (isRefreshing) {
+        return;
+      }
+      isRefreshing = true;
       const newToken = await refreshAccessToken();
+      isRefreshing = false;
       if (newToken || cancelled) {
         return;
       }
       dispatch(showToast("로그인이 필요한 기능입니다."));
       router.push("/login");
-    })();
+    };
+
+    void verifyAndRecoverAccess();
+    const unsubscribeAuthChanged = onAuthChanged(() => {
+      void verifyAndRecoverAccess();
+    });
+
     return () => {
       cancelled = true;
+      unsubscribeAuthChanged();
     };
   }, [dispatch, pathname, router, searchParams]);
 

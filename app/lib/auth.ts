@@ -65,6 +65,7 @@ export function clearAccessToken() {
 }
 
 export type AuthExpireReason = "expired" | "refresh_failed";
+const TOKEN_EXPIRY_LEEWAY_SECONDS = 300;
 
 export function notifyAuthExpired(reason: AuthExpireReason = "expired") {
   emitAuthExpired(reason);
@@ -112,7 +113,10 @@ export function getUserFromToken(): AuthUser | null {
   }
 }
 
-export function isTokenExpired(exp?: number, leewaySeconds = 30): boolean {
+export function isTokenExpired(
+  exp?: number,
+  leewaySeconds = TOKEN_EXPIRY_LEEWAY_SECONDS,
+): boolean {
   if (!exp) {
     return false;
   }
@@ -123,12 +127,13 @@ export function isTokenExpired(exp?: number, leewaySeconds = 30): boolean {
 export function scheduleTokenExpiry(
   onExpire: () => void,
   exp?: number,
+  leewaySeconds = TOKEN_EXPIRY_LEEWAY_SECONDS,
 ): () => void {
   if (!exp) {
     return () => undefined;
   }
   const now = Math.floor(Date.now() / 1000);
-  const delayMs = Math.max((exp - now) * 1000, 0);
+  const delayMs = Math.max((exp - now - leewaySeconds) * 1000, 0);
   const timeoutId = window.setTimeout(onExpire, delayMs);
   return () => window.clearTimeout(timeoutId);
 }

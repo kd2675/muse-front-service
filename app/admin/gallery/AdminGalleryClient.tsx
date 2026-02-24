@@ -40,8 +40,6 @@ type ArtworkForm = {
   aperture: string;
   shutterSpeed: string;
   iso: string;
-  colorFrom: string;
-  colorTo: string;
 };
 
 type CategoryCreateForm = {
@@ -67,8 +65,6 @@ const emptyArtworkForm: ArtworkForm = {
   aperture: "",
   shutterSpeed: "",
   iso: "",
-  colorFrom: "",
-  colorTo: "",
 };
 
 const emptyCategoryCreateForm: CategoryCreateForm = {
@@ -411,8 +407,6 @@ export default function AdminGalleryClient() {
         aperture: artworkForm.aperture.trim() || undefined,
         shutterSpeed: artworkForm.shutterSpeed.trim() || undefined,
         iso: artworkForm.iso.trim() || undefined,
-        colorFrom: artworkForm.colorFrom.trim() || undefined,
-        colorTo: artworkForm.colorTo.trim() || undefined,
       });
     },
     onSuccess: (result) => {
@@ -784,24 +778,6 @@ export default function AdminGalleryClient() {
                       </option>
                     ))}
                   </select>
-                </label>
-                <label className="grid gap-2 text-sm">
-                  <span>Color From</span>
-                  <input
-                    className="rounded-[14px] border border-[color:var(--line)] bg-white px-4 py-3"
-                    value={artworkForm.colorFrom}
-                    onChange={(event) => updateArtworkField("colorFrom", event.target.value)}
-                    placeholder="#ffffff"
-                  />
-                </label>
-                <label className="grid gap-2 text-sm">
-                  <span>Color To</span>
-                  <input
-                    className="rounded-[14px] border border-[color:var(--line)] bg-white px-4 py-3"
-                    value={artworkForm.colorTo}
-                    onChange={(event) => updateArtworkField("colorTo", event.target.value)}
-                    placeholder="#000000"
-                  />
                 </label>
               </div>
 

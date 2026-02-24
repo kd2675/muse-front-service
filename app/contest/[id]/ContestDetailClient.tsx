@@ -448,6 +448,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
   const submissionOpenCountdown = formatCountdown(contest?.submissionStartAt);
   const votingOpenCountdown = formatCountdown(contest?.votingStartAt);
   const submissionProgress = calculatePeriodProgress(contest?.submissionStartAt, contest?.submissionEndAt);
+  const reviewProgress = calculatePeriodProgress(contest?.submissionEndAt, contest?.votingStartAt);
   const votingProgress = calculatePeriodProgress(contest?.votingStartAt, contest?.votingEndAt);
   const totalVotes = ranking.reduce((acc, item) => acc + item.voteCount, 0);
 
@@ -590,7 +591,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                     <img
                       src={entry.imageUrl}
                       alt={entry.title ?? "contest entry"}
-                      className={`h-44 w-full object-cover ${mode === "UPCOMING" ? "saturate-75" : ""}`}
+                      className="h-44 w-full object-cover"
                     />
                   ) : (
                     <div className="h-44 w-full bg-[color:var(--chip)]" />

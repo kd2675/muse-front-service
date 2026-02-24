@@ -7,7 +7,6 @@ export type ContestSummary = {
   entryFee: number;
   prizePool: number;
   daysLeft: number;
-  status: "ACTIVE" | "ENDED" | "UPCOMING";
   phase: ContestPhase;
   submissionStartAt?: string | null;
   submissionEndAt?: string | null;
@@ -23,7 +22,6 @@ export type ContestDetail = {
   entryFee: number;
   prizePool: number;
   daysLeft: number;
-  status: "ACTIVE" | "ENDED" | "UPCOMING";
   phase: ContestPhase;
   submissionStartAt?: string | null;
   submissionEndAt?: string | null;
@@ -86,8 +84,6 @@ export type ContestVoteResponse = {
   selectedEntryVoteCount: number;
 };
 
-export type AdminContestStatus = "UPCOMING" | "ACTIVE" | "ENDED";
-
 export type AdminContest = {
   id: number;
   theme: string;
@@ -96,7 +92,6 @@ export type AdminContest = {
   entryFee: number;
   prizePool: number;
   daysLeft: number;
-  status: AdminContestStatus;
   phase: ContestPhase;
   submissionStartAt?: string | null;
   submissionEndAt?: string | null;
@@ -115,7 +110,6 @@ export type AdminContestUpsertRequest = {
   submissionEndAt: string;
   votingStartAt: string;
   votingEndAt: string;
-  status: AdminContestStatus;
   rules: string[];
 };
 

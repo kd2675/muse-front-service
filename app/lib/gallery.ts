@@ -225,8 +225,6 @@ export async function createAdminGalleryArtwork(payload: {
   aperture?: string;
   shutterSpeed?: string;
   iso?: string;
-  colorFrom?: string;
-  colorTo?: string;
 }): Promise<AdminGalleryArtworkCreateResult> {
   const { data, error, backendMapped, backendMessage } =
     await postJson<ResponseEnvelope<AdminGalleryArtwork>>(
