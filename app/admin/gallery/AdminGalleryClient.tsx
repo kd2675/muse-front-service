@@ -1,11 +1,15 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { motion, useReducedMotion } from "motion/react";
 import PageShell from "../../components/PageShell";
 import TopNav from "../../components/TopNav";
 import { Skeleton } from "../../components/Skeleton";
+import Reveal from "../../components/motion/Reveal";
 import { getUserFromToken, isAdminRole } from "../../lib/auth";
+import { staggeredFadeUpMotion } from "../../lib/motion";
 import {
   deleteAdminMuseumArtwork,
   getAdminMuseumArtworks,
@@ -23,6 +27,8 @@ type ArtworkFilter = "all" | "REVIEWING" | "VISIBLE" | "REMOVED";
 export default function AdminGalleryClient() {
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
+  const prefersReducedMotion = useReducedMotion();
+  const reduceMotion = Boolean(prefersReducedMotion);
   const role = getUserFromToken()?.role;
   const isAdmin = isAdminRole(role);
   const [selectedMuseumId, setSelectedMuseumId] = useState<number | null>(null);
@@ -206,7 +212,8 @@ export default function AdminGalleryClient() {
   return (
     <PageShell>
       <TopNav />
-      <section className="mt-8 rounded-[28px] border border-[color:var(--line)] bg-white/75 p-6 shadow-[var(--shadow)]">
+      <Reveal index={0} className="mt-8">
+      <section className="rounded-[28px] border border-[color:var(--line)] bg-white/75 p-6 shadow-[var(--shadow)]">
         <h2 className="font-[var(--font-display)] text-3xl">Gallery Admin Moderation</h2>
         <p className="mt-2 text-sm text-[color:var(--muted)]">
           유저 업로드 작품은 기본 심사중이며, 어드민 승인 후에만 노출됩니다.
@@ -244,9 +251,10 @@ export default function AdminGalleryClient() {
               </div>
             ) : (
               <div className="mt-4 space-y-3">
-                {filteredMuseums.map((museum) => (
-                  <article
+                {filteredMuseums.map((museum, index) => (
+                  <motion.article
                     key={museum.museumId}
+                    {...staggeredFadeUpMotion(index + 1, reduceMotion)}
                     className={`rounded-[14px] border p-3 ${
                       museum.museumId === activeSelectedMuseumId
                         ? "border-[color:var(--accent)] bg-[color:var(--chip)]"
@@ -294,7 +302,7 @@ export default function AdminGalleryClient() {
                         {museum.isPublic ? "공개" : "비공개"}
                       </button>
                     </div>
-                  </article>
+                  </motion.article>
                 ))}
 
                 {filteredMuseums.length === 0 && (
@@ -345,16 +353,22 @@ export default function AdminGalleryClient() {
                   </div>
                 ) : filteredArtworks.length > 0 ? (
                   <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {filteredArtworks.map((artwork) => (
-                      <article
+                    {filteredArtworks.map((artwork, index) => (
+                      <motion.article
                         key={artwork.museumArtworkId}
+                        {...staggeredFadeUpMotion(index + 8, reduceMotion)}
                         className="overflow-hidden rounded-[16px] border border-[color:var(--line)] bg-white"
                       >
-                        <img
-                          src={artwork.imageUrl}
-                          alt={artwork.title}
-                          className="h-52 w-full object-cover"
-                        />
+                        <div className="relative h-52 w-full">
+                          <Image
+                            src={artwork.imageUrl}
+                            alt={artwork.title}
+                            fill
+                            unoptimized
+                            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                            className="object-cover"
+                          />
+                        </div>
                         <div className="p-4">
                           <p className="text-xs text-[color:var(--muted)]">
                             #{artwork.museumArtworkId} · {artwork.ownerName}
@@ -430,7 +444,7 @@ export default function AdminGalleryClient() {
                             삭제
                           </button>
                         </div>
-                      </article>
+                      </motion.article>
                     ))}
                   </div>
                 ) : (
@@ -450,6 +464,7 @@ export default function AdminGalleryClient() {
           </div>
         </div>
       </section>
+      </Reveal>
     </PageShell>
   );
 }

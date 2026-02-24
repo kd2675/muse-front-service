@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useRef, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -9,6 +10,7 @@ import type { Swiper as SwiperType } from "swiper";
 import PageShell from "../components/PageShell";
 import TopNav from "../components/TopNav";
 import { Skeleton } from "../components/Skeleton";
+import Reveal from "../components/motion/Reveal";
 import { getUserFromToken, isAdminRole } from "../lib/auth";
 import { getPublicMuseums } from "../lib/museum";
 import { APP_ROUTES, galleryMuseumDetailRoute } from "../lib/router";
@@ -23,11 +25,19 @@ const shuffle = <T,>(source: T[]): T[] => {
   return copied;
 };
 
+function subscribeHydration(callback: () => void) {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+  const id = window.requestAnimationFrame(callback);
+  return () => window.cancelAnimationFrame(id);
+}
+
 export default function GalleryClient() {
   const router = useRouter();
   const swiperRef = useRef<SwiperType | null>(null);
   const isHydrated = useSyncExternalStore(
-    () => () => undefined,
+    subscribeHydration,
     () => true,
     () => false,
   );
@@ -72,7 +82,8 @@ export default function GalleryClient() {
     <PageShell>
       <TopNav />
 
-      <section className="relative mt-8 overflow-hidden rounded-[34px] border border-[rgba(37,31,26,0.14)] bg-[linear-gradient(145deg,#faf7f1_0%,#f6f1e8_48%,#efe8dc_100%)] p-8 shadow-[var(--shadow)] md:p-10">
+      <Reveal index={0} className="mt-8">
+        <section className="relative overflow-hidden rounded-[34px] border border-[rgba(37,31,26,0.14)] bg-[linear-gradient(145deg,#faf7f1_0%,#f6f1e8_48%,#efe8dc_100%)] p-8 shadow-[var(--shadow)] md:p-10">
         <div className="pointer-events-none absolute -top-20 -left-10 h-56 w-56 rounded-full bg-[radial-gradient(circle,_rgba(156,117,64,0.2)_0%,_rgba(156,117,64,0)_72%)]" />
         <div className="pointer-events-none absolute -right-8 bottom-0 h-52 w-52 rounded-full bg-[radial-gradient(circle,_rgba(31,87,130,0.14)_0%,_rgba(31,87,130,0)_72%)]" />
 
@@ -138,7 +149,8 @@ export default function GalleryClient() {
             </p>
           </article>
         </div>
-      </section>
+        </section>
+      </Reveal>
 
       {isLoading ? (
         <section className="mt-8 grid gap-4 lg:grid-cols-[1.18fr_0.82fr]">
@@ -161,7 +173,8 @@ export default function GalleryClient() {
         </section>
       ) : museums.length > 0 ? (
         <>
-          <section className="mt-8 rounded-[34px] border border-[rgba(34,25,18,0.16)] bg-[linear-gradient(160deg,#fcfaf5_0%,#f6efe4_52%,#efe6d8_100%)] p-6 shadow-[var(--shadow)] md:p-8">
+          <Reveal index={1} className="mt-8">
+            <section className="rounded-[34px] border border-[rgba(34,25,18,0.16)] bg-[linear-gradient(160deg,#fcfaf5_0%,#f6efe4_52%,#efe6d8_100%)] p-6 shadow-[var(--shadow)] md:p-8">
             <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
               <article className="rounded-[24px] border border-[rgba(34,25,18,0.14)] bg-white/86 p-6">
                 <p className="text-xs uppercase tracking-[0.3em] text-[#7a5b2e]">
@@ -262,11 +275,14 @@ export default function GalleryClient() {
                           className="w-full text-left"
                         >
                           {museum.coverImageUrl ? (
-                            <div className="relative">
-                              <img
+                            <div className="relative h-52">
+                              <Image
                                 src={museum.coverImageUrl}
                                 alt={museum.name}
-                                className="h-52 w-full object-cover"
+                                fill
+                                unoptimized
+                                sizes="(max-width: 768px) 100vw, (max-width: 1280px) 60vw, 40vw"
+                                className="object-cover"
                               />
                               <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(21,17,14,0.56)_0%,rgba(21,17,14,0.08)_60%)]" />
                             </div>
@@ -293,9 +309,11 @@ export default function GalleryClient() {
                 </Swiper>
               </div>
             </div>
-          </section>
+            </section>
+          </Reveal>
 
-          <section id="gallery-collection-floor" className="mt-10">
+          <Reveal index={2} className="mt-10">
+            <section id="gallery-collection-floor">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-[#7a5b2e]">
@@ -321,11 +339,14 @@ export default function GalleryClient() {
                   className="group overflow-hidden rounded-[22px] border border-[rgba(34,25,18,0.12)] bg-white text-left transition hover:border-[rgba(54,98,167,0.4)] hover:shadow-[0_14px_30px_rgba(34,63,111,0.14)]"
                 >
                   {museum.coverImageUrl ? (
-                    <div className="relative">
-                      <img
+                    <div className="relative h-44">
+                      <Image
                         src={museum.coverImageUrl}
                         alt={museum.name}
-                        className="h-44 w-full object-cover"
+                        fill
+                        unoptimized
+                        sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+                        className="object-cover"
                       />
                       <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(16,14,12,0.52)_0%,rgba(16,14,12,0)_58%)]" />
                     </div>
@@ -356,7 +377,8 @@ export default function GalleryClient() {
                 </button>
               ))}
             </div>
-          </section>
+            </section>
+          </Reveal>
         </>
       ) : (
         <section className="mt-8 rounded-[28px] border border-[rgba(34,25,18,0.16)] bg-white/85 px-6 py-12 text-center shadow-[var(--shadow)]">

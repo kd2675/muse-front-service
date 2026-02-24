@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import PageShell from "../../components/PageShell";
 import TopNav from "../../components/TopNav";
@@ -16,6 +17,8 @@ import { getUserFromToken, isAdminRole } from "../../lib/auth";
 import { adminContestReviewRoute } from "../../lib/router";
 import { useAppDispatch } from "../../store/hooks";
 import { showToast } from "../../store/uiSlice";
+import Reveal from "../../components/motion/Reveal";
+import { staggeredFadeUpMotion } from "../../lib/motion";
 import type {
   AdminContest,
   AdminContestUpsertRequest,
@@ -197,6 +200,8 @@ export default function AdminContestClient() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
+  const prefersReducedMotion = useReducedMotion();
+  const reduceMotion = Boolean(prefersReducedMotion);
   const [mode, setMode] = useState<"create" | "edit">("create");
   const [selectedContestId, setSelectedContestId] = useState<number | null>(null);
   const [form, setForm] = useState<FormState>(defaultForm);
@@ -289,7 +294,8 @@ export default function AdminContestClient() {
   return (
     <PageShell>
       <TopNav />
-      <section className="mt-10 grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+      <Reveal index={0} className="mt-10">
+      <section className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
         <aside className="rounded-[28px] border border-[color:var(--line)] bg-white/75 p-6 shadow-[var(--shadow)]">
           <div className="flex items-center justify-between">
             <div>
@@ -319,12 +325,13 @@ export default function AdminContestClient() {
             </div>
           ) : (
             <div className="mt-6 grid gap-3">
-              {sortedContests.map((contest) => {
+              {sortedContests.map((contest, index) => {
                 const isSelected = contest.id === selectedContestId;
                 const tone = getContestTone(contest.phase);
                 return (
-                  <button
+                  <motion.button
                     key={contest.id}
+                    {...staggeredFadeUpMotion(index + 1, reduceMotion)}
                     className={`rounded-[18px] border px-4 py-3 text-left transition ${
                       isSelected
                         ? `${tone.cardClass} ring-2 ring-[#2563eb]/35`
@@ -353,7 +360,7 @@ export default function AdminContestClient() {
                         참여 {formatNumber(contest.participationCount)}
                       </span>
                     </div>
-                  </button>
+                  </motion.button>
                 );
               })}
               {!isLoading && sortedContests.length === 0 && (
@@ -588,6 +595,7 @@ export default function AdminContestClient() {
           </form>
         </div>
       </section>
+      </Reveal>
     </PageShell>
   );
 }

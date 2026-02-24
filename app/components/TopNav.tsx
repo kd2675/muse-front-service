@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { setActiveTab, setPendingPath, showToast } from "../store/uiSlice";
 import {
@@ -16,6 +17,7 @@ import {
 import { onAuthChanged } from "../lib/authEvents";
 import { canAccessPath } from "../lib/routeGuard";
 import { useBodyScrollLock } from "../lib/useBodyScrollLock";
+import { overlayFadeMotion, rightSheetMotion } from "../lib/motion";
 import { Skeleton } from "./Skeleton";
 
 const tabs = ["home", "contest", "gallery", "profile"] as const;
@@ -66,6 +68,8 @@ export default function TopNav() {
   const [isHydrated, setIsHydrated] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
+  const reduceMotion = Boolean(prefersReducedMotion);
   const {
     status: authStatus,
     label: userLabel,
@@ -255,78 +259,82 @@ export default function TopNav() {
           {authStatus === "in" ? "Start contest" : "Get started"}
         </button>
       </div>
-      <div
-        className={`fixed inset-0 z-40 bg-black/40 transition-opacity md:hidden ${
-          isMenuOpen ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-        onClick={() => setIsMenuOpen(false)}
-      />
-      <div
-        className={`fixed inset-y-0 right-0 z-50 w-[78%] max-w-xs transform bg-[color:var(--canvas)] p-6 shadow-[var(--shadow)] transition-transform duration-300 md:hidden ${
-          isMenuOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.3em] text-[color:var(--muted)]">
-              Gallery Mode
-            </p>
-            <h2 className="font-[var(--font-display)] text-xl">muse</h2>
-          </div>
-          <button
-            className="rounded-full border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            닫기
-          </button>
-        </div>
-        <div className="mt-6 flex flex-col gap-2 text-sm text-[color:var(--muted)]">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              className={navItemClass(tab)}
-              onClick={() => handleNav(tab)}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <>
+            <motion.div
+              {...overlayFadeMotion(reduceMotion)}
+              className="fixed inset-0 z-40 bg-black/40 md:hidden"
+              onClick={() => setIsMenuOpen(false)}
+            />
+            <motion.div
+              {...rightSheetMotion(reduceMotion)}
+              className="fixed inset-y-0 right-0 z-50 w-[78%] max-w-xs bg-[color:var(--canvas)] p-6 shadow-[var(--shadow)] md:hidden"
             >
-              {labelMap[tab]}
-            </button>
-          ))}
-        </div>
-        <div className="mt-6 flex flex-col gap-2">
-          {!isHydrated ? (
-            <Skeleton className="h-9 w-24 rounded-full border border-[color:var(--line)]" />
-          ) : (
-            <>
-              {authStatus === "in" && userLabel && (
-                <span className="rounded-full border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)]">
-                  {userLabel}
-                </span>
-              )}
-              {authStatus === "in" ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-[color:var(--muted)]">
+                    Gallery Mode
+                  </p>
+                  <h2 className="font-[var(--font-display)] text-xl">muse</h2>
+                </div>
                 <button
-                  className="rounded-full border border-[color:var(--line)] px-4 py-2 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] disabled:opacity-60"
-                  onClick={handleSignOut}
-                  disabled={isSigningOut}
+                  className="rounded-full border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                  onClick={() => setIsMenuOpen(false)}
                 >
-                  {isSigningOut ? "Signing out..." : "Sign out"}
+                  닫기
                 </button>
-              ) : (
-                <Link
-                  href="/login"
-                  className="inline-flex items-center justify-center rounded-full border border-[color:var(--line)] px-4 py-2 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+              </div>
+              <div className="mt-6 flex flex-col gap-2 text-sm text-[color:var(--muted)]">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab}
+                    className={navItemClass(tab)}
+                    onClick={() => handleNav(tab)}
+                  >
+                    {labelMap[tab]}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-6 flex flex-col gap-2">
+                {!isHydrated ? (
+                  <Skeleton className="h-9 w-24 rounded-full border border-[color:var(--line)]" />
+                ) : (
+                  <>
+                    {authStatus === "in" && userLabel && (
+                      <span className="rounded-full border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)]">
+                        {userLabel}
+                      </span>
+                    )}
+                    {authStatus === "in" ? (
+                      <button
+                        className="rounded-full border border-[color:var(--line)] px-4 py-2 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] disabled:opacity-60"
+                        onClick={handleSignOut}
+                        disabled={isSigningOut}
+                      >
+                        {isSigningOut ? "Signing out..." : "Sign out"}
+                      </button>
+                    ) : (
+                      <Link
+                        href="/login"
+                        className="inline-flex items-center justify-center rounded-full border border-[color:var(--line)] px-4 py-2 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                      >
+                        Sign in
+                      </Link>
+                    )}
+                  </>
+                )}
+                <button
+                  className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm text-white shadow-[var(--shadow)] transition hover:opacity-90"
+                  onClick={handleCta}
                 >
-                  Sign in
-                </Link>
-              )}
-            </>
-          )}
-          <button
-            className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm text-white shadow-[var(--shadow)] transition hover:opacity-90"
-            onClick={handleCta}
-          >
-            {authStatus === "in" ? "Start contest" : "Get started"}
-          </button>
-        </div>
-      </div>
+                  {authStatus === "in" ? "Start contest" : "Get started"}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </header>
   );
 }

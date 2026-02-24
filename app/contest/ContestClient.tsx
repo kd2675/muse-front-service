@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import PageShell from "../components/PageShell";
 import TopNav from "../components/TopNav";
 import { setPendingPath, showToast } from "../store/uiSlice";
@@ -13,6 +14,12 @@ import { Skeleton, SkeletonText } from "../components/Skeleton";
 import { getAccessToken, getUserFromToken, isAdminRole } from "../lib/auth";
 import { useBodyScrollLock } from "../lib/useBodyScrollLock";
 import { APP_ROUTES } from "../lib/router";
+import {
+  overlayFadeMotion,
+  popInMotion,
+  staggeredFadeUpMotion,
+} from "../lib/motion";
+import Reveal from "../components/motion/Reveal";
 
 const formatNumber = (value: number) => value.toLocaleString("ko-KR");
 
@@ -133,11 +140,19 @@ function phaseDisplayPriority(phase: string): number {
   return 4;
 }
 
+function subscribeHydration(callback: () => void) {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+  const id = window.requestAnimationFrame(callback);
+  return () => window.cancelAnimationFrame(id);
+}
+
 export default function ContestClient() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const isHydrated = useSyncExternalStore(
-    () => () => undefined,
+    subscribeHydration,
     () => true,
     () => false,
   );
@@ -149,6 +164,8 @@ export default function ContestClient() {
     null,
   );
   const [paymentMethod, setPaymentMethod] = useState("card");
+  const prefersReducedMotion = useReducedMotion();
+  const reduceMotion = Boolean(prefersReducedMotion);
   useBodyScrollLock(paymentStep !== "closed");
   const authUser = isHydrated ? getUserFromToken() : null;
   const isAdmin = isAdminRole(authUser?.role);
@@ -266,10 +283,11 @@ export default function ContestClient() {
             </div>
           )}
 
-          <section
-            id="contest-records-section"
-            className="mt-10 rounded-[28px] border border-[color:var(--line)] bg-white/70 p-10 shadow-[var(--shadow)]"
-          >
+          <Reveal index={0} className="mt-10">
+            <section
+              id="contest-records-section"
+              className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-10 shadow-[var(--shadow)]"
+            >
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
                 <h2 className="font-[var(--font-display)] text-3xl">
@@ -313,14 +331,18 @@ export default function ContestClient() {
             </div>
 
             <div className="mt-8 grid gap-4">
-              {filteredContests.map((contest) => {
+              {filteredContests.map((contest, index) => {
                 const theme = getPhaseTheme(contest.phase);
                 const cardClass = `rounded-[22px] border p-5 ${theme.recordCard}`;
                 const phaseBadgeClass = `rounded-full border px-3 py-1 text-xs ${theme.recordBadge}`;
                 const metaPillClass = `rounded-full border px-3 py-1 ${theme.metaPill}`;
                 const detailLinkClass = `ml-auto rounded-full border px-3 py-1 text-xs transition ${theme.actionButton}`;
                 return (
-                  <article key={contest.id} className={cardClass}>
+                  <motion.article
+                    key={contest.id}
+                    {...staggeredFadeUpMotion(index, reduceMotion)}
+                    className={cardClass}
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
                         <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--muted)]">
@@ -364,7 +386,7 @@ export default function ContestClient() {
                         {contest.phase === "VOTING" ? "전시관 입장" : "상세 보기"}
                       </Link>
                     </div>
-                  </article>
+                  </motion.article>
                 );
               })}
               {filteredContests.length === 0 && (
@@ -375,13 +397,21 @@ export default function ContestClient() {
                 </div>
               )}
             </div>
-          </section>
+            </section>
+          </Reveal>
         </>
       )}
 
-      {paymentStep !== "closed" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-lg rounded-[28px] border border-[color:var(--line)] bg-white p-8 shadow-[var(--shadow)]">
+      <AnimatePresence>
+        {paymentStep !== "closed" && (
+          <motion.div
+            {...overlayFadeMotion(reduceMotion)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          >
+            <motion.div
+              {...popInMotion(reduceMotion)}
+              className="w-full max-w-lg rounded-[28px] border border-[color:var(--line)] bg-white p-8 shadow-[var(--shadow)]"
+            >
             {paymentStep === "payment" && (
               <>
                 <div className="flex items-start justify-between gap-4">
@@ -529,9 +559,10 @@ export default function ContestClient() {
                 )}
               </>
             )}
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageShell>
   );
 }

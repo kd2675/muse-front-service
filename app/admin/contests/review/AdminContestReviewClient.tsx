@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { motion, useReducedMotion } from "motion/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import PageShell from "../../../components/PageShell";
 import TopNav from "../../../components/TopNav";
@@ -15,6 +16,8 @@ import { APP_ROUTES } from "../../../lib/router";
 import { getUserFromToken, isAdminRole } from "../../../lib/auth";
 import { useAppDispatch } from "../../../store/hooks";
 import { showToast } from "../../../store/uiSlice";
+import Reveal from "../../../components/motion/Reveal";
+import { staggeredFadeUpMotion } from "../../../lib/motion";
 import type {
   AdminContest,
   AdminContestEntryReviewStatus,
@@ -208,6 +211,8 @@ export default function AdminContestReviewClient() {
   const searchParams = useSearchParams();
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
+  const prefersReducedMotion = useReducedMotion();
+  const reduceMotion = Boolean(prefersReducedMotion);
   const role = getUserFromToken()?.role;
 
   const [selectedContestId, setSelectedContestId] = useState<number | null>(null);
@@ -379,7 +384,8 @@ export default function AdminContestReviewClient() {
   return (
     <PageShell>
       <TopNav />
-      <section className="mt-10 grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+      <Reveal index={0} className="mt-10">
+      <section className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <aside className="rounded-[28px] border border-[color:var(--line)] bg-white/80 p-6 shadow-[var(--shadow)] xl:sticky xl:top-24 xl:max-h-[calc(100vh-8.5rem)] xl:overflow-y-auto">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -403,12 +409,13 @@ export default function AdminContestReviewClient() {
             </div>
           ) : (
             <div className="mt-6 grid gap-3">
-              {prioritizedContests.map((contest) => {
+              {prioritizedContests.map((contest, index) => {
                 const priority = resolveReviewPriority(contest);
                 const tone = getContestTone(contest.phase);
                 return (
-                  <button
+                  <motion.button
                     key={contest.id}
+                    {...staggeredFadeUpMotion(index + 1, reduceMotion)}
                     className={`rounded-[16px] border px-4 py-3 text-left transition ${
                       activeContestId === contest.id
                         ? "border-[color:var(--accent)] bg-[color:var(--chip)]"
@@ -438,7 +445,7 @@ export default function AdminContestReviewClient() {
                         {isContestReviewWindow(contest) ? "심사 가능" : "심사 불가"}
                       </span>
                     </div>
-                  </button>
+                  </motion.button>
                 );
               })}
               {!isLoading && prioritizedContests.length === 0 && (
@@ -549,9 +556,10 @@ export default function AdminContestReviewClient() {
                 </div>
               ) : (
                 <div className="mt-5 grid max-h-[calc(100vh-22rem)] gap-3 overflow-y-auto pr-1">
-                  {filteredEntries.map((entry) => (
-                    <article
+                {filteredEntries.map((entry, index) => (
+                    <motion.article
                       key={entry.entryId}
+                      {...staggeredFadeUpMotion(index + 8, reduceMotion)}
                       className="rounded-[14px] border border-[color:var(--line)] bg-white p-3"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -627,7 +635,7 @@ export default function AdminContestReviewClient() {
                           </button>
                         ))}
                       </div>
-                    </article>
+                    </motion.article>
                   ))}
 
                   {filteredEntries.length === 0 && (
@@ -649,6 +657,7 @@ export default function AdminContestReviewClient() {
           )}
         </section>
       </section>
+      </Reveal>
       {previewImageUrl && (
         <section className="fixed inset-0 z-[120] bg-[rgba(9,16,24,0.82)] p-4 md:p-8">
           <div className="mx-auto flex h-full w-full max-w-6xl flex-col rounded-[22px] border border-white/20 bg-[rgba(7,11,18,0.94)] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">

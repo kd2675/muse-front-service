@@ -2,11 +2,14 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { motion, useReducedMotion } from "motion/react";
 import { getHomeData } from "../lib/home";
 import TopNav from "../components/TopNav";
 import PageShell from "../components/PageShell";
 import { Skeleton, SkeletonText } from "../components/Skeleton";
+import Reveal from "../components/motion/Reveal";
 import { APP_ROUTES, galleryMuseumDetailRoute } from "../lib/router";
+import { staggeredFadeUpMotion } from "../lib/motion";
 
 const formatNumber = (value: number) => value.toLocaleString("ko-KR");
 const contestDetailRoute = (contestId: number) => `/contest/${contestId}?tab=contest`;
@@ -15,6 +18,8 @@ const museumDetailRoute = (museumId: number) =>
 
 export default function HomeClient() {
   const router = useRouter();
+  const prefersReducedMotion = useReducedMotion();
+  const reduceMotion = Boolean(prefersReducedMotion);
   const { data, isLoading } = useQuery({
     queryKey: ["home"],
     queryFn: getHomeData,
@@ -65,7 +70,8 @@ export default function HomeClient() {
         </main>
       ) : payload ? (
         <main className="mt-12 space-y-16">
-          <section className="relative overflow-hidden rounded-[38px] border border-[rgba(28,26,22,0.12)] bg-[linear-gradient(140deg,#f8f3ea_0%,#fbf8f2_55%,#f0ece2_100%)] p-8 shadow-[var(--shadow)] md:p-10">
+          <Reveal index={0}>
+            <section className="relative overflow-hidden rounded-[38px] border border-[rgba(28,26,22,0.12)] bg-[linear-gradient(140deg,#f8f3ea_0%,#fbf8f2_55%,#f0ece2_100%)] p-8 shadow-[var(--shadow)] md:p-10">
             <div className="pointer-events-none absolute -top-32 -left-14 h-72 w-72 rounded-full bg-[radial-gradient(circle,_rgba(37,88,180,0.17)_0%,_rgba(37,88,180,0)_70%)]" />
             <div className="pointer-events-none absolute -bottom-36 right-0 h-80 w-80 rounded-full bg-[radial-gradient(circle,_rgba(194,123,77,0.15)_0%,_rgba(194,123,77,0)_72%)]" />
             <div className="relative z-10">
@@ -150,9 +156,11 @@ export default function HomeClient() {
                 </div>
               </div>
             </div>
-          </section>
+            </section>
+          </Reveal>
 
-          <section className="rounded-[34px] border border-[rgba(28,26,22,0.14)] bg-white/90 px-7 py-10 shadow-[var(--shadow)] md:px-10">
+          <Reveal index={1}>
+            <section className="rounded-[34px] border border-[rgba(28,26,22,0.14)] bg-white/90 px-7 py-10 shadow-[var(--shadow)] md:px-10">
             <div className="flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
               <div>
                 <p className="text-xs uppercase tracking-[0.35em] text-[#4d6288]">
@@ -183,10 +191,12 @@ export default function HomeClient() {
                 </button>
               </div>
             </div>
-          </section>
+            </section>
+          </Reveal>
 
-          <section>
-            <article className="overflow-hidden rounded-[34px] border border-[rgba(28,26,22,0.12)] bg-white/90 shadow-[var(--shadow)]">
+          <Reveal index={2}>
+            <section>
+              <article className="overflow-hidden rounded-[34px] border border-[rgba(28,26,22,0.12)] bg-white/90 shadow-[var(--shadow)]">
               {heroPick ? (
                 <div
                   className="relative h-full min-h-80 p-7 text-white md:p-9"
@@ -218,11 +228,13 @@ export default function HomeClient() {
                   전시 큐레이션 데이터가 아직 없습니다.
                 </div>
               )}
-            </article>
-          </section>
+              </article>
+            </section>
+          </Reveal>
 
-          <section className="grid gap-6 lg:grid-cols-[1.03fr_0.97fr]">
-            <article className="rounded-[32px] border border-[rgba(28,26,22,0.12)] bg-white/85 p-7 shadow-[var(--shadow)] md:p-8">
+          <Reveal index={3}>
+            <section className="grid gap-6 lg:grid-cols-[1.03fr_0.97fr]">
+              <article className="rounded-[32px] border border-[rgba(28,26,22,0.12)] bg-white/85 p-7 shadow-[var(--shadow)] md:p-8">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.3em] text-[color:var(--muted)]">
@@ -243,9 +255,10 @@ export default function HomeClient() {
               <div className="mt-6 grid gap-4">
                 {featuredMuseums.length > 0 ? (
                   featuredMuseums.map((museum, index) => (
-                    <button
+                    <motion.button
                       key={museum.museumId}
                       type="button"
+                      {...staggeredFadeUpMotion(index + 2, reduceMotion)}
                       className="group flex cursor-pointer items-center justify-between rounded-[20px] border border-[rgba(28,26,22,0.1)] bg-white px-4 py-4 text-left transition hover:border-[rgba(29,77,167,0.34)] hover:shadow-[0_10px_24px_rgba(29,77,167,0.12)]"
                       onClick={() => router.push(museumDetailRoute(museum.museumId))}
                     >
@@ -265,7 +278,7 @@ export default function HomeClient() {
                       <p className="text-xs text-[color:var(--muted)]">
                         {formatNumber(museum.artworkCount)} works
                       </p>
-                    </button>
+                    </motion.button>
                   ))
                 ) : (
                   <div className="rounded-[20px] border border-dashed border-[color:var(--line)] bg-white/60 px-5 py-6 text-sm text-[color:var(--muted)]">
@@ -273,9 +286,9 @@ export default function HomeClient() {
                   </div>
                 )}
               </div>
-            </article>
+              </article>
 
-            <article className="rounded-[32px] border border-[rgba(23,57,119,0.24)] bg-[linear-gradient(160deg,#f3f7ff_0%,#eef3fd_55%,#e8eefb_100%)] p-7 shadow-[0_18px_44px_rgba(23,57,119,0.14)] md:p-8">
+              <article className="rounded-[32px] border border-[rgba(23,57,119,0.24)] bg-[linear-gradient(160deg,#f3f7ff_0%,#eef3fd_55%,#e8eefb_100%)] p-7 shadow-[0_18px_44px_rgba(23,57,119,0.14)] md:p-8">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.3em] text-[#34569a]">
@@ -295,10 +308,11 @@ export default function HomeClient() {
               </div>
               <div className="mt-6 grid gap-4">
                 {activeContests.length > 0 ? (
-                  activeContests.map((contest) => (
-                    <button
+                  activeContests.map((contest, index) => (
+                    <motion.button
                       key={contest.id}
                       type="button"
+                      {...staggeredFadeUpMotion(index + 8, reduceMotion)}
                       className="group cursor-pointer rounded-[20px] border border-[rgba(23,57,119,0.16)] bg-white/90 p-5 text-left transition hover:border-[rgba(29,77,167,0.42)] hover:shadow-[0_10px_26px_rgba(23,57,119,0.17)]"
                       onClick={() => router.push(contestDetailRoute(contest.id))}
                     >
@@ -324,7 +338,7 @@ export default function HomeClient() {
                           상금풀 {formatNumber(contest.prizePool)}원
                         </p>
                       </div>
-                    </button>
+                    </motion.button>
                   ))
                 ) : (
                   <article
@@ -334,8 +348,9 @@ export default function HomeClient() {
                   </article>
                 )}
               </div>
-            </article>
-          </section>
+              </article>
+            </section>
+          </Reveal>
 
         </main>
       ) : (

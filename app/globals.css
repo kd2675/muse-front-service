@@ -10,6 +10,8 @@
   --chip: rgba(12, 60, 60, 0.08);
   --skeleton: rgba(12, 60, 60, 0.18);
   --shadow: 0 24px 60px rgba(18, 16, 12, 0.12);
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, "Times New Roman", serif;
+  --font-body: "Avenir Next", "Pretendard", "Noto Sans KR", "Segoe UI", system-ui, sans-serif;
 }
 
 @theme inline {

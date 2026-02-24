@@ -24,7 +24,6 @@ export default function Loading() {
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
             <div
-              // eslint-disable-next-line react/no-array-index-key
               key={index}
               className="skeleton h-52 rounded-[24px]"
             />

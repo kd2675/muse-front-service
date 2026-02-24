@@ -22,7 +22,6 @@ export function SkeletonText({
     <div className={`grid gap-2 ${className}`}>
       {Array.from({ length: lines }).map((_, index) => (
         <Skeleton
-          // eslint-disable-next-line react/no-array-index-key
           key={index}
           className={`h-3 ${index === lines - 1 ? "w-3/5" : "w-full"} rounded-full`}
         />

@@ -3,8 +3,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import PageShell from "../../components/PageShell";
 import TopNav from "../../components/TopNav";
+import Reveal from "../../components/motion/Reveal";
 import { Skeleton, SkeletonText } from "../../components/Skeleton";
 import {
   getContestDetail,
@@ -17,6 +19,11 @@ import {
 } from "../../lib/contest";
 import { uploadImage, type ImageUploadResult } from "../../lib/imageUpload";
 import { getAccessToken } from "../../lib/auth";
+import {
+  overlayFadeMotion,
+  popInMotion,
+  staggeredFadeUpMotion,
+} from "../../lib/motion";
 import { useBodyScrollLock } from "../../lib/useBodyScrollLock";
 import { useAppDispatch } from "../../store/hooks";
 import { setPendingPath, showToast } from "../../store/uiSlice";
@@ -261,6 +268,8 @@ const phaseTone: Record<ContestPhaseKey, PhaseTone> = {
 };
 
 export default function ContestDetailClient({ id }: ContestDetailClientProps) {
+  const prefersReducedMotion = useReducedMotion();
+  const reduceMotion = Boolean(prefersReducedMotion);
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
 
@@ -542,78 +551,86 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
             const isVotingEntry = pendingVoteEntryId === entry.entryId;
             const focusGalleryHref = `/contest/${id}/gallery?tab=contest&entryId=${entry.entryId}`;
             return (
-              <article
+              <motion.article
                 key={entry.entryId}
-                className="phase-voting-card overflow-hidden rounded-[22px] border border-[rgba(123,91,52,0.28)] bg-[rgba(255,252,247,0.97)] shadow-[0_12px_24px_rgba(94,68,39,0.08)] grid gap-0 md:grid-cols-[1.15fr_0.85fr]"
+                initial={{ opacity: reduceMotion ? 1 : 0, y: reduceMotion ? 0 : 28 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.16, margin: "0px 0px -8% 0px" }}
+                transition={{
+                  duration: reduceMotion ? 0.01 : 0.42,
+                  ease: "easeOut",
+                  delay: reduceMotion ? 0 : Math.min(index * 0.07, 0.42),
+                }}
+                className="overflow-hidden rounded-[22px] border border-[rgba(123,91,52,0.28)] bg-[rgba(255,252,247,0.97)] shadow-[0_12px_24px_rgba(94,68,39,0.08)] grid gap-0 md:grid-cols-[1.15fr_0.85fr]"
               >
-                <Link
-                  href={focusGalleryHref}
-                  className="group block border-b border-[rgba(123,91,52,0.2)] md:border-r md:border-b-0"
-                >
-                  <div className="relative h-[260px] md:h-[340px] lg:h-[380px] xl:h-[420px]">
-                    {entry.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={entry.imageUrl}
-                        alt={entry.title ?? "contest entry"}
-                        className="h-full w-full object-cover object-center transition duration-500 group-hover:scale-[1.02]"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-[color:var(--chip)] text-sm text-[color:var(--muted)]">
-                        이미지 없음
+                  <Link
+                    href={focusGalleryHref}
+                    className="group block border-b border-[rgba(123,91,52,0.2)] md:border-r md:border-b-0"
+                  >
+                    <div className="relative h-[260px] md:h-[340px] lg:h-[380px] xl:h-[420px]">
+                      {entry.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={entry.imageUrl}
+                          alt={entry.title ?? "contest entry"}
+                          className="h-full w-full object-cover object-center transition duration-500 group-hover:scale-[1.02]"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center bg-[color:var(--chip)] text-sm text-[color:var(--muted)]">
+                          이미지 없음
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(29,19,11,0.42)_0%,rgba(29,19,11,0.08)_58%)]" />
+                      <div className="absolute right-4 bottom-4 left-4 flex items-end justify-between gap-3">
+                        <p className="text-[10px] uppercase tracking-[0.28em] text-[#f5e7ce]">
+                          EXHIBIT {String(index + 1).padStart(2, "0")}
+                        </p>
                       </div>
-                    )}
-                    <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(29,19,11,0.42)_0%,rgba(29,19,11,0.08)_58%)]" />
-                    <div className="absolute right-4 bottom-4 left-4 flex items-end justify-between gap-3">
-                      <p className="text-[10px] uppercase tracking-[0.28em] text-[#f5e7ce]">
-                        EXHIBIT {String(index + 1).padStart(2, "0")}
+                    </div>
+                  </Link>
+
+                  <div className="px-5 py-5 md:px-6 md:py-6">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-[var(--font-display)] text-3xl leading-tight text-[#3f2a17]">
+                          {entry.title ?? "Untitled"}
+                        </h3>
+                        <p className="mt-2 text-sm text-[#7a6042]">
+                          {entry.artistName}
+                        </p>
+                        <p className="mt-1 text-xs text-[#8b6d4b]">
+                          접수 시각 {entry.submittedAt}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 border-t border-[rgba(123,91,52,0.18)] pt-4">
+                      <p className="text-[10px] uppercase tracking-[0.26em] text-[#8b6742]">
+                        Exhibition Record
+                      </p>
+                      <p className="mt-2 text-sm leading-relaxed text-[#6e5639]">
+                        전시 기록 순번 {String(index + 1).padStart(2, "0")}번 작품입니다.
+                        감상 후 집중 갤러리로 이동하거나 바로 투표할 수 있습니다.
                       </p>
                     </div>
-                  </div>
-                </Link>
 
-                <div className="px-5 py-5 md:px-6 md:py-6">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-[var(--font-display)] text-3xl leading-tight text-[#3f2a17]">
-                        {entry.title ?? "Untitled"}
-                      </h3>
-                      <p className="mt-2 text-sm text-[#7a6042]">
-                        {entry.artistName}
-                      </p>
-                      <p className="mt-1 text-xs text-[#8b6d4b]">
-                        접수 시각 {entry.submittedAt}
-                      </p>
+                    <div className="mt-5 grid gap-2 sm:grid-cols-2">
+                      <Link
+                        href={focusGalleryHref}
+                        className="rounded-full border border-[rgba(123,91,52,0.32)] bg-white/92 px-3 py-2 text-center text-xs text-[#7f5c34] transition hover:bg-[rgba(255,247,233,0.95)]"
+                      >
+                        집중 감상으로 이동
+                      </Link>
+                      <button
+                        className="rounded-full border border-[rgba(123,91,52,0.36)] bg-[rgba(255,245,228,0.9)] px-3 py-2 text-sm text-[#6f4f2d] transition hover:bg-[rgba(250,236,211,0.95)] disabled:opacity-60"
+                        onClick={() => voteMutation.mutate(entry.entryId)}
+                        disabled={Boolean(pendingVoteEntryId) || !canVote}
+                      >
+                        {!canVote ? "로그인 후 투표 가능" : isVotingEntry ? "투표 중..." : "이 작품에 투표"}
+                      </button>
                     </div>
                   </div>
-
-                  <div className="mt-4 border-t border-[rgba(123,91,52,0.18)] pt-4">
-                    <p className="text-[10px] uppercase tracking-[0.26em] text-[#8b6742]">
-                      Exhibition Record
-                    </p>
-                    <p className="mt-2 text-sm leading-relaxed text-[#6e5639]">
-                      전시 기록 순번 {String(index + 1).padStart(2, "0")}번 작품입니다.
-                      감상 후 집중 갤러리로 이동하거나 바로 투표할 수 있습니다.
-                    </p>
-                  </div>
-
-                  <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                    <Link
-                      href={focusGalleryHref}
-                      className="rounded-full border border-[rgba(123,91,52,0.32)] bg-white/92 px-3 py-2 text-center text-xs text-[#7f5c34] transition hover:bg-[rgba(255,247,233,0.95)]"
-                    >
-                      집중 감상으로 이동
-                    </Link>
-                    <button
-                      className="rounded-full border border-[rgba(123,91,52,0.36)] bg-[rgba(255,245,228,0.9)] px-3 py-2 text-sm text-[#6f4f2d] transition hover:bg-[rgba(250,236,211,0.95)] disabled:opacity-60"
-                      onClick={() => voteMutation.mutate(entry.entryId)}
-                      disabled={Boolean(pendingVoteEntryId) || !canVote}
-                    >
-                      {!canVote ? "로그인 후 투표 가능" : isVotingEntry ? "투표 중..." : "이 작품에 투표"}
-                    </button>
-                  </div>
-                </div>
-              </article>
+              </motion.article>
             );
           })}
         </div>
@@ -622,7 +639,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
 
     return (
       <div className={`mt-5 grid gap-4 ${compact ? "md:grid-cols-3" : "sm:grid-cols-2"}`}>
-        {visibleEntries.map((entry) => {
+        {visibleEntries.map((entry, index) => {
           const isPrivateBeforeExhibition = mode === "UPCOMING" || mode === "SUBMISSION" || mode === "REVIEW";
           const showVoteCountBadge = mode === "ENDED";
           const currentRank = rankMap.get(entry.entryId);
@@ -636,16 +653,16 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                   ? "border-[rgba(123,91,52,0.28)] bg-[rgba(252,248,241,0.92)]"
                   : "border-[rgba(11,91,91,0.26)] bg-[rgba(245,252,251,0.92)]";
           const motionClass =
-            mode === "UPCOMING"
-              ? "phase-upcoming-card transition duration-300 hover:-translate-y-0.5"
-              : mode === "SUBMISSION"
-                ? "phase-submission-card transition duration-250 hover:-translate-y-0.5"
-                : mode === "REVIEW"
-                  ? "phase-upcoming-card transition duration-250 hover:-translate-y-0.5"
-                  : "phase-ended-card transition duration-300 hover:-translate-y-0.5";
+            mode === "SUBMISSION" || mode === "REVIEW"
+              ? "transition duration-250 hover:-translate-y-0.5"
+              : "transition duration-300 hover:-translate-y-0.5";
 
           return (
-            <article key={entry.entryId} className={`overflow-hidden rounded-[18px] border ${cardClass} ${motionClass}`}>
+            <motion.article
+              key={entry.entryId}
+              {...staggeredFadeUpMotion(index + 2, reduceMotion)}
+              className={`overflow-hidden rounded-[18px] border ${cardClass} ${motionClass}`}
+            >
               {isPrivateBeforeExhibition ? null : (
                 <div className="relative">
                   {entry.imageUrl ? (
@@ -694,7 +711,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                       : "전시 아카이브"}
                 </div>
               </div>
-            </article>
+            </motion.article>
           );
         })}
       </div>
@@ -990,7 +1007,8 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
     if (isUpcomingPhase) {
       return (
         <>
-          <section className="phase-upcoming-page phase-upcoming-enter relative mt-10 overflow-hidden rounded-[34px] p-6 md:p-10">
+          <Reveal index={0}>
+          <section className="phase-upcoming-page relative mt-10 overflow-hidden rounded-[34px] p-6 md:p-10">
             <div className="relative z-10 grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
               <article className="rounded-[28px] border border-[rgba(181,119,76,0.22)] bg-[rgba(255,252,247,0.94)] p-6 shadow-[0_16px_32px_rgba(92,66,37,0.09)] md:p-8">
                 <p className="inline-flex rounded-full border border-[rgba(181,119,76,0.35)] bg-white px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-[#825735]">
@@ -1002,12 +1020,16 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                 </p>
                 <p className="mt-3 text-sm text-[#7d5838]">{phaseInfo.note}</p>
                 <div className="mt-7 grid gap-3 sm:grid-cols-3">
-                  {phaseActionBoard.UPCOMING.map((item) => (
-                    <article key={`upcoming-head-${item.kicker}`} className="rounded-[16px] border border-[rgba(181,119,76,0.2)] bg-white/90 p-4">
+                  {phaseActionBoard.UPCOMING.map((item, index) => (
+                    <motion.article
+                      key={`upcoming-head-${item.kicker}`}
+                      {...staggeredFadeUpMotion(index + 1, reduceMotion)}
+                      className="rounded-[16px] border border-[rgba(181,119,76,0.2)] bg-white/90 p-4"
+                    >
                       <p className="text-[10px] uppercase tracking-[0.26em] text-[#9b6a3e]">{item.kicker}</p>
                       <p className="mt-1 text-sm font-semibold text-[#3f2c1c]">{item.title}</p>
                       <p className="mt-1 text-xs text-[#715640]">{item.description}</p>
-                    </article>
+                    </motion.article>
                   ))}
                 </div>
               </article>
@@ -1046,7 +1068,9 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
               </aside>
             </div>
           </section>
+          </Reveal>
 
+          <Reveal index={1}>
           <section className="mt-8 grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
             <article
               id="upcoming-rulebook"
@@ -1075,6 +1099,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
               {renderEntryGrid("UPCOMING", "비공개 대기 중인 출품작이 없습니다.", 6, { compact: true })}
             </article>
           </section>
+          </Reveal>
         </>
       );
     }
@@ -1082,7 +1107,8 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
     if (isSubmissionPhase) {
       return (
         <>
-          <section className="phase-submission-page phase-submission-enter relative mt-10 overflow-hidden rounded-[34px] p-6 md:p-10">
+          <Reveal index={0}>
+          <section className="phase-submission-page relative mt-10 overflow-hidden rounded-[34px] p-6 md:p-10">
             <div className="relative z-10">
               <header className="rounded-[26px] border border-[rgba(12,105,97,0.24)] bg-[rgba(244,255,252,0.92)] p-6 shadow-[0_16px_32px_rgba(12,75,71,0.1)] md:p-8">
                 <p className="inline-flex rounded-full border border-[rgba(12,105,97,0.32)] bg-white px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-[#0b5f58]">
@@ -1131,18 +1157,24 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
               </div>
             </div>
           </section>
+          </Reveal>
 
+          <Reveal index={1}>
           <section className="mt-8 grid gap-6 2xl:grid-cols-[0.86fr_1.18fr_0.96fr]">
             <article className="rounded-[30px] border border-[rgba(12,105,97,0.22)] bg-[rgba(244,255,252,0.9)] p-8 shadow-[var(--shadow)]">
               <h2 className="font-[var(--font-display)] text-3xl text-[#103f3b]">Operations Queue</h2>
               <p className="mt-2 text-sm text-[#2f6f68]">제출부터 공개 대기까지 운영 흐름을 체크하세요.</p>
               <div className="mt-5 grid gap-3">
-                {phaseActionBoard.SUBMISSION.map((item) => (
-                  <article key={`submission-ops-${item.kicker}`} className="phase-submission-card rounded-[16px] border border-[rgba(12,105,97,0.22)] bg-white/90 p-4">
+                {phaseActionBoard.SUBMISSION.map((item, index) => (
+                  <motion.article
+                    key={`submission-ops-${item.kicker}`}
+                    {...staggeredFadeUpMotion(index + 2, reduceMotion)}
+                    className="rounded-[16px] border border-[rgba(12,105,97,0.22)] bg-white/90 p-4"
+                  >
                     <p className="text-[10px] uppercase tracking-[0.26em] text-[#0d7469]">{item.kicker}</p>
                     <p className="mt-1 text-sm font-semibold text-[#1b4d48]">{item.title}</p>
                     <p className="mt-1 text-xs text-[#3d756f]">{item.description}</p>
-                  </article>
+                  </motion.article>
                 ))}
               </div>
             </article>
@@ -1158,6 +1190,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
               </article>
             </aside>
           </section>
+          </Reveal>
         </>
       );
     }
@@ -1165,7 +1198,8 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
     if (isReviewPhase) {
       return (
         <>
-          <section className="phase-submission-page phase-submission-enter relative mt-10 overflow-hidden rounded-[34px] p-6 md:p-10">
+          <Reveal index={0}>
+          <section className="phase-submission-page relative mt-10 overflow-hidden rounded-[34px] p-6 md:p-10">
             <div className="relative z-10">
               <header className="rounded-[26px] border border-[rgba(153,127,48,0.26)] bg-[rgba(255,251,237,0.93)] p-6 shadow-[0_16px_32px_rgba(104,82,22,0.1)] md:p-8">
                 <p className="inline-flex rounded-full border border-[rgba(153,127,48,0.34)] bg-white px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-[#6f5714]">
@@ -1209,18 +1243,24 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
               </div>
             </div>
           </section>
+          </Reveal>
 
+          <Reveal index={1}>
           <section className="mt-8 grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
             <article className="rounded-[30px] border border-[rgba(153,127,48,0.24)] bg-[rgba(255,251,240,0.92)] p-8 shadow-[var(--shadow)]">
               <h2 className="font-[var(--font-display)] text-3xl text-[#4f3d0d]">Review Checklist</h2>
               <p className="mt-2 text-sm text-[#6b5620]">전시 공개 전 심사 상태를 확정하세요.</p>
               <div className="mt-5 grid gap-3">
-                {phaseActionBoard.REVIEW.map((item) => (
-                  <article key={`review-ops-${item.kicker}`} className="rounded-[16px] border border-[rgba(153,127,48,0.22)] bg-white/92 p-4">
+                {phaseActionBoard.REVIEW.map((item, index) => (
+                  <motion.article
+                    key={`review-ops-${item.kicker}`}
+                    {...staggeredFadeUpMotion(index + 2, reduceMotion)}
+                    className="rounded-[16px] border border-[rgba(153,127,48,0.22)] bg-white/92 p-4"
+                  >
                     <p className="text-[10px] uppercase tracking-[0.26em] text-[#866a1d]">{item.kicker}</p>
                     <p className="mt-1 text-sm font-semibold text-[#5f4910]">{item.title}</p>
                     <p className="mt-1 text-xs text-[#7a6428]">{item.description}</p>
-                  </article>
+                  </motion.article>
                 ))}
               </div>
             </article>
@@ -1234,6 +1274,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
               </article>
             </aside>
           </section>
+          </Reveal>
         </>
       );
     }
@@ -1241,7 +1282,8 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
     if (isVotingPhase) {
       return (
         <>
-          <section className="phase-voting-page phase-voting-enter relative mt-10 overflow-hidden rounded-[34px] p-6 md:p-10">
+          <Reveal index={0}>
+          <section className="phase-voting-page relative mt-10 overflow-hidden rounded-[34px] p-6 md:p-10">
             <div className="relative z-10">
               <header
                 id="voting-gallery"
@@ -1287,10 +1329,14 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                 <article className="rounded-[24px] border border-[rgba(123,91,52,0.28)] bg-[rgba(255,251,244,0.92)] p-6 shadow-[0_14px_30px_rgba(94,68,39,0.1)]">
                   <h2 className="font-[var(--font-display)] text-2xl text-[#4f3621]">Exhibition Notes</h2>
                   <ul className="mt-4 grid gap-2 text-sm text-[#7a6042]">
-                    {(contest?.rules ?? []).map((rule) => (
-                      <li key={rule} className="rounded-[12px] border border-[rgba(123,91,52,0.25)] bg-white/92 px-3 py-2">
+                    {(contest?.rules ?? []).map((rule, index) => (
+                      <motion.li
+                        key={rule}
+                        {...staggeredFadeUpMotion(index + 1, reduceMotion)}
+                        className="rounded-[12px] border border-[rgba(123,91,52,0.25)] bg-white/92 px-3 py-2"
+                      >
                         {rule}
-                      </li>
+                      </motion.li>
                     ))}
                   </ul>
                   {!hasToken && (
@@ -1321,6 +1367,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
               </section>
             </div>
           </section>
+          </Reveal>
         </>
       );
     }
@@ -1328,7 +1375,8 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
     const winnerShowcase = topWinners.length > 0 ? topWinners : ranking.slice(0, 3);
     return (
       <>
-        <section className="phase-ended-page phase-ended-enter relative mt-10 overflow-hidden rounded-[34px] p-6 md:p-10">
+        <Reveal index={0}>
+        <section className="phase-ended-page relative mt-10 overflow-hidden rounded-[34px] p-6 md:p-10">
           <div className="relative z-10">
             <header className="rounded-[26px] border border-[rgba(120,88,52,0.24)] bg-[rgba(252,248,241,0.92)] p-6 shadow-[0_16px_32px_rgba(74,53,30,0.1)] md:p-8">
               <p className="inline-flex rounded-full border border-[rgba(120,88,52,0.34)] bg-white px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-[#6f4f2d]">
@@ -1366,7 +1414,9 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
             </div>
           </div>
         </section>
+        </Reveal>
 
+        <Reveal index={1}>
         <section className="mt-8 grid gap-6 xl:grid-cols-[1.12fr_0.88fr]">
           <article className="rounded-[30px] border border-[rgba(120,88,52,0.24)] bg-[rgba(252,248,241,0.92)] p-8 shadow-[var(--shadow)]">
             <h2 className="font-[var(--font-display)] text-3xl text-[#352614]">Archive Gallery</h2>
@@ -1378,12 +1428,16 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
             <article id="ended-winners" className="rounded-[30px] border border-[rgba(120,88,52,0.24)] bg-[rgba(252,248,241,0.92)] p-8 shadow-[var(--shadow)]">
               <h2 className="font-[var(--font-display)] text-2xl text-[#352614]">Winner Snapshot</h2>
               <div className="mt-4 grid gap-3">
-                {winnerShowcase.map((winner) => (
-                  <div key={winner.entryId} className="rounded-[14px] border border-[rgba(120,88,52,0.2)] bg-white/90 p-4">
+                {winnerShowcase.map((winner, index) => (
+                  <motion.div
+                    key={winner.entryId}
+                    {...staggeredFadeUpMotion(index + 1, reduceMotion)}
+                    className="rounded-[14px] border border-[rgba(120,88,52,0.2)] bg-white/90 p-4"
+                  >
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#7d5e3d]">{winner.rank}위</p>
                     <p className="mt-1 text-sm font-semibold text-[#352614]">{winner.title ?? "Untitled"}</p>
                     <p className="mt-1 text-xs text-[#6f573e]">{winner.artistName} · {winner.voteCount}표</p>
-                  </div>
+                  </motion.div>
                 ))}
                 {winnerShowcase.length === 0 && (
                   <div className="rounded-[14px] border border-[rgba(120,88,52,0.2)] bg-white/90 px-4 py-3 text-sm text-[#6f573e]">
@@ -1398,15 +1452,20 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
             <article className="rounded-[30px] border border-[rgba(120,88,52,0.24)] bg-[rgba(252,248,241,0.92)] p-8 shadow-[var(--shadow)]">
               <h2 className="font-[var(--font-display)] text-2xl text-[#352614]">Post Season Notes</h2>
               <ul className="mt-4 grid gap-2 text-sm text-[#634a31]">
-                {phaseActionBoard.ENDED.map((item) => (
-                  <li key={`ended-${item.kicker}`} className="rounded-[12px] border border-[rgba(120,88,52,0.2)] bg-white/90 px-3 py-2">
+                {phaseActionBoard.ENDED.map((item, index) => (
+                  <motion.li
+                    key={`ended-${item.kicker}`}
+                    {...staggeredFadeUpMotion(index + 6, reduceMotion)}
+                    className="rounded-[12px] border border-[rgba(120,88,52,0.2)] bg-white/90 px-3 py-2"
+                  >
                     {item.title} - {item.description}
-                  </li>
+                  </motion.li>
                 ))}
               </ul>
             </article>
           </aside>
         </section>
+        </Reveal>
       </>
     );
   };
@@ -1446,9 +1505,16 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
         </>
       )}
 
-      {paymentStep !== "closed" && contest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-lg rounded-[28px] border border-[color:var(--line)] bg-white p-8 shadow-[var(--shadow)]">
+      <AnimatePresence>
+        {paymentStep !== "closed" && contest && (
+          <motion.div
+            {...overlayFadeMotion(reduceMotion)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          >
+            <motion.div
+              {...popInMotion(reduceMotion)}
+              className="w-full max-w-lg rounded-[28px] border border-[color:var(--line)] bg-white p-8 shadow-[var(--shadow)]"
+            >
             {paymentStep === "payment" && (
               <>
                 <div className="flex items-start justify-between gap-4">
@@ -1563,9 +1629,10 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                 </button>
               </>
             )}
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style jsx>{`
         .phase-upcoming-page,
@@ -1636,22 +1703,10 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
           opacity: 0.9;
         }
 
-        .phase-upcoming-enter {
-          animation: upcoming-enter 520ms ease both;
-        }
-        .phase-upcoming-card {
-          animation: upcoming-card 360ms ease both;
-        }
         .phase-upcoming-button {
           box-shadow: 0 6px 16px rgba(194, 123, 77, 0.14);
         }
 
-        .phase-submission-enter {
-          animation: submission-enter 360ms ease both;
-        }
-        .phase-submission-card {
-          animation: submission-card 280ms ease both;
-        }
         .phase-submission-button {
           transform-origin: center;
         }
@@ -1659,122 +1714,12 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
           transform: translateY(-1px) scale(1.01);
         }
 
-        .phase-voting-enter {
-          animation: voting-enter 320ms ease both;
-        }
-        .phase-voting-card {
-          animation: voting-card 240ms ease both;
-        }
         .phase-voting-button:hover {
           box-shadow: 0 8px 20px rgba(108, 77, 43, 0.2);
         }
 
-        .phase-ended-enter {
-          animation: ended-enter 560ms ease both;
-        }
-        .phase-ended-card {
-          animation: ended-card 420ms ease both;
-        }
         .phase-ended-button:hover {
           filter: brightness(1.05);
-        }
-
-        @keyframes upcoming-enter {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-            filter: blur(2px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-            filter: blur(0);
-          }
-        }
-        @keyframes upcoming-card {
-          from {
-            opacity: 0;
-            transform: translateY(12px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes submission-enter {
-          from {
-            opacity: 0;
-            transform: translateX(-6px);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0);
-          }
-        }
-        @keyframes submission-card {
-          from {
-            opacity: 0;
-            transform: translateY(6px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes voting-enter {
-          from {
-            opacity: 0;
-            transform: translateY(6px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes voting-card {
-          from {
-            opacity: 0;
-            transform: translateY(6px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes ended-enter {
-          from {
-            opacity: 0;
-            transform: translateY(8px);
-            filter: saturate(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-            filter: saturate(1);
-          }
-        }
-        @keyframes ended-card {
-          from {
-            opacity: 0;
-            transform: translateY(6px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .phase-upcoming-enter,
-          .phase-upcoming-card,
-          .phase-submission-enter,
-          .phase-submission-card,
-          .phase-voting-enter,
-          .phase-voting-card,
-          .phase-ended-enter,
-          .phase-ended-card {
-            animation: none !important;
-          }
         }
       `}</style>
     </PageShell>

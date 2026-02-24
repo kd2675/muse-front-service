@@ -1,7 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import PageShell from "../../components/PageShell";
 import TopNav from "../../components/TopNav";
@@ -19,6 +21,8 @@ import {
 import { uploadImage } from "../../lib/imageUpload";
 import { useAppDispatch } from "../../store/hooks";
 import { showToast } from "../../store/uiSlice";
+import Reveal from "../../components/motion/Reveal";
+import { staggeredFadeUpMotion } from "../../lib/motion";
 
 type MuseumFormState = {
   name: string;
@@ -46,6 +50,8 @@ export default function MyMuseumClient() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
+  const prefersReducedMotion = useReducedMotion();
+  const reduceMotion = Boolean(prefersReducedMotion);
   const authUser = getUserFromToken();
   const isLoggedIn = !!authUser;
   const [selectedMuseumId, setSelectedMuseumId] = useState<number | null>(null);
@@ -298,7 +304,8 @@ export default function MyMuseumClient() {
   return (
     <PageShell>
       <TopNav />
-      <section className="mt-8 grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+      <Reveal index={0} className="mt-8">
+      <section className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <aside className="space-y-5">
           <article className="rounded-[24px] border border-[color:var(--line)] bg-white/80 p-5 shadow-[var(--shadow)]">
             <h2 className="font-[var(--font-display)] text-2xl">내 뮤지엄</h2>
@@ -313,10 +320,11 @@ export default function MyMuseumClient() {
               </div>
             ) : (
               <div className="mt-4 space-y-2">
-                {museums.map((museum) => (
-                  <button
+                {museums.map((museum, index) => (
+                  <motion.button
                     type="button"
                     key={museum.museumId}
+                    {...staggeredFadeUpMotion(index + 1, reduceMotion)}
                     onClick={() => setSelectedMuseumId(museum.museumId)}
                     className={`w-full rounded-[14px] border px-4 py-3 text-left text-sm cursor-pointer transition hover:brightness-95 ${
                       museum.museumId === activeSelectedMuseumId
@@ -328,7 +336,7 @@ export default function MyMuseumClient() {
                     <p className="mt-1 text-xs text-[color:var(--muted)]">
                       작품 {museum.artworkCount}점 · {museum.isPublic ? "공개" : "비공개"}
                     </p>
-                  </button>
+                  </motion.button>
                 ))}
                 {museums.length === 0 && (
                   <p className="rounded-[14px] border border-[color:var(--line)] bg-white px-4 py-4 text-sm text-[color:var(--muted)]">
@@ -535,16 +543,22 @@ export default function MyMuseumClient() {
                   </div>
                 ) : artworks.length > 0 ? (
                   <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                    {artworks.map((artwork) => (
-                      <article
+                    {artworks.map((artwork, index) => (
+                      <motion.article
                         key={artwork.museumArtworkId}
+                        {...staggeredFadeUpMotion(index + 8, reduceMotion)}
                         className="overflow-hidden rounded-[16px] border border-[color:var(--line)] bg-white"
                       >
-                        <img
-                          src={artwork.imageUrl}
-                          alt={artwork.title}
-                          className="h-40 w-full object-cover"
-                        />
+                        <div className="relative h-40 w-full">
+                          <Image
+                            src={artwork.imageUrl}
+                            alt={artwork.title}
+                            fill
+                            unoptimized
+                            sizes="(max-width: 768px) 100vw, 50vw"
+                            className="object-cover"
+                          />
+                        </div>
                         <div className="p-4">
                           <h4 className="font-medium">{artwork.title}</h4>
                           <p className="mt-1 text-xs text-[color:var(--muted)]">
@@ -570,7 +584,7 @@ export default function MyMuseumClient() {
                             삭제
                           </button>
                         </div>
-                      </article>
+                      </motion.article>
                     ))}
                   </div>
                 ) : (
@@ -586,6 +600,7 @@ export default function MyMuseumClient() {
           </article>
         </div>
       </section>
+      </Reveal>
     </PageShell>
   );
 }

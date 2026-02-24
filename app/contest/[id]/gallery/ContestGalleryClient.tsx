@@ -1,14 +1,17 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import PageShell from "../../../components/PageShell";
 import TopNav from "../../../components/TopNav";
+import Reveal from "../../../components/motion/Reveal";
 import { Skeleton, SkeletonText } from "../../../components/Skeleton";
 import { getAccessToken } from "../../../lib/auth";
 import { getContestDetail, getContestEntries, voteContestEntry } from "../../../lib/contest";
+import { overlayFadeMotion, popInMotion, staggeredFadeUpMotion } from "../../../lib/motion";
 import { useBodyScrollLock } from "../../../lib/useBodyScrollLock";
 import { useAppDispatch } from "../../../store/hooks";
 import { setPendingPath, showToast } from "../../../store/uiSlice";
@@ -18,6 +21,8 @@ type ContestGalleryClientProps = {
 };
 
 export default function ContestGalleryClient({ id }: ContestGalleryClientProps) {
+  const prefersReducedMotion = useReducedMotion();
+  const reduceMotion = Boolean(prefersReducedMotion);
   const searchParams = useSearchParams();
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
@@ -123,7 +128,8 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
       <TopNav />
 
       {(contestLoading || entriesLoading) && (
-        <section className="mt-10 rounded-[32px] border border-[rgba(149,128,102,0.22)] bg-[linear-gradient(180deg,rgba(255,253,249,0.98)_0%,rgba(250,246,239,0.98)_100%)] p-8 shadow-[0_24px_48px_rgba(79,58,34,0.1)] md:p-10">
+        <Reveal index={0} className="mt-10">
+        <section className="rounded-[32px] border border-[rgba(149,128,102,0.22)] bg-[linear-gradient(180deg,rgba(255,253,249,0.98)_0%,rgba(250,246,239,0.98)_100%)] p-8 shadow-[0_24px_48px_rgba(79,58,34,0.1)] md:p-10">
           <Skeleton className="h-5 w-36 rounded-full" />
           <Skeleton className="mt-4 h-12 w-2/3 rounded-[16px]" />
           <SkeletonText className="mt-4 max-w-xl" lines={2} />
@@ -137,6 +143,7 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
             </div>
           </div>
         </section>
+        </Reveal>
       )}
 
       {!contestLoading && !entriesLoading && (
@@ -149,7 +156,8 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
           )}
 
           {contest && !isVoting && (
-            <section className="mt-10 rounded-[32px] border border-[rgba(149,128,102,0.22)] bg-[linear-gradient(180deg,rgba(255,253,249,0.98)_0%,rgba(250,246,239,0.98)_100%)] p-8 shadow-[0_24px_48px_rgba(79,58,34,0.1)] md:p-10">
+            <Reveal index={1} className="mt-10">
+            <section className="rounded-[32px] border border-[rgba(149,128,102,0.22)] bg-[linear-gradient(180deg,rgba(255,253,249,0.98)_0%,rgba(250,246,239,0.98)_100%)] p-8 shadow-[0_24px_48px_rgba(79,58,34,0.1)] md:p-10">
               <p className="text-[10px] uppercase tracking-[0.3em] text-[#8a6a47]">Curated Exhibition</p>
               <h2 className="mt-4 font-[var(--font-display)] text-4xl text-[#2c2014]">전시 세션 준비 중</h2>
               <p className="mt-3 text-sm text-[#5f4a35]">
@@ -170,11 +178,13 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
                 </Link>
               </div>
             </section>
+            </Reveal>
           )}
 
           {contest && isVoting && (
             <>
-              <section className="mt-10 rounded-[34px] border border-[rgba(149,128,102,0.22)] bg-[linear-gradient(180deg,rgba(255,253,249,0.99)_0%,rgba(250,246,239,0.99)_100%)] p-8 shadow-[0_28px_56px_rgba(79,58,34,0.12)] md:p-10">
+              <Reveal index={1} className="mt-10">
+              <section className="rounded-[34px] border border-[rgba(149,128,102,0.22)] bg-[linear-gradient(180deg,rgba(255,253,249,0.99)_0%,rgba(250,246,239,0.99)_100%)] p-8 shadow-[0_28px_56px_rgba(79,58,34,0.12)] md:p-10">
                 <p className="inline-flex rounded-full border border-[rgba(149,128,102,0.28)] bg-white/92 px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-[#8a6a47]">
                   Curated Exhibition
                 </p>
@@ -197,6 +207,7 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
                   </Link>
                 </div>
               </section>
+              </Reveal>
 
               {entriesError && (
                 <section className="mt-6 rounded-[18px] border border-[rgba(149,128,102,0.24)] bg-[rgba(255,250,244,0.95)] px-5 py-3 text-xs text-[#79614a]">
@@ -212,8 +223,9 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
               ) : (
                 <section className="mt-9">
                   {currentEntry && (
-                    <article
+                    <motion.article
                       key={currentEntry.entryId}
+                      {...staggeredFadeUpMotion(safeCurrentIndex + 3, reduceMotion)}
                       className="gallery-focus-stage rounded-[28px] border border-[rgba(149,128,102,0.24)] bg-[rgba(255,252,247,0.96)] p-6 shadow-[0_20px_42px_rgba(79,58,34,0.12)]"
                     >
                       <button
@@ -283,7 +295,7 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
                           </div>
                         )}
                       </div>
-                    </article>
+                    </motion.article>
                   )}
                 </section>
               )}
@@ -292,92 +304,84 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
         </>
       )}
 
-      {isLightboxOpen && currentEntry && (
-        <div className="lightbox-enter fixed inset-0 z-50 bg-[rgba(14,10,7,0.92)] p-4 md:p-8">
-          <div className="mx-auto flex h-full w-full max-w-7xl flex-col">
-            <div className="mb-4 flex items-center justify-between gap-3 text-[#efe5d7]">
-              <p className="text-xs uppercase tracking-[0.28em]">Full Screen View</p>
-              <button
-                className="rounded-full border border-[rgba(240,223,199,0.45)] px-4 py-2 text-sm text-[#efe5d7] transition hover:bg-[rgba(240,223,199,0.12)]"
-                onClick={() => setIsLightboxOpen(false)}
-              >
-                닫기
-              </button>
-            </div>
-
-            <div className="relative flex-1 overflow-hidden rounded-[22px] border border-[rgba(240,223,199,0.24)] bg-[rgba(23,17,12,0.7)]">
-              {currentEntry.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={currentEntry.imageUrl} alt={currentEntry.title ?? "contest entry"} className="h-full w-full object-contain" />
-              ) : (
-                <div className="h-full w-full bg-[rgba(59,45,31,0.66)]" />
-              )}
-
-              <button
-                className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full border border-[rgba(240,223,199,0.42)] bg-[rgba(35,26,18,0.66)] px-3 py-2 text-sm text-[#efe5d7] transition hover:bg-[rgba(57,43,30,0.76)]"
-                onClick={goPrev}
-              >
-                이전
-              </button>
-              <button
-                className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full border border-[rgba(240,223,199,0.42)] bg-[rgba(35,26,18,0.66)] px-3 py-2 text-sm text-[#efe5d7] transition hover:bg-[rgba(57,43,30,0.76)]"
-                onClick={goNext}
-              >
-                다음
-              </button>
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[#e3d3bf]">
-              <div>
-                <p className="text-sm font-semibold">{currentEntry.title ?? "Untitled"}</p>
-                <p className="text-xs opacity-90">{currentEntry.artistName}</p>
+      <AnimatePresence>
+        {isLightboxOpen && currentEntry && (
+          <motion.div
+            {...overlayFadeMotion(reduceMotion)}
+            className="fixed inset-0 z-50 bg-[rgba(14,10,7,0.92)] p-4 md:p-8"
+          >
+            <motion.div
+              {...popInMotion(reduceMotion)}
+              className="mx-auto flex h-full w-full max-w-7xl flex-col"
+            >
+              <div className="mb-4 flex items-center justify-between gap-3 text-[#efe5d7]">
+                <p className="text-xs uppercase tracking-[0.28em]">Full Screen View</p>
+                <button
+                  className="rounded-full border border-[rgba(240,223,199,0.45)] px-4 py-2 text-sm text-[#efe5d7] transition hover:bg-[rgba(240,223,199,0.12)]"
+                  onClick={() => setIsLightboxOpen(false)}
+                >
+                  닫기
+                </button>
               </div>
-              <span className="rounded-full border border-[rgba(240,223,199,0.34)] px-3 py-1 text-xs">
-                {entries.length === 0 ? "0/0" : `${safeCurrentIndex + 1}/${entries.length}`}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+
+              <div className="relative flex-1 overflow-hidden rounded-[22px] border border-[rgba(240,223,199,0.24)] bg-[rgba(23,17,12,0.7)]">
+                {currentEntry.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={currentEntry.imageUrl} alt={currentEntry.title ?? "contest entry"} className="h-full w-full object-contain" />
+                ) : (
+                  <div className="h-full w-full bg-[rgba(59,45,31,0.66)]" />
+                )}
+
+                <button
+                  className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full border border-[rgba(240,223,199,0.42)] bg-[rgba(35,26,18,0.66)] px-3 py-2 text-sm text-[#efe5d7] transition hover:bg-[rgba(57,43,30,0.76)]"
+                  onClick={goPrev}
+                >
+                  이전
+                </button>
+                <button
+                  className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full border border-[rgba(240,223,199,0.42)] bg-[rgba(35,26,18,0.66)] px-3 py-2 text-sm text-[#efe5d7] transition hover:bg-[rgba(57,43,30,0.76)]"
+                  onClick={goNext}
+                >
+                  다음
+                </button>
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[#e3d3bf]">
+                <div>
+                  <p className="text-sm font-semibold">{currentEntry.title ?? "Untitled"}</p>
+                  <p className="text-xs opacity-90">{currentEntry.artistName}</p>
+                </div>
+                <span className="rounded-full border border-[rgba(240,223,199,0.34)] px-3 py-1 text-xs">
+                  {entries.length === 0 ? "0/0" : `${safeCurrentIndex + 1}/${entries.length}`}
+                </span>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style jsx>{`
         .gallery-focus-stage {
-          animation: gallery-focus-enter 420ms ease both;
+          animation: gallery-focus-enter 240ms ease both;
         }
 
         .gallery-focus-media {
           background: linear-gradient(180deg, rgba(255, 253, 249, 0.7) 0%, rgba(243, 234, 222, 0.6) 100%);
         }
 
-        .lightbox-enter {
-          animation: lightbox-fade 240ms ease both;
-        }
-
         @keyframes gallery-focus-enter {
           from {
-            opacity: 0;
+            opacity: 1;
             transform: translateY(8px);
-            filter: blur(1.5px);
           }
           to {
             opacity: 1;
             transform: translateY(0);
-            filter: blur(0);
-          }
-        }
-
-        @keyframes lightbox-fade {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
           }
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .gallery-focus-stage,
-          .lightbox-enter {
+          .gallery-focus-stage {
             animation: none !important;
           }
         }

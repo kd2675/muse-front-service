@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import PageShell from "../components/PageShell";
 import TopNav from "../components/TopNav";
@@ -10,12 +11,16 @@ import { deleteEntry, getMyEntries } from "../lib/entries";
 import { getContestList } from "../lib/contest";
 import { showToast } from "../store/uiSlice";
 import { useAppDispatch } from "../store/hooks";
+import Reveal from "../components/motion/Reveal";
+import { staggeredFadeUpMotion } from "../lib/motion";
 
 const formatNumber = (value: number) => value.toLocaleString("ko-KR");
 
 export default function ProfileClient() {
   const dispatch = useAppDispatch();
   const router = useRouter();
+  const prefersReducedMotion = useReducedMotion();
+  const reduceMotion = Boolean(prefersReducedMotion);
   const queryClient = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["profile", "summary"],
@@ -163,7 +168,8 @@ export default function ProfileClient() {
       ) : profile ? (
         <>
           {profile && (
-            <section className="mt-10 grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+            <Reveal index={0} className="mt-10">
+            <section className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
               <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
                 <div className="flex items-center gap-4">
                   <div
@@ -225,9 +231,10 @@ export default function ProfileClient() {
                     대표 작품을 확인하세요.
                   </p>
                   <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                    {profile.portfolio.map((item) => (
-                      <article
+                    {profile.portfolio.map((item, index) => (
+                      <motion.article
                         key={item.id}
+                        {...staggeredFadeUpMotion(index + 1, reduceMotion)}
                         className="rounded-[22px] border border-[color:var(--line)] bg-white/80 p-4"
                       >
                         <div
@@ -242,7 +249,7 @@ export default function ProfileClient() {
                         <h4 className="mt-1 font-[var(--font-display)] text-lg">
                           {item.title}
                         </h4>
-                      </article>
+                      </motion.article>
                     ))}
                   </div>
                 </div>
@@ -297,9 +304,10 @@ export default function ProfileClient() {
                         </div>
                       ) : (
                         <div className="mt-6 grid gap-4">
-                          {entries.map((entry) => (
-                            <div
+                          {entries.map((entry, index) => (
+                            <motion.div
                               key={entry.entryId}
+                              {...staggeredFadeUpMotion(index + 7, reduceMotion)}
                               className="flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-[color:var(--line)] bg-white/80 p-4"
                             >
                               <div className="flex items-center gap-4">
@@ -339,7 +347,7 @@ export default function ProfileClient() {
                                   삭제
                                 </button>
                               </div>
-                            </div>
+                            </motion.div>
                           ))}
                         </div>
                       )}
@@ -355,9 +363,10 @@ export default function ProfileClient() {
                     콘테스트 수상 이력을 확인하세요.
                   </p>
                   <div className="mt-6 grid gap-4">
-                    {profile.awards.map((award) => (
-                      <div
+                    {profile.awards.map((award, index) => (
+                      <motion.div
                         key={award.id}
+                        {...staggeredFadeUpMotion(index + 14, reduceMotion)}
                         className="flex flex-wrap items-center justify-between gap-4 rounded-[20px] border border-[color:var(--line)] bg-white/80 p-4"
                       >
                         <div>
@@ -374,12 +383,13 @@ export default function ProfileClient() {
                         <span className="rounded-full border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)]">
                           {award.prize}
                         </span>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 </div>
               </div>
             </section>
+            </Reveal>
           )}
         </>
       ) : (
