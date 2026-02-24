@@ -537,28 +537,26 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
 
     if (isVotingMode) {
       return (
-        <div className="mt-6 overflow-hidden rounded-[22px] border border-[rgba(123,91,52,0.28)] bg-[rgba(255,252,247,0.97)]">
+        <div className="mt-6 grid gap-5">
           {visibleEntries.map((entry, index) => {
             const isVotingEntry = pendingVoteEntryId === entry.entryId;
             const focusGalleryHref = `/contest/${id}/gallery?tab=contest&entryId=${entry.entryId}`;
             return (
               <article
                 key={entry.entryId}
-                className={`phase-voting-card grid gap-0 md:grid-cols-[1.15fr_0.85fr] ${
-                  index === 0 ? "" : "border-t border-[rgba(123,91,52,0.2)]"
-                }`}
+                className="phase-voting-card overflow-hidden rounded-[22px] border border-[rgba(123,91,52,0.28)] bg-[rgba(255,252,247,0.97)] shadow-[0_12px_24px_rgba(94,68,39,0.08)] grid gap-0 md:grid-cols-[1.15fr_0.85fr]"
               >
                 <Link
                   href={focusGalleryHref}
                   className="group block border-b border-[rgba(123,91,52,0.2)] md:border-r md:border-b-0"
                 >
-                  <div className="relative h-64 md:h-full md:min-h-[360px]">
+                  <div className="relative h-[260px] md:h-[340px] lg:h-[380px] xl:h-[420px]">
                     {entry.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={entry.imageUrl}
                         alt={entry.title ?? "contest entry"}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                        className="h-full w-full object-cover object-center transition duration-500 group-hover:scale-[1.02]"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center bg-[color:var(--chip)] text-sm text-[color:var(--muted)]">

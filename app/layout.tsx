@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Space_Grotesk } from "next/font/google";
 import "./globals.css";
+import "swiper/css";
 import Providers from "./providers";
 
 const display = Fraunces({

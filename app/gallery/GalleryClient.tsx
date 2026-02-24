@@ -1,8 +1,11 @@
 "use client";
 
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo, useRef, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { Mousewheel } from "swiper/modules";
+import { Swiper, SwiperSlide } from "swiper/react";
+import type { Swiper as SwiperType } from "swiper";
 import PageShell from "../components/PageShell";
 import TopNav from "../components/TopNav";
 import { Skeleton } from "../components/Skeleton";
@@ -22,6 +25,7 @@ const shuffle = <T,>(source: T[]): T[] => {
 
 export default function GalleryClient() {
   const router = useRouter();
+  const swiperRef = useRef<SwiperType | null>(null);
   const isHydrated = useSyncExternalStore(
     () => () => undefined,
     () => true,
@@ -57,8 +61,12 @@ export default function GalleryClient() {
     return shuffle(base);
   }, [featuredMuseums, museums, isHydrated]);
 
-  const heroMuseum = showcaseMuseums[0] ?? null;
-  const sideMuseums = showcaseMuseums.slice(1, 4);
+  const sliderMuseums = useMemo(() => {
+    if (showcaseMuseums.length > 0) {
+      return showcaseMuseums;
+    }
+    return museums;
+  }, [showcaseMuseums, museums]);
 
   return (
     <PageShell>
@@ -153,72 +161,141 @@ export default function GalleryClient() {
         </section>
       ) : museums.length > 0 ? (
         <>
-          <section className="mt-8 grid gap-4 lg:grid-cols-[1.18fr_0.82fr]">
-            <article className="overflow-hidden rounded-[30px] border border-[rgba(33,26,21,0.14)] bg-white shadow-[var(--shadow)]">
-              {heroMuseum?.coverImageUrl ? (
-                <div className="relative h-[360px]">
-                  <img
-                    src={heroMuseum.coverImageUrl}
-                    alt={heroMuseum.name}
-                    className="h-full w-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(9,8,8,0.66)_4%,rgba(9,8,8,0.24)_52%,rgba(9,8,8,0.05)_100%)]" />
-                  <div className="absolute right-6 bottom-6 left-6 text-white">
-                    <p className="text-[11px] uppercase tracking-[0.32em] text-white/80">
-                      Curator Wing
+          <section className="mt-8 rounded-[34px] border border-[rgba(34,25,18,0.16)] bg-[linear-gradient(160deg,#fcfaf5_0%,#f6efe4_52%,#efe6d8_100%)] p-6 shadow-[var(--shadow)] md:p-8">
+            <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+              <article className="rounded-[24px] border border-[rgba(34,25,18,0.14)] bg-white/86 p-6">
+                <p className="text-xs uppercase tracking-[0.3em] text-[#7a5b2e]">
+                  Welcome
+                </p>
+                <h3 className="mt-3 font-[var(--font-display)] text-4xl leading-tight text-[#231a13]">
+                  Current Exhibitions
+                  <br />
+                  & Museum Programs
+                </h3>
+                <p className="mt-5 text-sm leading-7 text-[color:var(--muted)]">
+                  유저가 직접 운영하는 전시관을 큐레이션 형태로 탐색하세요.
+                  오른쪽 전시 스트립은 휠 스크롤과 좌우 버튼으로 이동할 수
+                  있습니다.
+                </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const section = document.getElementById("gallery-exhibition-strip");
+                      if (section) section.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    className="rounded-full border border-[rgba(123,91,52,0.32)] bg-[rgba(255,246,230,0.9)] px-4 py-2 text-xs text-[#7f5c34] transition hover:bg-[rgba(250,236,211,0.95)]"
+                  >
+                    현재 전시 바로가기
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const section = document.getElementById("gallery-collection-floor");
+                      if (section) section.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    className="rounded-full border border-[rgba(34,25,18,0.18)] bg-white/80 px-4 py-2 text-xs text-[#5f5448] transition hover:bg-white"
+                  >
+                    전체 전시관 바로가기
+                  </button>
+                </div>
+              </article>
+
+              <div id="gallery-exhibition-strip" className="rounded-[24px] border border-[rgba(34,25,18,0.14)] bg-white/88 p-4 md:p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.28em] text-[#8b6742]">
+                      Curated Strip
                     </p>
-                    <h3 className="mt-3 font-[var(--font-display)] text-4xl leading-tight">
-                      {heroMuseum.name}
-                    </h3>
-                    <p className="mt-2 text-sm text-white/85">{heroMuseum.ownerName}</p>
+                    <p className="mt-1 font-[var(--font-display)] text-xl text-[#2a2018]">
+                      전시 스트립
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() =>
-                        router.push(
-                          galleryMuseumDetailRoute(heroMuseum.museumId, { focus: true }),
-                        )
-                      }
-                      className="mt-5 rounded-full border border-white/45 bg-white/15 px-4 py-2 text-sm text-white transition hover:bg-white/25"
+                      onClick={() => swiperRef.current?.slidePrev()}
+                      className="flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(123,91,52,0.3)] bg-[rgba(255,246,230,0.9)] text-[#7f5c34] transition hover:bg-[rgba(250,236,211,0.95)]"
+                      aria-label="이전 전시"
                     >
-                      전시 입장
+                      ←
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => swiperRef.current?.slideNext()}
+                      className="flex h-9 w-9 items-center justify-center rounded-full border border-[rgba(123,91,52,0.3)] bg-[rgba(255,246,230,0.9)] text-[#7f5c34] transition hover:bg-[rgba(250,236,211,0.95)]"
+                      aria-label="다음 전시"
+                    >
+                      →
                     </button>
                   </div>
                 </div>
-              ) : (
-                <div className="flex h-[360px] items-center justify-center bg-[linear-gradient(140deg,#d9d2c6_0%,#f2ece1_100%)] text-sm text-[#6a6156]">
-                  대표 이미지 없음
-                </div>
-              )}
-            </article>
 
-            <div className="grid gap-3">
-              {(sideMuseums.length > 0 ? sideMuseums : museums.slice(0, 3)).map(
-                (museum, index) => (
-                  <button
-                    type="button"
-                    key={museum.museumId}
-                    onClick={() =>
-                      router.push(galleryMuseumDetailRoute(museum.museumId, { focus: true }))
-                    }
-                    className="group rounded-[20px] border border-[rgba(33,26,21,0.12)] bg-white/90 p-4 text-left transition hover:border-[rgba(54,98,167,0.4)] hover:shadow-[0_10px_24px_rgba(34,63,111,0.14)]"
-                  >
-                    <p className="text-[10px] uppercase tracking-[0.26em] text-[#6e7ea1]">
-                      Wing {String(index + 1).padStart(2, "0")}
-                    </p>
-                    <h4 className="mt-2 font-[var(--font-display)] text-2xl leading-tight text-[#231a13]">
-                      {museum.name}
-                    </h4>
-                    <p className="mt-1 text-xs text-[color:var(--muted)]">{museum.ownerName}</p>
-                    <p className="mt-3 text-xs text-[color:var(--muted)]">
-                      작품 {formatNumber(museum.artworkCount)}점
-                    </p>
-                  </button>
-                ),
-              )}
+                <Swiper
+                  modules={[Mousewheel]}
+                  onSwiper={(swiper) => {
+                    swiperRef.current = swiper;
+                  }}
+                  mousewheel={{
+                    forceToAxis: false,
+                    releaseOnEdges: true,
+                    sensitivity: 0.8,
+                  }}
+                  spaceBetween={16}
+                  slidesPerView={1.16}
+                  breakpoints={{
+                    560: { slidesPerView: 1.5 },
+                    768: { slidesPerView: 1.85 },
+                    1024: { slidesPerView: 2.15 },
+                    1280: { slidesPerView: 2.5 },
+                  }}
+                  className="mt-4"
+                >
+                  {sliderMuseums.map((museum) => (
+                    <SwiperSlide key={museum.museumId} className="!h-auto">
+                      <article className="overflow-hidden rounded-[18px] border border-[rgba(34,25,18,0.14)] bg-white">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push(galleryMuseumDetailRoute(museum.museumId, { focus: true }))
+                          }
+                          className="w-full text-left"
+                        >
+                          {museum.coverImageUrl ? (
+                            <div className="relative">
+                              <img
+                                src={museum.coverImageUrl}
+                                alt={museum.name}
+                                className="h-52 w-full object-cover"
+                              />
+                              <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(21,17,14,0.56)_0%,rgba(21,17,14,0.08)_60%)]" />
+                            </div>
+                          ) : (
+                            <div className="flex h-52 items-center justify-center bg-[linear-gradient(140deg,#d9d2c6_0%,#f2ece1_100%)] text-xs text-[#6a6156]">
+                              대표 이미지 없음
+                            </div>
+                          )}
+                          <div className="p-4">
+                            <p className="text-[10px] uppercase tracking-[0.24em] text-[#8b6742]">
+                              Exhibitions
+                            </p>
+                            <h4 className="mt-1 font-[var(--font-display)] text-2xl leading-tight text-[#2a2018]">
+                              {museum.name}
+                            </h4>
+                            <p className="mt-1 text-xs text-[color:var(--muted)]">
+                              {museum.ownerName}
+                            </p>
+                          </div>
+                        </button>
+                      </article>
+                    </SwiperSlide>
+                  ))}
+                </Swiper>
+              </div>
             </div>
           </section>
 
-          <section className="mt-10">
+          <section id="gallery-collection-floor" className="mt-10">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-[#7a5b2e]">
