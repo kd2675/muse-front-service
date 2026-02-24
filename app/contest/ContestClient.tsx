@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import PageShell from "../components/PageShell";
 import TopNav from "../components/TopNav";
@@ -43,6 +43,11 @@ function phaseDisplayPriority(phase: string): number {
 export default function ContestClient() {
   const dispatch = useAppDispatch();
   const router = useRouter();
+  const isHydrated = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
   const [listTab, setListTab] = useState<"LIVE" | "ARCHIVE">("LIVE");
   const [paymentStep, setPaymentStep] = useState<
     "closed" | "payment" | "confirm"
@@ -52,7 +57,8 @@ export default function ContestClient() {
   );
   const [paymentMethod, setPaymentMethod] = useState("card");
   useBodyScrollLock(paymentStep !== "closed");
-  const isAdmin = isAdminRole(getUserFromToken()?.role);
+  const authUser = isHydrated ? getUserFromToken() : null;
+  const isAdmin = isAdminRole(authUser?.role);
   const { data, isLoading } = useQuery({
     queryKey: ["contests"],
     queryFn: getContestList,
@@ -220,56 +226,67 @@ export default function ContestClient() {
             </div>
 
             <div className="mt-8 grid gap-4">
-              {filteredContests.map((contest) => (
-                <article
-                  key={contest.id}
-                  className="rounded-[22px] border border-[color:var(--line)] bg-white/80 p-5"
-                >
+              {filteredContests.map((contest) => {
+                const isExhibition = contest.phase === "VOTING";
+                const cardClass = isExhibition
+                  ? "rounded-[24px] border border-[rgba(123,91,52,0.28)] bg-[linear-gradient(160deg,rgba(255,251,245,0.96)_0%,rgba(250,243,232,0.92)_100%)] p-6 shadow-[0_12px_26px_rgba(94,68,39,0.12)]"
+                  : "rounded-[22px] border border-[color:var(--line)] bg-white/80 p-5";
+                const phaseBadgeClass = isExhibition
+                  ? "rounded-full border border-[rgba(123,91,52,0.34)] bg-[rgba(255,246,230,0.94)] px-3 py-1 text-xs text-[#6f4f2d]"
+                  : "rounded-full bg-[color:var(--chip)] px-3 py-1 text-xs text-[color:var(--accent)]";
+                const metaPillClass = isExhibition
+                  ? "rounded-full border border-[rgba(123,91,52,0.28)] bg-white/70 px-3 py-1"
+                  : "rounded-full border border-[color:var(--line)] px-3 py-1";
+                const detailLinkClass = isExhibition
+                  ? "ml-auto rounded-full border border-[rgba(123,91,52,0.34)] bg-[rgba(255,246,230,0.9)] px-3 py-1 text-xs text-[#6f4f2d] transition hover:bg-[rgba(250,236,211,0.95)]"
+                  : "ml-auto rounded-full border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]";
+                return (
+                <article key={contest.id} className={cardClass}>
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">
+                      <p className={`text-xs uppercase tracking-[0.35em] ${isExhibition ? "text-[#7f5c34]" : "text-[color:var(--accent)]"}`}>
                         Contest
                       </p>
-                      <h3 className="mt-2 font-[var(--font-display)] text-2xl">
+                      <h3 className={`mt-2 font-[var(--font-display)] text-2xl ${isExhibition ? "text-[#352614]" : ""}`}>
                         {contest.theme}
                       </h3>
-                      <p className="mt-2 text-xs text-[color:var(--muted)]">
+                      <p className={`mt-2 text-xs ${isExhibition ? "text-[#75593c]" : "text-[color:var(--muted)]"}`}>
                         {contest.period}
                       </p>
                     </div>
-                    <span className="rounded-full bg-[color:var(--chip)] px-3 py-1 text-xs text-[color:var(--accent)]">
+                    <span className={phaseBadgeClass}>
                       {phaseLabel[contest.phase] ?? contest.phase}
                     </span>
                   </div>
-                  <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-[color:var(--muted)]">
-                    <span className="rounded-full border border-[color:var(--line)] px-3 py-1">
+                  <div className={`mt-4 flex flex-wrap items-center gap-3 text-xs ${isExhibition ? "text-[#6f5437]" : "text-[color:var(--muted)]"}`}>
+                    <span className={metaPillClass}>
                       참가비 {formatNumber(contest.entryFee)}원
                     </span>
-                    <span className="rounded-full border border-[color:var(--line)] px-3 py-1">
+                    <span className={metaPillClass}>
                       상금풀 {formatNumber(contest.prizePool)}원
                     </span>
                     {contest.phase === "VOTING" ? (
-                      <span className="rounded-full border border-[color:var(--line)] px-3 py-1">
+                      <span className={metaPillClass}>
                         전시 중
                       </span>
                     ) : contest.daysLeft > 0 ? (
-                      <span className="rounded-full border border-[color:var(--line)] px-3 py-1">
+                      <span className={metaPillClass}>
                         {contest.daysLeft}일 남음
                       </span>
                     ) : (
-                      <span className="rounded-full border border-[color:var(--line)] px-3 py-1">
+                      <span className={metaPillClass}>
                         마감됨
                       </span>
                     )}
                     <Link
                       href={`/contest/${contest.id}`}
-                      className="ml-auto rounded-full border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                      className={detailLinkClass}
                     >
                       {contest.phase === "VOTING" ? "전시 보기" : "상세 보기"}
                     </Link>
                   </div>
                 </article>
-              ))}
+              )})}
               {filteredContests.length === 0 && (
                 <div className="rounded-[22px] border border-[color:var(--line)] bg-white/80 px-5 py-4 text-sm text-[color:var(--muted)]">
                   {listTab === "ARCHIVE"

@@ -1,223 +1,302 @@
 "use client";
 
+import { useMemo, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import PageShell from "../components/PageShell";
 import TopNav from "../components/TopNav";
-import { getGalleryLobby } from "../lib/gallery";
-import { Skeleton, SkeletonText } from "../components/Skeleton";
+import { Skeleton } from "../components/Skeleton";
 import { getUserFromToken, isAdminRole } from "../lib/auth";
-import {
-  APP_ROUTES,
-  galleryArtworkDetailRoute,
-  galleryCategoryRoute,
-} from "../lib/router";
+import { getPublicMuseums } from "../lib/museum";
+import { APP_ROUTES, galleryMuseumDetailRoute } from "../lib/router";
 
 const formatNumber = (value: number) => value.toLocaleString("ko-KR");
+const shuffle = <T,>(source: T[]): T[] => {
+  const copied = [...source];
+  for (let index = copied.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [copied[index], copied[randomIndex]] = [copied[randomIndex], copied[index]];
+  }
+  return copied;
+};
 
 export default function GalleryClient() {
   const router = useRouter();
-  const isAdmin = isAdminRole(getUserFromToken()?.role);
+  const isHydrated = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
+  const authUser = isHydrated ? getUserFromToken() : null;
+  const isAdmin = isAdminRole(authUser?.role);
+  const isLoggedIn = !!authUser;
+
   const { data, isLoading } = useQuery({
-    queryKey: ["gallery", "lobby"],
-    queryFn: getGalleryLobby,
+    queryKey: ["gallery", "museums"],
+    queryFn: getPublicMuseums,
   });
 
-  const lobby = data?.data ?? null;
+  const museums = useMemo(() => data?.data ?? [], [data?.data]);
   const error = data?.error;
-  const highlightCount = lobby?.highlights?.length ?? 0;
-  const totalCategoryPieces = (lobby?.categories ?? []).reduce(
-    (sum, category) => sum + category.itemCount,
-    0,
+
+  const featuredMuseums = useMemo(
+    () => museums.filter((museum) => museum.isFeatured),
+    [museums],
   );
-  const hasAnyArtwork = highlightCount > 0 || totalCategoryPieces > 0;
+
+  const totalArtworkCount = useMemo(
+    () => museums.reduce((sum, museum) => sum + museum.artworkCount, 0),
+    [museums],
+  );
+
+  const showcaseMuseums = useMemo(() => {
+    const base = featuredMuseums.length > 0 ? featuredMuseums : museums;
+    if (!isHydrated) {
+      return base;
+    }
+    return shuffle(base);
+  }, [featuredMuseums, museums, isHydrated]);
+
+  const heroMuseum = showcaseMuseums[0] ?? null;
+  const sideMuseums = showcaseMuseums.slice(1, 4);
 
   return (
     <PageShell>
       <TopNav />
-      {isAdmin && (
-        <div className="mt-6 flex justify-end">
-          <button
-            className="inline-flex items-center gap-2 rounded-full border border-[#1d4ed8] bg-[#2563eb] px-4 py-2 text-xs font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.28)] ring-2 ring-blue-100 transition hover:-translate-y-0.5 hover:bg-[#1d4ed8] hover:shadow-[0_14px_28px_rgba(29,78,216,0.34)]"
-            onClick={() => router.push(APP_ROUTES.adminGalleryManage)}
-          >
-            <span className="rounded-full border border-white/45 px-2 py-0.5 text-[10px] tracking-[0.2em]">ADMIN</span>
-            <span>갤러리 관리</span>
-          </button>
-        </div>
-      )}
-      {isLoading ? (
-        <section className="mt-10 grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-8 w-44 rounded-[18px]" />
-              <Skeleton className="h-6 w-32 rounded-full" />
-            </div>
-            <SkeletonText className="mt-4 max-w-md" lines={2} />
-            <div className="mt-6 grid gap-4">
-              {Array.from({ length: 2 }).map((_, index) => (
-                <div
-                  // eslint-disable-next-line react/no-array-index-key
-                  key={index}
-                  className="rounded-[24px] border border-[color:var(--line)] bg-white/80 p-5"
-                >
-                  <Skeleton className="h-32 w-full rounded-[18px]" />
-                  <Skeleton className="mt-4 h-4 w-24 rounded-full" />
-                  <Skeleton className="mt-3 h-6 w-2/3 rounded-[14px]" />
-                  <Skeleton className="mt-2 h-4 w-1/2 rounded-full" />
-                </div>
-              ))}
-            </div>
+
+      <section className="relative mt-8 overflow-hidden rounded-[34px] border border-[rgba(37,31,26,0.14)] bg-[linear-gradient(145deg,#faf7f1_0%,#f6f1e8_48%,#efe8dc_100%)] p-8 shadow-[var(--shadow)] md:p-10">
+        <div className="pointer-events-none absolute -top-20 -left-10 h-56 w-56 rounded-full bg-[radial-gradient(circle,_rgba(156,117,64,0.2)_0%,_rgba(156,117,64,0)_72%)]" />
+        <div className="pointer-events-none absolute -right-8 bottom-0 h-52 w-52 rounded-full bg-[radial-gradient(circle,_rgba(31,87,130,0.14)_0%,_rgba(31,87,130,0)_72%)]" />
+
+        <div className="relative z-10 flex flex-wrap items-start justify-between gap-6">
+          <div className="max-w-3xl">
+            <p className="text-xs uppercase tracking-[0.34em] text-[#7a5b2e]">
+              Museum Lobby
+            </p>
+            <h2 className="mt-3 font-[var(--font-display)] text-4xl leading-tight text-[#221912] md:text-5xl">
+              큐레이션된 유저 뮤지엄 전시관
+            </h2>
+            <p className="mt-4 text-sm leading-7 text-[color:var(--muted)] md:text-base">
+              입장 후 바로 전시 집중 모드로 이동할 수 있도록, 공개 뮤지엄을
+              미술관 동선처럼 정리했습니다.
+            </p>
           </div>
 
-          <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-8 w-36 rounded-[18px]" />
-              <Skeleton className="h-8 w-20 rounded-full" />
-            </div>
-            <SkeletonText className="mt-4 max-w-md" lines={2} />
-            <div className="mt-6 grid gap-4">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <div
-                  // eslint-disable-next-line react/no-array-index-key
-                  key={index}
-                  className="flex items-center justify-between rounded-[20px] border border-[color:var(--line)] bg-white/80 p-4"
-                >
-                  <div className="flex items-center gap-4">
-                    <Skeleton className="h-12 w-12 rounded-[16px]" />
-                    <div className="grid gap-2">
-                      <Skeleton className="h-4 w-28 rounded-full" />
-                      <Skeleton className="h-3 w-40 rounded-full" />
-                    </div>
-                  </div>
-                  <Skeleton className="h-4 w-16 rounded-full" />
-                </div>
-              ))}
-            </div>
+          <div className="flex flex-wrap gap-2">
+            {isLoggedIn && (
+              <button
+                type="button"
+                onClick={() => router.push(APP_ROUTES.galleryMyMuseums)}
+                className="rounded-full border border-[rgba(34,25,18,0.22)] bg-white/80 px-4 py-2 text-xs font-semibold text-[#3c322a] transition hover:bg-white"
+              >
+                내 뮤지엄 관리
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => router.push(APP_ROUTES.adminGalleryManage)}
+                className="rounded-full border border-[#1d4ed8] bg-[#2563eb] px-4 py-2 text-xs font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.28)] transition hover:bg-[#1d4ed8]"
+              >
+                어드민 모더레이션
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="relative z-10 mt-6 grid gap-3 sm:grid-cols-3">
+          <article className="rounded-[18px] border border-[rgba(34,25,18,0.12)] bg-white/85 p-4">
+            <p className="text-[10px] uppercase tracking-[0.28em] text-[color:var(--muted)]">
+              공개 뮤지엄
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-[#241c16]">
+              {formatNumber(museums.length)}
+            </p>
+          </article>
+          <article className="rounded-[18px] border border-[rgba(34,25,18,0.12)] bg-white/85 p-4">
+            <p className="text-[10px] uppercase tracking-[0.28em] text-[color:var(--muted)]">
+              전시 작품
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-[#241c16]">
+              {formatNumber(totalArtworkCount)}
+            </p>
+          </article>
+          <article className="rounded-[18px] border border-[rgba(34,25,18,0.12)] bg-white/85 p-4">
+            <p className="text-[10px] uppercase tracking-[0.28em] text-[color:var(--muted)]">
+              메인 큐레이션
+            </p>
+            <p className="mt-2 text-2xl font-semibold text-[#241c16]">
+              {formatNumber(featuredMuseums.length)}
+            </p>
+          </article>
+        </div>
+      </section>
+
+      {isLoading ? (
+        <section className="mt-8 grid gap-4 lg:grid-cols-[1.18fr_0.82fr]">
+          <article className="rounded-[28px] border border-[color:var(--line)] bg-white/85 p-5">
+            <Skeleton className="h-72 w-full rounded-[20px]" />
+            <Skeleton className="mt-4 h-7 w-1/2 rounded-full" />
+            <Skeleton className="mt-3 h-4 w-3/4 rounded-full" />
+          </article>
+          <div className="grid gap-4">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <article
+                key={index}
+                className="rounded-[20px] border border-[color:var(--line)] bg-white/85 p-4"
+              >
+                <Skeleton className="h-14 w-full rounded-[14px]" />
+                <Skeleton className="mt-3 h-4 w-2/3 rounded-full" />
+              </article>
+            ))}
           </div>
         </section>
-      ) : lobby ? (
+      ) : museums.length > 0 ? (
         <>
-          {!hasAnyArtwork ? (
-            <section className="mt-10 rounded-[28px] border border-[color:var(--line)] bg-white/70 p-10 text-center shadow-[var(--shadow)]">
-              <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">
-                Gallery Empty
-              </p>
-              <h2 className="mt-3 font-[var(--font-display)] text-3xl">전시 중인 작품이 없습니다</h2>
-              <p className="mt-3 text-sm text-[color:var(--muted)]">
-                아직 등록된 갤러리 작품이 없습니다. 작품이 추가되면 여기에서 바로 확인할 수 있습니다.
-              </p>
-            </section>
-          ) : (
-            <section className="mt-10 grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-              <div className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]">
-                <div className="flex items-center justify-between">
-                  <h2 className="font-[var(--font-display)] text-3xl">
-                    Gallery Lobby
-                  </h2>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-[color:var(--chip)] px-3 py-1 text-xs text-[color:var(--accent)]">
-                      Today’s Highlights
-                    </span>
-                  </div>
-                </div>
-                <p className="mt-3 text-sm text-[color:var(--muted)]">
-                  오늘의 하이라이트 작품을 먼저 만나보세요.
-                </p>
-                <div className="mt-6 grid gap-4">
-                  {highlightCount === 0 ? (
-                    <div className="rounded-[20px] border border-[color:var(--line)] bg-white/80 px-4 py-5 text-sm text-[color:var(--muted)]">
-                      하이라이트 작품이 아직 없습니다.
-                    </div>
-                  ) : (
-                    (lobby?.highlights ?? []).map((item) => (
-                      <button
-                        type="button"
-                        key={item.id}
-                        onClick={() => router.push(galleryArtworkDetailRoute(item.id))}
-                        className="block w-full rounded-[24px] border border-[color:var(--line)] bg-white/80 p-5 text-left transition hover:border-[color:var(--accent)] hover:shadow-[var(--shadow)]"
-                      >
-                        {item.imageUrl ? (
-                          <img
-                            src={item.imageUrl}
-                            alt={item.title}
-                            className="h-32 w-full rounded-[18px] object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-32 w-full items-center justify-center rounded-[18px] border border-dashed border-[color:var(--line)] bg-white text-xs text-[color:var(--muted)]">
-                            이미지 없음
-                          </div>
-                        )}
-                        <div className="mt-4 flex items-center justify-between text-xs text-[color:var(--muted)]">
-                          <span>{item.category}</span>
-                          <span>Featured</span>
-                        </div>
-                        <h3 className="mt-3 font-[var(--font-display)] text-xl">
-                          {item.title}
-                        </h3>
-                        <p className="mt-1 text-sm text-[color:var(--muted)]">
-                          {item.artist}
-                        </p>
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <div
-                id="categories"
-                className="rounded-[28px] border border-[color:var(--line)] bg-white/70 p-8 shadow-[var(--shadow)]"
-              >
-                <div className="flex items-center justify-between">
-                  <h2 className="font-[var(--font-display)] text-3xl">
-                    Categories
-                  </h2>
-                  <button
-                    type="button"
-                    className="rounded-full border border-[color:var(--line)] px-4 py-2 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
-                    onClick={() =>
-                      router.push(APP_ROUTES.galleryCategoriesSection)
-                    }
-                  >
-                    전체 보기
-                  </button>
-                </div>
-                <p className="mt-3 text-sm text-[color:var(--muted)]">
-                  전시실을 선택해 영구 전시 작품을 감상하세요.
-                </p>
-                <div className="mt-6 grid gap-4">
-                  {(lobby?.categories ?? []).map((category) => (
+          <section className="mt-8 grid gap-4 lg:grid-cols-[1.18fr_0.82fr]">
+            <article className="overflow-hidden rounded-[30px] border border-[rgba(33,26,21,0.14)] bg-white shadow-[var(--shadow)]">
+              {heroMuseum?.coverImageUrl ? (
+                <div className="relative h-[360px]">
+                  <img
+                    src={heroMuseum.coverImageUrl}
+                    alt={heroMuseum.name}
+                    className="h-full w-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(9,8,8,0.66)_4%,rgba(9,8,8,0.24)_52%,rgba(9,8,8,0.05)_100%)]" />
+                  <div className="absolute right-6 bottom-6 left-6 text-white">
+                    <p className="text-[11px] uppercase tracking-[0.32em] text-white/80">
+                      Curator Wing
+                    </p>
+                    <h3 className="mt-3 font-[var(--font-display)] text-4xl leading-tight">
+                      {heroMuseum.name}
+                    </h3>
+                    <p className="mt-2 text-sm text-white/85">{heroMuseum.ownerName}</p>
                     <button
                       type="button"
-                      key={category.key}
                       onClick={() =>
-                        router.push(galleryCategoryRoute(category.key))
+                        router.push(
+                          galleryMuseumDetailRoute(heroMuseum.museumId, { focus: true }),
+                        )
                       }
-                      className="flex w-full items-center justify-between rounded-[20px] border border-[color:var(--line)] bg-white/80 p-4 text-left transition hover:border-[color:var(--accent)] hover:shadow-[var(--shadow)]"
+                      className="mt-5 rounded-full border border-white/45 bg-white/15 px-4 py-2 text-sm text-white transition hover:bg-white/25"
                     >
-                      <div>
-                        <div>
-                          <p className="text-sm font-semibold">{category.title}</p>
-                          <p className="text-xs text-[color:var(--muted)]">
-                            {category.description}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-xs text-[color:var(--muted)]">
-                        {formatNumber(category.itemCount)} pieces
-                      </span>
+                      전시 입장
                     </button>
-                  ))}
+                  </div>
                 </div>
+              ) : (
+                <div className="flex h-[360px] items-center justify-center bg-[linear-gradient(140deg,#d9d2c6_0%,#f2ece1_100%)] text-sm text-[#6a6156]">
+                  대표 이미지 없음
+                </div>
+              )}
+            </article>
+
+            <div className="grid gap-3">
+              {(sideMuseums.length > 0 ? sideMuseums : museums.slice(0, 3)).map(
+                (museum, index) => (
+                  <button
+                    type="button"
+                    key={museum.museumId}
+                    onClick={() =>
+                      router.push(galleryMuseumDetailRoute(museum.museumId, { focus: true }))
+                    }
+                    className="group rounded-[20px] border border-[rgba(33,26,21,0.12)] bg-white/90 p-4 text-left transition hover:border-[rgba(54,98,167,0.4)] hover:shadow-[0_10px_24px_rgba(34,63,111,0.14)]"
+                  >
+                    <p className="text-[10px] uppercase tracking-[0.26em] text-[#6e7ea1]">
+                      Wing {String(index + 1).padStart(2, "0")}
+                    </p>
+                    <h4 className="mt-2 font-[var(--font-display)] text-2xl leading-tight text-[#231a13]">
+                      {museum.name}
+                    </h4>
+                    <p className="mt-1 text-xs text-[color:var(--muted)]">{museum.ownerName}</p>
+                    <p className="mt-3 text-xs text-[color:var(--muted)]">
+                      작품 {formatNumber(museum.artworkCount)}점
+                    </p>
+                  </button>
+                ),
+              )}
+            </div>
+          </section>
+
+          <section className="mt-10">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-[#7a5b2e]">
+                  Collection Floor
+                </p>
+                <h3 className="mt-2 font-[var(--font-display)] text-3xl text-[#211811]">
+                  All Public Museums
+                </h3>
               </div>
-            </section>
-          )}
+              <span className="rounded-full border border-[rgba(34,25,18,0.14)] bg-white/75 px-4 py-2 text-xs text-[color:var(--muted)]">
+                총 {formatNumber(museums.length)}개 전시관
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {museums.map((museum) => (
+                <button
+                  type="button"
+                  key={museum.museumId}
+                  onClick={() =>
+                    router.push(galleryMuseumDetailRoute(museum.museumId, { focus: true }))
+                  }
+                  className="group overflow-hidden rounded-[22px] border border-[rgba(34,25,18,0.12)] bg-white text-left transition hover:border-[rgba(54,98,167,0.4)] hover:shadow-[0_14px_30px_rgba(34,63,111,0.14)]"
+                >
+                  {museum.coverImageUrl ? (
+                    <div className="relative">
+                      <img
+                        src={museum.coverImageUrl}
+                        alt={museum.name}
+                        className="h-44 w-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(16,14,12,0.52)_0%,rgba(16,14,12,0)_58%)]" />
+                    </div>
+                  ) : (
+                    <div className="flex h-44 items-center justify-center bg-[linear-gradient(140deg,#d9d2c6_0%,#f2ece1_100%)] text-xs text-[#6a6156]">
+                      대표 이미지 없음
+                    </div>
+                  )}
+                  <div className="p-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <h4 className="font-[var(--font-display)] text-2xl leading-tight text-[#231a13]">
+                        {museum.name}
+                      </h4>
+                      {museum.isFeatured && (
+                        <span className="rounded-full border border-[rgba(54,98,167,0.3)] bg-[rgba(54,98,167,0.08)] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-[#365a9d]">
+                          Featured
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-[color:var(--muted)]">{museum.ownerName}</p>
+                    <p className="mt-3 line-clamp-2 text-sm text-[color:var(--muted)]">
+                      {museum.description || "뮤지엄 소개가 없습니다."}
+                    </p>
+                    <p className="mt-3 text-xs text-[color:var(--muted)]">
+                      작품 {formatNumber(museum.artworkCount)}점
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
         </>
       ) : (
-        <div className="mt-10 rounded-[28px] border border-[color:var(--line)] bg-white/70 px-6 py-6 text-sm text-[color:var(--muted)] shadow-[var(--shadow)]">
-          갤러리 데이터를 불러오지 못했습니다.
-          {error ? ` (${error})` : ""}
-        </div>
+        <section className="mt-8 rounded-[28px] border border-[rgba(34,25,18,0.16)] bg-white/85 px-6 py-12 text-center shadow-[var(--shadow)]">
+          <p className="text-xs uppercase tracking-[0.32em] text-[#7a5b2e]">
+            Empty Gallery
+          </p>
+          <h3 className="mt-3 font-[var(--font-display)] text-3xl text-[#241c16]">
+            아직 공개된 전시관이 없습니다.
+          </h3>
+          <p className="mt-3 text-sm text-[color:var(--muted)]">
+            첫 번째 뮤지엄이 공개되면 이곳이 메인 전시 동선으로 채워집니다.
+          </p>
+        </section>
+      )}
+
+      {!isLoading && error && museums.length === 0 && (
+        <p className="mt-4 text-xs text-red-500">{error}</p>
       )}
     </PageShell>
   );

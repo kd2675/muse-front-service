@@ -1,11 +1,11 @@
-import ArtworkClient from "./ArtworkClient";
 import { notFound } from "next/navigation";
+import MuseumDetailClient from "./MuseumDetailClient";
 
 type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-export default async function ArtworkPage({ params }: PageProps) {
+export default async function MuseumDetailPage({ params }: PageProps) {
   const { id } = await params;
   const parsedId = Number(id);
 
@@ -13,5 +13,5 @@ export default async function ArtworkPage({ params }: PageProps) {
     notFound();
   }
 
-  return <ArtworkClient id={parsedId} />;
+  return <MuseumDetailClient museumId={parsedId} />;
 }

@@ -14,11 +14,12 @@ export type HomePayload = {
     colorFrom: string;
     colorTo: string;
   }>;
-  galleryCategories: Array<{
-    key: string;
-    title: string;
-    description: string;
-    itemCount: number;
+  featuredMuseums: Array<{
+    museumId: number;
+    name: string;
+    ownerName: string;
+    artworkCount: number;
+    coverImageUrl?: string | null;
   }>;
   activeContests: Array<{
     id: number;

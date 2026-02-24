@@ -2,11 +2,12 @@
 
 import { getAccessToken, getUserFromToken, hasAnyRole } from "./auth";
 
-export const PROTECTED_PREFIXES = ["/profile", "/admin"];
+export const PROTECTED_PREFIXES = ["/profile", "/admin", "/gallery/my"];
 
 export const ROLE_REQUIREMENTS: Record<string, string[]> = {
   "/profile": ["USER", "ADMIN"],
   "/admin": ["ADMIN"],
+  "/gallery/my": ["USER", "ADMIN"],
 };
 
 export function isProtectedPath(pathname: string) {
