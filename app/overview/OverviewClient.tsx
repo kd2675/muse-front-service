@@ -1,24 +1,50 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
-import TopNav from "../components/TopNav";
-import PageShell from "../components/PageShell";
-import { Skeleton, SkeletonText } from "../components/Skeleton";
+import CinematicBottomNav from "../components/CinematicBottomNav";
+import {
+  clearAccessToken,
+  getAccessToken,
+  getUserFromToken,
+  isTokenExpired,
+  logout,
+  scheduleTokenExpiry,
+} from "../lib/auth";
+import { onAuthChanged } from "../lib/authEvents";
+import { canAccessPath } from "../lib/routeGuard";
 import { getHomeData } from "../lib/home";
 import { staggeredFadeUpMotion } from "../lib/motion";
-import { galleryMuseumDetailRoute } from "../lib/router";
+import { APP_ROUTES, galleryMuseumDetailRoute } from "../lib/router";
+import { useAppDispatch } from "../store/hooks";
+import { setPendingPath, showToast } from "../store/uiSlice";
 
 const formatNumber = (value: number) => value.toLocaleString("ko-KR");
 const contestDetailRoute = (contestId: number) => `/contest/${contestId}?tab=contest`;
 const museumDetailRoute = (museumId: number) =>
   `${galleryMuseumDetailRoute(museumId)}?tab=gallery`;
 
+type AuthSnapshot = {
+  status: "unknown" | "in" | "out";
+  label: string | null;
+  exp: number | null;
+};
+
 export default function OverviewClient() {
+  const dispatch = useAppDispatch();
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
   const reduceMotion = Boolean(prefersReducedMotion);
+  const [authSnapshot, setAuthSnapshot] = useState<AuthSnapshot>({
+    status: "unknown",
+    label: null,
+    exp: null,
+  });
+  const [isHydrated, setIsHydrated] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ["home", "overview"],
     queryFn: getHomeData,
@@ -26,139 +52,294 @@ export default function OverviewClient() {
 
   const payload = data?.data ?? null;
   const error = data?.error;
+  const todaysPick = payload?.todaysPick ?? [];
+  const spotlightPick = todaysPick[0] ?? null;
   const featuredMuseums = payload?.featuredMuseums ?? [];
   const activeContests = payload?.activeContests ?? [];
-  const totalFeaturedWorks = featuredMuseums.reduce(
-    (sum, museum) => sum + museum.artworkCount,
-    0,
-  );
-  const nearestContestDays =
-    activeContests.length > 0
-      ? Math.min(...activeContests.map((contest) => contest.daysLeft))
-      : null;
+  const spotlightMuseum = featuredMuseums.find((museum) => museum.coverImageUrl) ?? featuredMuseums[0];
+  const {
+    status: authStatus,
+    label: userLabel,
+    exp: tokenExp,
+  } = authSnapshot;
+
+  useEffect(() => {
+    const updateAuth = () => {
+      const token = getAccessToken();
+      const user = getUserFromToken();
+      const exp = typeof user?.exp === "number" ? user.exp : null;
+      if (exp && isTokenExpired(exp)) {
+        setAuthSnapshot({ status: "out", label: null, exp: null });
+        clearAccessToken();
+        return;
+      }
+      setAuthSnapshot({
+        status: token ? "in" : "out",
+        label: user?.name ?? user?.email ?? null,
+        exp,
+      });
+    };
+    setIsHydrated(true);
+    updateAuth();
+    const unsubscribe = onAuthChanged(updateAuth);
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated || !tokenExp) {
+      return;
+    }
+    if (isTokenExpired(tokenExp)) {
+      setAuthSnapshot({ status: "out", label: null, exp: null });
+      clearAccessToken();
+      return;
+    }
+    return scheduleTokenExpiry(() => {
+      setAuthSnapshot({ status: "out", label: null, exp: null });
+      clearAccessToken();
+    }, tokenExp);
+  }, [isHydrated, tokenExp]);
+
+  const navigateWithGuard = (
+    path: string,
+    tab: "home" | "overview" | "contest" | "gallery" | "profile",
+  ) => {
+    const guard = canAccessPath(path);
+    if (!guard.allowed) {
+      dispatch(setPendingPath(`${path}?tab=${tab}`));
+      if (guard.reason === "ROLE") {
+        dispatch(showToast("권한이 없습니다."));
+        router.push(APP_ROUTES.home);
+        return;
+      }
+      dispatch(showToast("로그인이 필요한 기능입니다."));
+      router.push("/login");
+      return;
+    }
+    router.push(`${path}?tab=${tab}`);
+  };
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    try {
+      await logout();
+      clearAccessToken();
+      dispatch(showToast("로그아웃 되었습니다."));
+      router.push(APP_ROUTES.homeOverview);
+    } catch {
+      clearAccessToken();
+      dispatch(showToast("로그아웃 처리 중 오류가 발생했습니다."));
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
 
   return (
-    <PageShell>
-      <TopNav />
-      {isLoading ? (
-        <main className="mt-8 grid gap-6">
-          <section className="rounded-[34px] border border-[color:var(--line)] bg-white/75 p-8 shadow-[var(--shadow)]">
-            <Skeleton className="h-8 w-48 rounded-full" />
-            <Skeleton className="mt-5 h-16 w-2/3 rounded-[20px]" />
-            <SkeletonText className="mt-4 max-w-xl" lines={3} />
-            <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              <Skeleton className="h-20 rounded-[16px]" />
-              <Skeleton className="h-20 rounded-[16px]" />
-              <Skeleton className="h-20 rounded-[16px]" />
-            </div>
-          </section>
-          <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-            <Skeleton className="h-80 rounded-[26px]" />
-            <Skeleton className="h-80 rounded-[26px]" />
-          </section>
-        </main>
-      ) : payload ? (
-        <main className="mt-8">
-          <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-            <article className="rounded-[28px] border border-[rgba(27,23,19,0.14)] bg-white/88 p-6 shadow-[var(--shadow)] md:p-7">
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.28em] text-[#7a5e3e]">Curated Museums</p>
-                  <h2 className="mt-2 font-[var(--font-display)] text-3xl text-[#21160d]">Featured Museums</h2>
-                </div>
-                <span className="rounded-full border border-[rgba(82,66,48,0.2)] bg-[rgba(250,246,239,0.92)] px-3 py-1 text-xs text-[#70583b]">
-                  {formatNumber(featuredMuseums.length)} halls
-                </span>
+    <div className="relative min-h-screen overflow-x-hidden bg-[#121212] text-slate-100">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_12%,rgba(84,90,111,0.22),transparent_34%),radial-gradient(circle_at_84%_18%,rgba(73,108,115,0.18),transparent_36%),radial-gradient(circle_at_52%_82%,rgba(120,86,64,0.14),transparent_38%)]" />
+
+      <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 pb-24 pt-6 md:px-8">
+        {isLoading ? (
+          <div className="flex min-h-screen flex-col justify-center gap-4">
+            <div className="h-8 w-36 rounded-full border border-white/10 bg-white/10" />
+            <div className="h-[46vh] rounded-[26px] border border-white/10 bg-white/6" />
+            <div className="h-40 rounded-[22px] border border-white/10 bg-white/6" />
+          </div>
+        ) : payload ? (
+          <div className="space-y-10">
+            <motion.header
+              className="flex w-full items-center justify-between"
+              {...staggeredFadeUpMotion(0, reduceMotion)}
+            >
+              <div className="flex flex-col">
+                <p className="text-[10px] uppercase tracking-[0.32em] text-slate-500">Museum Hub</p>
+                <h1 className="mt-1 font-[var(--font-display)] text-2xl italic text-slate-200">
+                  The Overview
+                </h1>
               </div>
-              <div className="mt-5 grid gap-3">
-                {featuredMuseums.length > 0 ? (
-                  featuredMuseums.map((museum, index) => (
-                    <motion.button
-                      key={museum.museumId}
-                      type="button"
-                      {...staggeredFadeUpMotion(index + 3, reduceMotion)}
-                      onClick={() => router.push(museumDetailRoute(museum.museumId))}
-                      className="group flex cursor-pointer items-center justify-between rounded-[16px] border border-[rgba(40,30,20,0.14)] bg-[rgba(255,252,247,0.94)] px-4 py-4 text-left transition hover:border-[rgba(31,66,130,0.32)] hover:shadow-[0_10px_24px_rgba(31,66,130,0.12)]"
+
+              {!isHydrated ? (
+                <div className="h-9 w-24 rounded-full border border-white/10 bg-white/8" />
+              ) : authStatus === "in" ? (
+                <div className="flex items-center gap-2">
+                  {userLabel ? (
+                    <span className="hidden rounded-full border border-white/14 bg-white/6 px-3 py-1 text-xs text-slate-200/85 md:inline-flex">
+                      {userLabel}
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    disabled={isSigningOut}
+                    className="rounded-full border border-white/18 bg-white/8 px-4 py-2 text-xs text-slate-200/88 transition hover:border-white/34 hover:bg-white/14 disabled:opacity-60"
+                  >
+                    {isSigningOut ? "Signing out..." : "Sign out"}
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => router.push("/login")}
+                  className="rounded-full border border-white/18 bg-white/8 px-4 py-2 text-xs text-slate-200/88 transition hover:border-white/34 hover:bg-white/14"
+                >
+                  Sign in
+                </button>
+              )}
+            </motion.header>
+
+            <motion.section
+              className="rounded-[28px] border border-white/8 bg-white/5 p-4 shadow-[0_26px_70px_rgba(0,0,0,0.36)]"
+              {...staggeredFadeUpMotion(1, reduceMotion)}
+            >
+              <button
+                type="button"
+                onClick={() =>
+                  spotlightMuseum
+                    ? router.push(museumDetailRoute(spotlightMuseum.museumId))
+                    : navigateWithGuard("/gallery", "gallery")
+                }
+                className="group relative block w-full overflow-hidden rounded-[22px]"
+              >
+                {spotlightMuseum?.coverImageUrl ? (
+                  <img
+                    src={spotlightMuseum.coverImageUrl}
+                    alt="Weekly Spotlight"
+                    className="h-[360px] w-full object-cover transition duration-700 group-hover:scale-[1.04] md:h-[500px]"
+                  />
+                ) : (
+                  <div className="h-[360px] w-full bg-[linear-gradient(145deg,#2e3647_0%,#4a576d_100%)] md:h-[500px]" />
+                )}
+                <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.84)_8%,rgba(0,0,0,0.18)_48%,rgba(0,0,0,0.06)_100%)]" />
+                <div className="absolute right-0 bottom-0 left-0 p-6 md:p-8">
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-white/62">Weekly Spotlight</p>
+                  <h2 className="mt-3 font-[var(--font-display)] text-3xl italic text-white md:text-5xl">
+                    {spotlightPick?.title ?? spotlightMuseum?.name ?? "Curated Spotlight"}
+                  </h2>
+                  <p className="mt-2 text-xs text-white/65 md:text-sm">
+                    by {spotlightPick?.artist ?? spotlightMuseum?.ownerName ?? "Muse Curator"}
+                  </p>
+                </div>
+              </button>
+            </motion.section>
+
+            <motion.section {...staggeredFadeUpMotion(2, reduceMotion)}>
+              <div className="mb-4 flex items-end justify-between">
+                <h3 className="text-sm uppercase tracking-[0.22em] text-slate-400">Live Contests</h3>
+                <button
+                  type="button"
+                  onClick={() => navigateWithGuard("/contest", "contest")}
+                  className="text-[10px] uppercase tracking-[0.18em] text-slate-500 transition hover:text-slate-300"
+                >
+                  View All
+                </button>
+              </div>
+              <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {activeContests.length > 0 ? (
+                  activeContests.map((contest) => (
+                    <article
+                      key={contest.id}
+                      className="flex h-44 w-[280px] flex-none flex-col justify-between rounded-[18px] border border-white/10 bg-white/6 p-5"
                     >
                       <div>
-                        <p className="text-sm font-semibold text-[#21170e]">{museum.name}</p>
-                        <p className="mt-1 text-xs text-[#746453]">{museum.ownerName}</p>
-                      </div>
-                      <span className="rounded-full border border-[rgba(31,66,130,0.2)] bg-[rgba(31,66,130,0.06)] px-3 py-1 text-xs text-[#36558a]">
-                        {formatNumber(museum.artworkCount)} works
-                      </span>
-                    </motion.button>
-                  ))
-                ) : (
-                  <div className="rounded-[16px] border border-dashed border-[color:var(--line)] bg-white/80 px-4 py-5 text-sm text-[color:var(--muted)]">
-                    노출 중인 뮤지엄이 없습니다.
-                  </div>
-                )}
-              </div>
-            </article>
-
-            <article className="rounded-[28px] border border-[rgba(24,42,82,0.2)] bg-[linear-gradient(165deg,#0f1828_0%,#162944_52%,#1f3556_100%)] p-6 text-[#f1f4fa] shadow-[0_20px_44px_rgba(15,24,40,0.3)] md:p-7">
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.28em] text-[#a8bfe4]">Contest Pulse</p>
-                  <h2 className="mt-2 font-[var(--font-display)] text-3xl">Active Contests</h2>
-                </div>
-                <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs text-[#dbe7fb]">
-                  {nearestContestDays === null
-                    ? "No live"
-                    : nearestContestDays <= 0
-                      ? "Live now"
-                      : `D-${nearestContestDays}`}
-                </span>
-              </div>
-              <div className="mt-5 grid gap-3">
-                {activeContests.length > 0 ? (
-                  activeContests.map((contest, index) => (
-                    <motion.button
-                      key={contest.id}
-                      type="button"
-                      {...staggeredFadeUpMotion(index + 8, reduceMotion)}
-                      onClick={() => router.push(contestDetailRoute(contest.id))}
-                      className="group cursor-pointer rounded-[16px] border border-white/16 bg-white/8 p-4 text-left transition hover:border-white/32 hover:bg-white/14"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-[10px] uppercase tracking-[0.24em] text-[#afc5e8]">Contest</p>
-                          <h3 className="mt-2 font-[var(--font-display)] text-2xl text-white">{contest.theme}</h3>
-                          <p className="mt-2 text-xs text-[#c5d3eb]">{contest.period}</p>
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="rounded-full bg-[#5f88d3]/18 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-[#aac6ff]">
+                            Contest
+                          </span>
+                          <span className="text-[10px] text-white/48">
+                            {contest.daysLeft <= 0 ? "Live now" : `${contest.daysLeft}d left`}
+                          </span>
                         </div>
-                        <span className="rounded-full border border-white/24 bg-white/10 px-3 py-1 text-xs text-[#dbe7fb]">
-                          {contest.daysLeft <= 0 ? "진행 중" : `${contest.daysLeft}일`}
-                        </span>
+                        <h4 className="mt-3 line-clamp-2 font-[var(--font-display)] text-xl italic text-slate-100">
+                          {contest.theme}
+                        </h4>
+                        <p className="mt-2 text-xs text-slate-400">{contest.period}</p>
                       </div>
-                      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                        <span className="rounded-full border border-white/18 px-3 py-1 text-xs text-[#d0ddf4]">
-                          참가비 {formatNumber(contest.entryFee)}원
-                        </span>
-                        <span className="rounded-full border border-white/18 px-3 py-1 text-xs text-[#d0ddf4]">
-                          상금풀 {formatNumber(contest.prizePool)}원
-                        </span>
+                      <div className="flex items-end justify-between">
+                        <div>
+                          <p className="text-[9px] uppercase tracking-[0.16em] text-slate-500">Prize Pool</p>
+                          <p className="text-sm text-slate-200">{formatNumber(contest.prizePool)}원</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => router.push(contestDetailRoute(contest.id))}
+                          className="rounded-full border border-white/18 bg-white/8 px-4 py-1.5 text-[10px] uppercase tracking-[0.12em] text-slate-200 transition hover:border-white/34 hover:bg-white/15"
+                        >
+                          Enter
+                        </button>
                       </div>
-                    </motion.button>
+                    </article>
                   ))
                 ) : (
-                  <div className="rounded-[16px] border border-white/16 bg-white/8 px-4 py-5 text-sm text-[#cedbf1]">
+                  <div className="w-full rounded-[18px] border border-white/10 bg-white/6 px-5 py-8 text-sm text-slate-300/75">
                     현재 진행 중인 콘테스트가 없습니다.
                   </div>
                 )}
               </div>
-              <div className="mt-6 rounded-[14px] border border-white/16 bg-white/8 px-4 py-3 text-xs text-[#d6e2f7]">
-                Curated Works {formatNumber(totalFeaturedWorks)} · Lobby Access {formatNumber(featuredMuseums.length)}
+            </motion.section>
+
+            <motion.section {...staggeredFadeUpMotion(3, reduceMotion)}>
+              <div className="mb-6 flex items-end justify-between">
+                <h3 className="text-sm uppercase tracking-[0.22em] text-slate-400">Trending Halls</h3>
+                <button
+                  type="button"
+                  onClick={() => navigateWithGuard("/gallery", "gallery")}
+                  className="text-[10px] uppercase tracking-[0.18em] text-slate-500 transition hover:text-slate-300"
+                >
+                  Explore
+                </button>
               </div>
-            </article>
-          </section>
-        </main>
-      ) : (
-        <div className="mt-10 rounded-[28px] border border-[color:var(--line)] bg-white/80 px-6 py-8 text-sm text-[color:var(--muted)] shadow-[var(--shadow)]">
-          홈 데이터를 불러오지 못했습니다.
-          {error ? ` (${error})` : ""}
-        </div>
-      )}
-    </PageShell>
+              {featuredMuseums.length > 0 ? (
+                <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-3">
+                  {featuredMuseums.map((museum) => (
+                    <button
+                      key={museum.museumId}
+                      type="button"
+                      onClick={() => router.push(museumDetailRoute(museum.museumId))}
+                      className="group text-left"
+                    >
+                      <div className="overflow-hidden rounded-[18px] border border-white/10 bg-white/6 shadow-[0_18px_36px_rgba(0,0,0,0.34)]">
+                        {museum.coverImageUrl ? (
+                          <img
+                            src={museum.coverImageUrl}
+                            alt={museum.name}
+                            className="aspect-[3/4] w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                          />
+                        ) : (
+                          <div className="aspect-[3/4] w-full bg-[linear-gradient(145deg,#2f3340_0%,#4b5262_100%)]" />
+                        )}
+                      </div>
+                      <div className="px-1 pt-3">
+                        <p className="line-clamp-1 text-sm font-[var(--font-display)] italic text-slate-200">
+                          {museum.name}
+                        </p>
+                        <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                          {museum.ownerName} · {formatNumber(museum.artworkCount)} works
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-[18px] border border-white/10 bg-white/6 px-5 py-8 text-sm text-slate-300/75">
+                  노출 중인 뮤지엄이 없습니다.
+                </div>
+              )}
+            </motion.section>
+
+          </div>
+        ) : (
+          <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
+            <p className="text-xs uppercase tracking-[0.32em] text-slate-500">Overview</p>
+            <p className="mt-4 text-sm text-slate-200/80">
+              데이터를 불러오지 못했습니다.
+              {error ? ` (${error})` : ""}
+            </p>
+          </div>
+        )}
+      </main>
+      <CinematicBottomNav activeTab="overview" layout="fixed" />
+    </div>
   );
 }

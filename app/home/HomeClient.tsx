@@ -13,12 +13,12 @@ import {
   scheduleTokenExpiry,
 } from "../lib/auth";
 import { onAuthChanged } from "../lib/authEvents";
-import { canAccessPath } from "../lib/routeGuard";
+import CinematicBottomNav from "../components/CinematicBottomNav";
 import { getHomeData } from "../lib/home";
 import { staggeredFadeUpMotion } from "../lib/motion";
 import { APP_ROUTES } from "../lib/router";
 import { useAppDispatch } from "../store/hooks";
-import { setPendingPath, showToast } from "../store/uiSlice";
+import { showToast } from "../store/uiSlice";
 
 const HOME_LABEL = "MUSE CINEMA";
 
@@ -97,9 +97,6 @@ export default function HomeClient() {
     }, tokenExp);
   }, [isHydrated, tokenExp]);
 
-  const navButtonClass =
-    "flex flex-col items-center text-slate-100/40 transition hover:text-slate-100";
-
   const handleStepInside = () => {
     router.push(APP_ROUTES.galleryLobby);
   };
@@ -119,27 +116,8 @@ export default function HomeClient() {
     }
   };
 
-  const navigateWithGuard = (
-    path: string,
-    tab: "home" | "overview" | "contest" | "gallery" | "profile",
-  ) => {
-    const guard = canAccessPath(path);
-    if (!guard.allowed) {
-      dispatch(setPendingPath(`${path}?tab=${tab}`));
-      if (guard.reason === "ROLE") {
-        dispatch(showToast("권한이 없습니다."));
-        router.push(APP_ROUTES.home);
-        return;
-      }
-      dispatch(showToast("로그인이 필요한 기능입니다."));
-      router.push("/login");
-      return;
-    }
-    router.push(`${path}?tab=${tab}`);
-  };
-
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#08080c] text-slate-100">
+    <div className="relative h-[100dvh] overflow-hidden bg-[#08080c] text-slate-100">
       {heroImageUrl ? (
         <motion.div
           className="absolute inset-0 bg-cover bg-center"
@@ -177,9 +155,9 @@ export default function HomeClient() {
       )}
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,8,12,0.45)_0%,rgba(8,8,12,0.15)_48%,rgba(8,8,12,0.88)_100%)]" />
 
-      <main className="relative z-10 flex min-h-screen w-full flex-col items-center justify-between px-6 pb-8 pt-12 text-center md:px-8">
+      <main className="relative z-10 flex h-full w-full flex-col items-center justify-between px-6 pb-[calc(env(safe-area-inset-bottom)+116px)] pt-12 text-center md:px-8">
         {isLoading ? (
-          <div className="flex min-h-screen w-full max-w-5xl flex-col items-center justify-center">
+          <div className="flex h-full w-full max-w-5xl flex-col items-center justify-center">
             <p className="text-xs uppercase tracking-[0.32em] text-slate-200/65">{HOME_LABEL}</p>
             <p className="mt-4 text-sm text-slate-100/80">홈 화면을 불러오는 중입니다.</p>
           </div>
@@ -246,60 +224,10 @@ export default function HomeClient() {
                 </span>
                 <span className="text-sm uppercase tracking-[0.2em]">Step Inside</span>
               </button>
-
-              <nav className="mb-4 flex w-full items-center justify-between rounded-full border border-slate-100/10 bg-[rgba(8,8,12,0.4)] px-5 py-4 backdrop-blur-md">
-                <button
-                  type="button"
-                  className={`${navButtonClass} text-slate-100`}
-                  onClick={() => navigateWithGuard("/", "home")}
-                  aria-label="홈"
-                >
-                  <span className="material-symbols-outlined text-[24px]">home</span>
-                  <span className="mt-1 hidden text-[10px] uppercase tracking-tighter">Home</span>
-                </button>
-                <button
-                  type="button"
-                  className={navButtonClass}
-                  onClick={() => navigateWithGuard("/overview", "overview")}
-                  aria-label="종합 페이지"
-                >
-                  <span className="material-symbols-outlined text-[24px]">dashboard</span>
-                  <span className="mt-1 hidden text-[10px] uppercase tracking-tighter">Overview</span>
-                </button>
-                <button
-                  type="button"
-                  className={navButtonClass}
-                  onClick={() => navigateWithGuard("/contest", "contest")}
-                  aria-label="콘테스트"
-                >
-                  <span className="material-symbols-outlined text-[24px]">emoji_events</span>
-                  <span className="mt-1 hidden text-[10px] uppercase tracking-tighter">Contest</span>
-                </button>
-                <button
-                  type="button"
-                  className={navButtonClass}
-                  onClick={() => navigateWithGuard("/gallery", "gallery")}
-                  aria-label="갤러리"
-                >
-                  <span className="material-symbols-outlined text-[24px]">photo_library</span>
-                  <span className="mt-1 hidden text-[10px] uppercase tracking-tighter">Gallery</span>
-                </button>
-                <button
-                  type="button"
-                  className={navButtonClass}
-                  onClick={() => navigateWithGuard("/profile", "profile")}
-                  aria-label="프로필"
-                >
-                  <span className="material-symbols-outlined text-[24px]">account_circle</span>
-                  <span className="mt-1 hidden text-[10px] uppercase tracking-tighter">Profile</span>
-                </button>
-              </nav>
-
-              <div className="h-1 w-28 rounded-full bg-slate-100/22" />
             </motion.div>
           </>
         ) : (
-          <div className="flex min-h-screen w-full max-w-2xl flex-col items-center justify-center px-6 text-center">
+          <div className="flex h-full w-full max-w-2xl flex-col items-center justify-center px-6 text-center">
             <p className="text-xs uppercase tracking-[0.32em] text-slate-200/65">{HOME_LABEL}</p>
             <p className="mt-4 text-sm text-slate-100/80">
               홈 데이터를 불러오지 못했습니다.
@@ -308,6 +236,7 @@ export default function HomeClient() {
           </div>
         )}
       </main>
+      <CinematicBottomNav activeTab="home" layout="fixed" />
     </div>
   );
 }
