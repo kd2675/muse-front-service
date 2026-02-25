@@ -20,7 +20,7 @@ import { useBodyScrollLock } from "../lib/useBodyScrollLock";
 import { overlayFadeMotion, rightSheetMotion } from "../lib/motion";
 import { Skeleton } from "./Skeleton";
 
-const tabs = ["home", "contest", "gallery", "profile"] as const;
+const tabs = ["home", "overview", "contest", "gallery", "profile"] as const;
 type TabKey = (typeof tabs)[number];
 
 type AuthSnapshot = {
@@ -31,6 +31,7 @@ type AuthSnapshot = {
 
 const labelMap: Record<TabKey, string> = {
   home: "Home",
+  overview: "Overview",
   contest: "Contest",
   gallery: "Gallery",
   profile: "Profile",
@@ -38,12 +39,14 @@ const labelMap: Record<TabKey, string> = {
 
 const pathMap: Record<TabKey, string> = {
   home: "/",
+  overview: "/overview",
   contest: "/contest",
   gallery: "/gallery",
   profile: "/profile",
 };
 
 function tabFromPath(pathname: string): TabKey {
+  if (pathname.startsWith("/overview")) return "overview";
   if (pathname.startsWith("/contest") || pathname.startsWith("/admin/contests")) return "contest";
   if (pathname.startsWith("/gallery") || pathname.startsWith("/admin/gallery")) return "gallery";
   if (pathname.startsWith("/profile")) return "profile";
@@ -77,7 +80,8 @@ export default function TopNav() {
   } = authSnapshot;
 
   const queryTab = searchParams.get("tab");
-  const derivedTab = isTabKey(queryTab) ? queryTab : tabFromPath(pathname);
+  const pathTab = tabFromPath(pathname);
+  const derivedTab = isTabKey(queryTab) && queryTab === pathTab ? queryTab : pathTab;
 
   useEffect(() => {
     dispatch(setActiveTab(derivedTab));

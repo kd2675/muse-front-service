@@ -1,7 +1,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 type UiState = {
-  activeTab: "home" | "contest" | "gallery" | "profile";
+  activeTab: "home" | "overview" | "contest" | "gallery" | "profile";
   isToastOpen: boolean;
   toastMessage?: string;
   pendingPath?: string;

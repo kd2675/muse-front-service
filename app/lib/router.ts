@@ -1,7 +1,10 @@
 export const APP_ROUTES = {
+  home: "/?tab=home",
+  homeOverview: "/overview?tab=overview",
   contestList: "/contest?tab=contest",
   galleryLobby: "/gallery?tab=gallery",
   galleryMyMuseums: "/gallery/my?tab=gallery",
+  profile: "/profile?tab=profile",
   adminContestManage: "/admin/contests?tab=contest",
   adminContestReview: "/admin/contests/review?tab=contest",
   adminGalleryManage: "/admin/gallery?tab=gallery",
