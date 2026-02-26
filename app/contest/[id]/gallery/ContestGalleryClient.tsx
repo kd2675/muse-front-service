@@ -3,11 +3,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import PageShell from "../../../components/PageShell";
-import TopNav from "../../../components/TopNav";
-import Reveal from "../../../components/motion/Reveal";
+import CinematicBottomNav from "../../../components/CinematicBottomNav";
 import { Skeleton, SkeletonText } from "../../../components/Skeleton";
 import { getAccessToken } from "../../../lib/auth";
 import { getContestDetail, getContestEntries, voteContestEntry } from "../../../lib/contest";
@@ -21,16 +19,18 @@ type ContestGalleryClientProps = {
 };
 
 export default function ContestGalleryClient({ id }: ContestGalleryClientProps) {
-  const prefersReducedMotion = useReducedMotion();
-  const reduceMotion = Boolean(prefersReducedMotion);
+  const router = useRouter();
   const searchParams = useSearchParams();
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
+  const prefersReducedMotion = useReducedMotion();
+  const reduceMotion = Boolean(prefersReducedMotion);
   const requestedEntryId = searchParams.get("entryId");
+  const hasToken = Boolean(getAccessToken());
+
   const [pendingVoteEntryId, setPendingVoteEntryId] = useState<string | null>(null);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(requestedEntryId);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-  const hasToken = Boolean(getAccessToken());
 
   useBodyScrollLock(isLightboxOpen);
 
@@ -54,6 +54,10 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
   const safeCurrentIndex = entries.length === 0 ? 0 : requestedIndex >= 0 ? requestedIndex : 0;
   const currentEntry = entries[safeCurrentIndex] ?? null;
 
+  useEffect(() => {
+    setSelectedEntryId(requestedEntryId);
+  }, [requestedEntryId]);
+
   const goPrev = () => {
     if (entries.length === 0) {
       return;
@@ -76,16 +80,10 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
     }
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "ArrowLeft") {
-        if (entries.length > 0) {
-          const nextIndex = safeCurrentIndex === 0 ? entries.length - 1 : safeCurrentIndex - 1;
-          setSelectedEntryId(entries[nextIndex]?.entryId ?? null);
-        }
+        goPrev();
       }
       if (event.key === "ArrowRight") {
-        if (entries.length > 0) {
-          const nextIndex = safeCurrentIndex === entries.length - 1 ? 0 : safeCurrentIndex + 1;
-          setSelectedEntryId(entries[nextIndex]?.entryId ?? null);
-        }
+        goNext();
       }
       if (event.key === "Escape") {
         setIsLightboxOpen(false);
@@ -95,7 +93,7 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [entries, isVoting, safeCurrentIndex]);
+  });
 
   const voteMutation = useMutation({
     mutationFn: (entryId: string) => voteContestEntry(id, { entryId }),
@@ -121,237 +119,294 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
   const requestLoginForVote = () => {
     dispatch(setPendingPath(`/contest/${id}/gallery?tab=contest`));
     dispatch(showToast("로그인 후 선택할 수 있습니다."));
+    router.push("/login");
+  };
+
+  const goBackToDetail = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push(`/contest/${id}?tab=contest`);
   };
 
   return (
-    <PageShell>
-      <TopNav />
+    <div className="relative min-h-screen overflow-x-hidden bg-[#121212] text-slate-100">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_9%_8%,rgba(110,132,162,0.2),transparent_35%),radial-gradient(circle_at_86%_14%,rgba(157,128,82,0.18),transparent_40%),radial-gradient(circle_at_56%_82%,rgba(90,87,84,0.2),transparent_42%)]" />
 
-      {(contestLoading || entriesLoading) && (
-        <Reveal index={0} className="mt-10">
-        <section className="rounded-[32px] border border-[rgba(149,128,102,0.22)] bg-[linear-gradient(180deg,rgba(255,253,249,0.98)_0%,rgba(250,246,239,0.98)_100%)] p-8 shadow-[0_24px_48px_rgba(79,58,34,0.1)] md:p-10">
-          <Skeleton className="h-5 w-36 rounded-full" />
-          <Skeleton className="mt-4 h-12 w-2/3 rounded-[16px]" />
-          <SkeletonText className="mt-4 max-w-xl" lines={2} />
-          <div className="mt-10 rounded-[24px] border border-[rgba(149,128,102,0.2)] bg-white/88 p-5">
-            <Skeleton className="h-[34rem] w-full rounded-[16px]" />
-            <Skeleton className="mt-4 h-4 w-1/3 rounded-full" />
-            <Skeleton className="mt-2 h-3 w-1/2 rounded-full" />
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <Skeleton className="h-12 rounded-full" />
-              <Skeleton className="h-12 rounded-full" />
-            </div>
+      <main className="relative mx-auto w-full max-w-5xl px-6 pb-44 pt-8">
+        <motion.div
+          className="mb-5 flex items-center justify-between"
+          {...staggeredFadeUpMotion(0, reduceMotion)}
+        >
+          <button
+            type="button"
+            onClick={goBackToDetail}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/14 text-slate-400 transition hover:border-white/28 hover:text-white"
+            aria-label="상세로 돌아가기"
+          >
+            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+          </button>
+
+          <div className="rounded-sm border border-[#c0a062]/45 bg-[#c0a062]/18 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-[#f8e6be]">
+            Exhibition Focus
           </div>
-        </section>
-        </Reveal>
-      )}
 
-      {!contestLoading && !entriesLoading && (
-        <>
-          {!contest && (
-            <section className="mt-10 rounded-[24px] border border-[color:var(--line)] bg-white/85 px-6 py-5 text-sm text-[color:var(--muted)]">
-              콘테스트 정보를 불러오지 못했습니다.
-              {contestError ? ` (${contestError})` : ""}
-            </section>
-          )}
+          <Link
+            href={`/contest/${id}?tab=contest`}
+            className="inline-flex h-10 items-center rounded-full border border-white/14 px-4 text-xs text-slate-300 transition hover:border-white/26 hover:text-white"
+          >
+            상세 보기
+          </Link>
+        </motion.div>
 
-          {contest && !isVoting && (
-            <Reveal index={1} className="mt-10">
-            <section className="rounded-[32px] border border-[rgba(149,128,102,0.22)] bg-[linear-gradient(180deg,rgba(255,253,249,0.98)_0%,rgba(250,246,239,0.98)_100%)] p-8 shadow-[0_24px_48px_rgba(79,58,34,0.1)] md:p-10">
-              <p className="text-[10px] uppercase tracking-[0.3em] text-[#8a6a47]">Curated Exhibition</p>
-              <h2 className="mt-4 font-[var(--font-display)] text-4xl text-[#2c2014]">전시 세션 준비 중</h2>
-              <p className="mt-3 text-sm text-[#5f4a35]">
-                현재 상태는 <strong>{contest.phase}</strong> 입니다. 전시 중 상태에서 작품 집중 관람 페이지가 열립니다.
-              </p>
-              <div className="mt-7 flex flex-wrap gap-3">
-                <Link
-                  href={`/contest/${id}?tab=contest`}
-                  className="rounded-full border border-[rgba(149,128,102,0.32)] bg-white/92 px-5 py-3 text-sm text-[#5f4a35] transition hover:bg-[rgba(248,241,232,0.95)]"
-                >
-                  상세로 돌아가기
-                </Link>
-                <Link
-                  href="/contest?tab=contest"
-                  className="rounded-full border border-[rgba(149,128,102,0.28)] px-5 py-3 text-sm text-[#79614a] transition hover:border-[rgba(149,128,102,0.45)]"
-                >
-                  콘테스트 목록
-                </Link>
-              </div>
-            </section>
-            </Reveal>
-          )}
+        {(contestLoading || entriesLoading) && (
+          <section className="space-y-6">
+            <div className="rounded-[28px] border border-white/10 bg-white/6 p-8">
+              <Skeleton className="h-8 w-2/5 rounded-[14px]" />
+              <SkeletonText className="mt-4 max-w-xl" lines={2} />
+            </div>
+            <div className="rounded-[24px] border border-white/10 bg-white/6 p-5">
+              <Skeleton className="h-[34rem] w-full rounded-[16px]" />
+              <Skeleton className="mt-4 h-5 w-1/3 rounded-full" />
+            </div>
+          </section>
+        )}
 
-          {contest && isVoting && (
-            <>
-              <Reveal index={1} className="mt-10">
-              <section className="rounded-[34px] border border-[rgba(149,128,102,0.22)] bg-[linear-gradient(180deg,rgba(255,253,249,0.99)_0%,rgba(250,246,239,0.99)_100%)] p-8 shadow-[0_28px_56px_rgba(79,58,34,0.12)] md:p-10">
-                <p className="inline-flex rounded-full border border-[rgba(149,128,102,0.28)] bg-white/92 px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-[#8a6a47]">
-                  Curated Exhibition
+        {!contestLoading && !entriesLoading && (
+          <>
+            {!contest && (
+              <section className="rounded-[20px] border border-rose-300/35 bg-rose-300/10 px-5 py-4 text-sm text-rose-100">
+                콘테스트 정보를 불러오지 못했습니다. {contestError ?? ""}
+              </section>
+            )}
+
+            {contest && !isVoting && (
+              <motion.section
+                className="rounded-[30px] border border-white/10 bg-[rgba(18,18,18,0.74)] p-7 shadow-[0_24px_56px_rgba(0,0,0,0.34)] backdrop-blur-md md:p-9"
+                {...staggeredFadeUpMotion(1, reduceMotion)}
+              >
+                <p className="text-[10px] uppercase tracking-[0.3em] text-[#c0a062]">Curated Exhibition</p>
+                <h2 className="mt-4 font-[var(--font-display)] text-4xl text-slate-100">전시 세션 준비 중</h2>
+                <p className="mt-3 text-sm text-slate-300">
+                  현재 상태는 <strong>{contest.phase}</strong> 입니다. 전시 중 상태에서 작품 집중 관람 페이지가 열립니다.
                 </p>
-                <h1 className="mt-5 font-[var(--font-display)] text-4xl leading-tight text-[#23180f] md:text-6xl">{contest.theme}</h1>
-                <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[#5f4a35]">
-                  한 작품에 집중해 감상하는 전시 모드입니다. 다음/이전으로 이동하며 작품을 비교한 뒤 원하는 작품을 선택하세요.
-                </p>
-                <div className="mt-6 flex flex-wrap gap-3 text-xs text-[#6f5841]">
-                  <span className="rounded-full border border-[rgba(149,128,102,0.28)] bg-white/90 px-3 py-1.5">
-                    Work {entries.length === 0 ? "0/0" : `${safeCurrentIndex + 1}/${entries.length}`}
-                  </span>
-                  <span className="rounded-full border border-[rgba(149,128,102,0.28)] bg-white/90 px-3 py-1.5">
-                    Session {formatSchedule(contest.votingStartAt)} - {formatSchedule(contest.votingEndAt)}
-                  </span>
+                <div className="mt-7 flex flex-wrap gap-3">
                   <Link
                     href={`/contest/${id}?tab=contest`}
-                    className="rounded-full border border-[rgba(149,128,102,0.32)] bg-white/92 px-3 py-1.5 transition hover:bg-[rgba(248,241,232,0.95)]"
+                    className="rounded-full border border-white/20 bg-white/6 px-5 py-3 text-sm text-slate-200 transition hover:bg-white/12"
                   >
-                    상세 화면
+                    상세로 돌아가기
+                  </Link>
+                  <Link
+                    href="/contest?tab=contest"
+                    className="rounded-full border border-white/16 px-5 py-3 text-sm text-slate-300 transition hover:border-white/28 hover:text-white"
+                  >
+                    콘테스트 목록
                   </Link>
                 </div>
-              </section>
-              </Reveal>
+              </motion.section>
+            )}
 
-              {entriesError && (
-                <section className="mt-6 rounded-[18px] border border-[rgba(149,128,102,0.24)] bg-[rgba(255,250,244,0.95)] px-5 py-3 text-xs text-[#79614a]">
-                  작품 목록을 불러오지 못했습니다.
-                  {entriesError ? ` (${entriesError})` : ""}
-                </section>
-              )}
+            {contest && isVoting && (
+              <>
+                <motion.section
+                  className="rounded-[30px] border border-white/10 bg-[rgba(18,18,18,0.74)] p-7 shadow-[0_24px_56px_rgba(0,0,0,0.34)] backdrop-blur-md md:p-9"
+                  {...staggeredFadeUpMotion(1, reduceMotion)}
+                >
+                  <p className="inline-flex rounded-full border border-[#c0a062]/45 bg-[#c0a062]/18 px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-[#f8e6be]">
+                    Curated Exhibition
+                  </p>
+                  <h1 className="mt-4 font-[var(--font-display)] text-4xl leading-tight text-slate-100 md:text-5xl">
+                    {contest.theme}
+                  </h1>
+                  <p className="mt-3 max-w-3xl text-sm text-slate-300">
+                    한 작품에 집중해 감상하고, 좌우 이동으로 다음 작품을 비교할 수 있습니다.
+                  </p>
+                  <div className="mt-6 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full border border-white/18 bg-white/[0.03] px-3 py-1.5 text-slate-300">
+                      Work {entries.length === 0 ? "0/0" : `${safeCurrentIndex + 1}/${entries.length}`}
+                    </span>
+                    <span className="rounded-full border border-white/18 bg-white/[0.03] px-3 py-1.5 text-slate-300">
+                      전시 기간 {formatSchedule(contest.votingStartAt)} - {formatSchedule(contest.votingEndAt)}
+                    </span>
+                  </div>
+                </motion.section>
 
-              {entries.length === 0 ? (
-                <section className="mt-9 rounded-[20px] border border-[rgba(149,128,102,0.24)] bg-[rgba(255,250,244,0.95)] px-6 py-5 text-sm text-[#79614a]">
-                  전시 중인 작품이 아직 없습니다.
-                </section>
-              ) : (
-                <section className="mt-9">
-                  {currentEntry && (
-                    <motion.article
-                      key={currentEntry.entryId}
-                      {...staggeredFadeUpMotion(safeCurrentIndex + 3, reduceMotion)}
-                      className="gallery-focus-stage rounded-[28px] border border-[rgba(149,128,102,0.24)] bg-[rgba(255,252,247,0.96)] p-6 shadow-[0_20px_42px_rgba(79,58,34,0.12)]"
-                    >
-                      <button
-                        className="group block w-full rounded-[18px] border border-[rgba(149,128,102,0.2)] bg-white/90 p-2 text-left"
-                        onClick={() => setIsLightboxOpen(true)}
+                {entriesError && (
+                  <section className="mt-6 rounded-[18px] border border-rose-300/35 bg-rose-300/10 px-5 py-3 text-xs text-rose-100">
+                    작품 목록을 불러오지 못했습니다. {entriesError}
+                  </section>
+                )}
+
+                {entries.length === 0 ? (
+                  <section className="mt-8 rounded-[20px] border border-white/12 bg-white/[0.03] px-6 py-5 text-sm text-slate-300">
+                    전시 중인 작품이 아직 없습니다.
+                  </section>
+                ) : (
+                  <section className="mt-8">
+                    {currentEntry && (
+                      <motion.article
+                        key={currentEntry.entryId}
+                        {...staggeredFadeUpMotion(2, reduceMotion)}
+                        className="rounded-[24px] border border-white/12 bg-[rgba(20,20,22,0.92)] p-5 shadow-[0_20px_40px_rgba(0,0,0,0.28)]"
                       >
-                        <div className="gallery-focus-media overflow-hidden rounded-[14px]">
-                          {currentEntry.imageUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={currentEntry.imageUrl}
-                              alt={currentEntry.title ?? "contest entry"}
-                              className="h-[34rem] w-full object-cover transition duration-500 group-hover:scale-[1.012]"
-                            />
+                        <button
+                          type="button"
+                          onClick={() => setIsLightboxOpen(true)}
+                          className="group block w-full rounded-[16px] border border-white/12 bg-black/20 p-2 text-left"
+                        >
+                          <div className="overflow-hidden rounded-[12px]">
+                            {currentEntry.imageUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={currentEntry.imageUrl}
+                                alt={currentEntry.title ?? "contest entry"}
+                                className="h-[62vh] min-h-[420px] w-full object-cover transition duration-500 group-hover:scale-[1.01]"
+                              />
+                            ) : (
+                              <div className="h-[62vh] min-h-[420px] w-full bg-[linear-gradient(160deg,rgba(32,32,34,0.9),rgba(24,24,26,0.92))]" />
+                            )}
+                          </div>
+                        </button>
+
+                        <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
+                          <div>
+                            <p className="text-[10px] uppercase tracking-[0.24em] text-[#c0a062]">
+                              Work {String(safeCurrentIndex + 1).padStart(2, "0")}
+                            </p>
+                            <h3 className="mt-1 text-3xl text-slate-100">{currentEntry.title ?? "Untitled"}</h3>
+                            <p className="mt-2 text-sm text-slate-300">{currentEntry.artistName}</p>
+                            <p className="mt-2 text-xs text-slate-500">이미지를 클릭하면 전체 화면으로 감상합니다.</p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              className="rounded-full border border-white/18 bg-white/[0.03] px-4 py-2.5 text-sm text-slate-200 transition hover:bg-white/10"
+                              onClick={goPrev}
+                            >
+                              이전 작품
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-full border border-white/18 bg-white/[0.03] px-4 py-2.5 text-sm text-slate-200 transition hover:bg-white/10"
+                              onClick={goNext}
+                            >
+                              다음 작품
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="mt-5">
+                          {canVote ? (
+                            <button
+                              type="button"
+                              className="w-full rounded-full border border-[#c0a062]/40 bg-[#c0a062]/14 px-4 py-3 text-sm text-[#f3dba5] transition hover:bg-[#c0a062]/22 disabled:opacity-60"
+                              onClick={() => voteMutation.mutate(currentEntry.entryId)}
+                              disabled={Boolean(pendingVoteEntryId)}
+                            >
+                              {pendingVoteEntryId === currentEntry.entryId ? "선택 중..." : "이 작품 선택"}
+                            </button>
                           ) : (
-                            <div className="h-[34rem] w-full bg-[rgba(238,226,210,0.9)]" />
+                            <div className="grid gap-2">
+                              <button
+                                type="button"
+                                className="w-full rounded-full border border-white/18 bg-white/[0.03] px-4 py-3 text-sm text-slate-300"
+                                onClick={requestLoginForVote}
+                              >
+                                로그인 후 선택 가능
+                              </button>
+                              <Link
+                                href="/login"
+                                className="w-full rounded-full border border-white/18 px-4 py-2 text-center text-xs text-slate-400 transition hover:border-white/30 hover:text-slate-200"
+                              >
+                                로그인하러 가기
+                              </Link>
+                            </div>
                           )}
                         </div>
-                      </button>
 
-                      <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
-                        <div>
-                          <p className="text-[10px] uppercase tracking-[0.24em] text-[#8a6a47]">Work {String(safeCurrentIndex + 1).padStart(2, "0")}</p>
-                          <h3 className="mt-1 text-2xl font-semibold text-[#23180f]">{currentEntry.title ?? "Untitled"}</h3>
-                          <p className="mt-2 text-sm text-[#725b45]">{currentEntry.artistName}</p>
-                          <p className="mt-2 text-xs text-[#8a6d52]">이미지를 클릭하면 전체화면으로 감상할 수 있습니다.</p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            className="rounded-full border border-[rgba(149,128,102,0.3)] bg-white/94 px-4 py-2.5 text-sm text-[#644d38] transition hover:bg-[rgba(248,241,232,0.95)]"
-                            onClick={goPrev}
-                          >
-                            이전 작품
-                          </button>
-                          <button
-                            className="rounded-full border border-[rgba(149,128,102,0.3)] bg-white/94 px-4 py-2.5 text-sm text-[#644d38] transition hover:bg-[rgba(248,241,232,0.95)]"
-                            onClick={goNext}
-                          >
-                            다음 작품
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="mt-5">
-                        {canVote ? (
-                          <button
-                            className="w-full rounded-full border border-[rgba(149,128,102,0.34)] bg-white/94 px-4 py-3 text-sm text-[#5f4a35] transition hover:bg-[rgba(248,241,232,0.96)] disabled:opacity-60"
-                            onClick={() => voteMutation.mutate(currentEntry.entryId)}
-                            disabled={Boolean(pendingVoteEntryId)}
-                          >
-                            {pendingVoteEntryId === currentEntry.entryId ? "선택 중..." : "이 작품 선택"}
-                          </button>
-                        ) : (
-                          <div className="grid gap-2">
-                            <button
-                              className="w-full rounded-full border border-[rgba(149,128,102,0.3)] bg-white/92 px-4 py-3 text-sm text-[#6c5440]"
-                              onClick={requestLoginForVote}
-                            >
-                              로그인 후 선택 가능
-                            </button>
-                            <Link
-                              href="/login"
-                              className="w-full rounded-full border border-[rgba(149,128,102,0.3)] px-4 py-2 text-center text-xs text-[#7f6650] transition hover:bg-[rgba(248,241,232,0.95)]"
-                            >
-                              로그인하러 가기
-                            </Link>
+                        <div className="mt-6 overflow-x-auto pb-2">
+                          <div className="flex min-w-max gap-2">
+                            {entries.map((entry, index) => {
+                              const active = entry.entryId === currentEntry.entryId;
+                              return (
+                                <button
+                                  key={entry.entryId}
+                                  type="button"
+                                  onClick={() => setSelectedEntryId(entry.entryId)}
+                                  className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                                    active
+                                      ? "border-[#c0a062]/45 bg-[#c0a062]/18 text-[#f8e6be]"
+                                      : "border-white/18 bg-white/[0.03] text-slate-300 hover:bg-white/10"
+                                  }`}
+                                >
+                                  {String(index + 1).padStart(2, "0")}
+                                </button>
+                              );
+                            })}
                           </div>
-                        )}
-                      </div>
-                    </motion.article>
-                  )}
-                </section>
-              )}
-            </>
-          )}
-        </>
-      )}
+                        </div>
+                      </motion.article>
+                    )}
+                  </section>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </main>
+
+      <CinematicBottomNav activeTab="contest" layout="fixed" />
 
       <AnimatePresence>
         {isLightboxOpen && currentEntry && (
           <motion.div
             {...overlayFadeMotion(reduceMotion)}
-            className="fixed inset-0 z-50 bg-[rgba(14,10,7,0.92)] p-4 md:p-8"
+            className="fixed inset-0 z-50 bg-[rgba(12,12,14,0.94)] p-4 md:p-8"
           >
-            <motion.div
-              {...popInMotion(reduceMotion)}
-              className="mx-auto flex h-full w-full max-w-7xl flex-col"
-            >
-              <div className="mb-4 flex items-center justify-between gap-3 text-[#efe5d7]">
-                <p className="text-xs uppercase tracking-[0.28em]">Full Screen View</p>
+            <motion.div {...popInMotion(reduceMotion)} className="mx-auto flex h-full w-full max-w-7xl flex-col">
+              <div className="mb-4 flex items-center justify-between gap-3 text-slate-100">
+                <p className="text-xs uppercase tracking-[0.28em] text-slate-300">Full Screen View</p>
                 <button
-                  className="rounded-full border border-[rgba(240,223,199,0.45)] px-4 py-2 text-sm text-[#efe5d7] transition hover:bg-[rgba(240,223,199,0.12)]"
+                  type="button"
+                  className="rounded-full border border-white/20 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10"
                   onClick={() => setIsLightboxOpen(false)}
                 >
                   닫기
                 </button>
               </div>
 
-              <div className="relative flex-1 overflow-hidden rounded-[22px] border border-[rgba(240,223,199,0.24)] bg-[rgba(23,17,12,0.7)]">
+              <div className="relative flex-1 overflow-hidden rounded-[22px] border border-white/16 bg-black/40">
                 {currentEntry.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={currentEntry.imageUrl} alt={currentEntry.title ?? "contest entry"} className="h-full w-full object-contain" />
                 ) : (
-                  <div className="h-full w-full bg-[rgba(59,45,31,0.66)]" />
+                  <div className="h-full w-full bg-[linear-gradient(160deg,rgba(32,32,34,0.9),rgba(24,24,26,0.92))]" />
                 )}
 
                 <button
-                  className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full border border-[rgba(240,223,199,0.42)] bg-[rgba(35,26,18,0.66)] px-3 py-2 text-sm text-[#efe5d7] transition hover:bg-[rgba(57,43,30,0.76)]"
+                  type="button"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full border border-white/24 bg-black/50 px-3 py-2 text-sm text-slate-100 transition hover:bg-black/70"
                   onClick={goPrev}
                 >
                   이전
                 </button>
                 <button
-                  className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full border border-[rgba(240,223,199,0.42)] bg-[rgba(35,26,18,0.66)] px-3 py-2 text-sm text-[#efe5d7] transition hover:bg-[rgba(57,43,30,0.76)]"
+                  type="button"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full border border-white/24 bg-black/50 px-3 py-2 text-sm text-slate-100 transition hover:bg-black/70"
                   onClick={goNext}
                 >
                   다음
                 </button>
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[#e3d3bf]">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-slate-200">
                 <div>
                   <p className="text-sm font-semibold">{currentEntry.title ?? "Untitled"}</p>
-                  <p className="text-xs opacity-90">{currentEntry.artistName}</p>
+                  <p className="text-xs text-slate-400">{currentEntry.artistName}</p>
                 </div>
-                <span className="rounded-full border border-[rgba(240,223,199,0.34)] px-3 py-1 text-xs">
+                <span className="rounded-full border border-white/20 px-3 py-1 text-xs text-slate-300">
                   {entries.length === 0 ? "0/0" : `${safeCurrentIndex + 1}/${entries.length}`}
                 </span>
               </div>
@@ -359,34 +414,7 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
           </motion.div>
         )}
       </AnimatePresence>
-
-      <style jsx>{`
-        .gallery-focus-stage {
-          animation: gallery-focus-enter 240ms ease both;
-        }
-
-        .gallery-focus-media {
-          background: linear-gradient(180deg, rgba(255, 253, 249, 0.7) 0%, rgba(243, 234, 222, 0.6) 100%);
-        }
-
-        @keyframes gallery-focus-enter {
-          from {
-            opacity: 1;
-            transform: translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .gallery-focus-stage {
-            animation: none !important;
-          }
-        }
-      `}</style>
-    </PageShell>
+    </div>
   );
 }
 

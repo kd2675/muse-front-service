@@ -67,6 +67,18 @@ export type ContestPublicEntry = {
   submittedAt: string;
 };
 
+export type ContestEntryPageMode = "RANDOM" | "SUBMITTED_ASC";
+
+export type ContestPublicEntryPage = {
+  items: ContestPublicEntry[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
+  mode: ContestEntryPageMode;
+};
+
 export type AdminContestEntryReviewStatus = "REVIEWING" | "APPROVED" | "REJECTED";
 
 export type ContestRankingItem = {

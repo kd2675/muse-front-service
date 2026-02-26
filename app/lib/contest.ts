@@ -8,9 +8,11 @@ import type {
   ContestEntryCreditStatus,
   ContestFinalizeResult,
   ContestPublicEntry,
+  ContestPublicEntryPage,
   ContestRankingItem,
   ContestSummary,
   AdminContestEntryReviewStatus,
+  ContestEntryPageMode,
   ContestVoteResponse,
 } from "../types/contest";
 
@@ -155,6 +157,50 @@ export async function getContestEntries(
   if (!data?.data) {
     return {
       data: [],
+      error: backendMapped ?? backendMessage ?? error,
+    };
+  }
+
+  return { data: data.data };
+}
+
+export type ContestEntriesPageResult = {
+  data: ContestPublicEntryPage;
+  error?: string;
+};
+
+export async function getContestEntriesPage(
+  id: number,
+  params: {
+    mode: ContestEntryPageMode;
+    page?: number;
+    size?: number;
+  },
+): Promise<ContestEntriesPageResult> {
+  const page = params.page ?? 1;
+  const size = params.size ?? 10;
+  const query = new URLSearchParams({
+    mode: params.mode,
+    page: String(page),
+    size: String(size),
+  });
+
+  const { data, error, backendMapped, backendMessage } =
+    await fetchJson<ResponseEnvelope<ContestPublicEntryPage>>(
+      `/api/muse/v1/contests/${id}/entries/page?${query.toString()}`,
+    );
+
+  if (!data?.data) {
+    return {
+      data: {
+        items: [],
+        page,
+        size,
+        totalElements: 0,
+        totalPages: 1,
+        hasNext: false,
+        mode: params.mode,
+      },
       error: backendMapped ?? backendMessage ?? error,
     };
   }

@@ -15,8 +15,9 @@ import {
   scheduleTokenExpiry,
 } from "../lib/auth";
 import { onAuthChanged } from "../lib/authEvents";
-import { canAccessPath } from "../lib/routeGuard";
+import { getContestList } from "../lib/contest";
 import { getHomeData } from "../lib/home";
+import { canAccessPath } from "../lib/routeGuard";
 import { staggeredFadeUpMotion } from "../lib/motion";
 import { APP_ROUTES, galleryMuseumDetailRoute } from "../lib/router";
 import { useAppDispatch } from "../store/hooks";
@@ -49,13 +50,20 @@ export default function OverviewClient() {
     queryKey: ["home", "overview"],
     queryFn: getHomeData,
   });
+  const { data: contestListData, isLoading: contestListLoading } = useQuery({
+    queryKey: ["contest-list", "overview"],
+    queryFn: getContestList,
+  });
 
   const payload = data?.data ?? null;
   const error = data?.error;
+  const contests = contestListData?.data ?? [];
+  const contestError = contestListData?.error;
+  const exhibitingContests = contests.filter((contest) => contest.phase === "VOTING");
+  const upcomingContests = contests.filter((contest) => contest.phase === "UPCOMING");
   const todaysPick = payload?.todaysPick ?? [];
   const spotlightPick = todaysPick[0] ?? null;
   const featuredMuseums = payload?.featuredMuseums ?? [];
-  const activeContests = payload?.activeContests ?? [];
   const spotlightMuseum = featuredMuseums.find((museum) => museum.coverImageUrl) ?? featuredMuseums[0];
   const {
     status: authStatus,
@@ -225,8 +233,8 @@ export default function OverviewClient() {
             </motion.section>
 
             <motion.section {...staggeredFadeUpMotion(2, reduceMotion)}>
-              <div className="mb-4 flex items-end justify-between">
-                <h3 className="text-sm uppercase tracking-[0.22em] text-slate-400">Live Contests</h3>
+              <div className="mb-6 flex items-end justify-between">
+                <h3 className="text-sm uppercase tracking-[0.22em] text-slate-400">Contests</h3>
                 <button
                   type="button"
                   onClick={() => navigateWithGuard("/contest", "contest")}
@@ -235,48 +243,98 @@ export default function OverviewClient() {
                   View All
                 </button>
               </div>
-              <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {activeContests.length > 0 ? (
-                  activeContests.map((contest) => (
-                    <article
-                      key={contest.id}
-                      className="flex h-44 w-[280px] flex-none flex-col justify-between rounded-[18px] border border-white/10 bg-white/6 p-5"
-                    >
-                      <div>
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="rounded-full bg-[#5f88d3]/18 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-[#aac6ff]">
-                            Contest
-                          </span>
-                          <span className="text-[10px] text-white/48">
-                            {contest.daysLeft <= 0 ? "Live now" : `${contest.daysLeft}d left`}
-                          </span>
-                        </div>
-                        <h4 className="mt-3 line-clamp-2 font-[var(--font-display)] text-xl italic text-slate-100">
-                          {contest.theme}
-                        </h4>
-                        <p className="mt-2 text-xs text-slate-400">{contest.period}</p>
-                      </div>
-                      <div className="flex items-end justify-between">
-                        <div>
-                          <p className="text-[9px] uppercase tracking-[0.16em] text-slate-500">Prize Pool</p>
-                          <p className="text-sm text-slate-200">{formatNumber(contest.prizePool)}원</p>
-                        </div>
+
+              <div className="space-y-8">
+                <div>
+                  <p className="mb-3 text-xs uppercase tracking-[0.18em] text-[#c0a062]">전시중</p>
+                  <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {contestListLoading ? (
+                      <div className="h-44 w-[280px] rounded-[18px] border border-white/10 bg-white/6" />
+                    ) : exhibitingContests.length > 0 ? (
+                      exhibitingContests.map((contest) => (
                         <button
                           type="button"
+                          key={contest.id}
                           onClick={() => router.push(contestDetailRoute(contest.id))}
-                          className="rounded-full border border-white/18 bg-white/8 px-4 py-1.5 text-[10px] uppercase tracking-[0.12em] text-slate-200 transition hover:border-white/34 hover:bg-white/15"
+                          className="flex h-44 w-[280px] flex-none flex-col justify-between rounded-[18px] border border-[#c0a062]/26 bg-[linear-gradient(160deg,rgba(192,160,98,0.08),rgba(255,255,255,0.03))] p-5"
                         >
-                          Enter
+                          <div>
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="rounded-full border border-[#c0a062]/42 bg-[#c0a062]/14 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-[#f8e6be]">
+                                전시 중
+                              </span>
+                              <span className="text-[10px] text-white/58">
+                                {contest.daysLeft <= 0 ? "Live now" : `${contest.daysLeft}d left`}
+                              </span>
+                            </div>
+                            <h4 className="mt-3 line-clamp-2 font-[var(--font-display)] text-xl italic text-slate-100">
+                              {contest.theme}
+                            </h4>
+                            <p className="mt-2 text-xs text-slate-400">{contest.period}</p>
+                          </div>
+                          <div className="flex items-end justify-between">
+                            <div>
+                              <p className="text-[9px] uppercase tracking-[0.16em] text-slate-500">Prize Pool</p>
+                              <p className="text-sm text-slate-200">{formatNumber(contest.prizePool)}원</p>
+                            </div>
+                            <span className="text-[10px] uppercase tracking-[0.12em] text-[#f8e6be]/85">상세 보기</span>
+                          </div>
                         </button>
+                      ))
+                    ) : (
+                      <div className="w-full rounded-[18px] border border-white/10 bg-white/6 px-5 py-8 text-sm text-slate-300/75">
+                        현재 전시중인 콘테스트가 없습니다.
                       </div>
-                    </article>
-                  ))
-                ) : (
-                  <div className="w-full rounded-[18px] border border-white/10 bg-white/6 px-5 py-8 text-sm text-slate-300/75">
-                    현재 진행 중인 콘테스트가 없습니다.
+                    )}
                   </div>
-                )}
+                </div>
+
+                <div>
+                  <p className="mb-3 text-xs uppercase tracking-[0.18em] text-slate-400">출품대기중</p>
+                  <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {contestListLoading ? (
+                      <div className="h-44 w-[280px] rounded-[18px] border border-white/10 bg-white/6" />
+                    ) : upcomingContests.length > 0 ? (
+                      upcomingContests.map((contest) => (
+                        <button
+                          type="button"
+                          key={contest.id}
+                          onClick={() => router.push(contestDetailRoute(contest.id))}
+                          className="flex h-44 w-[280px] flex-none flex-col justify-between rounded-[18px] border border-white/10 bg-white/6 p-5"
+                        >
+                          <div>
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="rounded-full bg-slate-300/14 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-200">
+                                출품 대기
+                              </span>
+                              <span className="text-[10px] text-white/50">
+                                {contest.daysLeft <= 0 ? "Soon" : `D-${contest.daysLeft}`}
+                              </span>
+                            </div>
+                            <h4 className="mt-3 line-clamp-2 font-[var(--font-display)] text-xl italic text-slate-100">
+                              {contest.theme}
+                            </h4>
+                            <p className="mt-2 text-xs text-slate-400">{contest.period}</p>
+                          </div>
+                          <div className="flex justify-end">
+                            <span className="text-[10px] uppercase tracking-[0.12em] text-slate-300/85">일정 확인</span>
+                          </div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="w-full rounded-[18px] border border-white/10 bg-white/6 px-5 py-8 text-sm text-slate-300/75">
+                        현재 출품대기중인 콘테스트가 없습니다.
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
+
+              {!contestListLoading && contestError ? (
+                <p className="mt-4 text-xs text-rose-200/90">
+                  콘테스트 목록을 불러오지 못했습니다. ({contestError})
+                </p>
+              ) : null}
             </motion.section>
 
             <motion.section {...staggeredFadeUpMotion(3, reduceMotion)}>
@@ -327,7 +385,6 @@ export default function OverviewClient() {
                 </div>
               )}
             </motion.section>
-
           </div>
         ) : (
           <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
