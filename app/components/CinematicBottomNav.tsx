@@ -66,7 +66,7 @@ export default function CinematicBottomNav({
   const reduceMotion = Boolean(prefersReducedMotion);
   const [isDocked, setIsDocked] = useState(false);
   const [hasScrollableContent, setHasScrollableContent] = useState(false);
-  const [showFloatingMenu, setShowFloatingMenu] = useState(true);
+  const [showFloatingMenu, setShowFloatingMenu] = useState(false);
   const [showDockedMenu, setShowDockedMenu] = useState(false);
 
   useEffect(() => {
@@ -198,33 +198,7 @@ export default function CinematicBottomNav({
 
   if (layout === "fixed") {
     const showDockedInSlot = reserveSpace && hasScrollableContent;
-    const dockedFixedMotion = reduceMotion
-      ? {
-          initial: false,
-          animate: { opacity: 1, y: 0, scale: 1 },
-          exit: { opacity: 1, y: 0, scale: 1 },
-        }
-      : {
-          initial: { opacity: 1, y: 14, scale: 0.86 },
-          animate: { opacity: [1, 0.96, 1], y: [14, 4, 0], scale: [0.86, 1.08, 1] },
-          exit: { opacity: 0.92, y: 10, scale: 0.94 },
-          transition: { duration: 0.52, times: [0, 0.55, 1], ease: "easeOut" as const },
-        };
-
-    const dockedSlotMotion = reduceMotion
-      ? {
-          initial: false,
-          animate: { opacity: 1 },
-          exit: { opacity: 1 },
-        }
-      : {
-          initial: { opacity: 0.92 },
-          animate: { opacity: 1 },
-          exit: { opacity: 0.9 },
-          transition: { duration: 0.44, ease: "easeOut" as const },
-        };
-
-    const floatingMotion = reduceMotion
+    const unifiedMotion = reduceMotion
       ? {
           initial: false,
           animate: { opacity: 1, y: 0, scale: 1 },
@@ -232,11 +206,15 @@ export default function CinematicBottomNav({
           transition: { duration: 0 },
         }
       : {
-          initial: { opacity: 0.96, y: 8, scale: 0.98 },
+          initial: { opacity: 0, y: 10, scale: 0.93 },
           animate: { opacity: 1, y: 0, scale: 1 },
           exit: { opacity: 0, y: 10, scale: 0.93 },
-          transition: { duration: 0.14, ease: "easeOut" as const },
+          transition: { duration: 0.3, ease: "easeOut" as const },
         };
+
+    const dockedFixedMotion = unifiedMotion;
+    const dockedSlotMotion = unifiedMotion;
+    const floatingMotion = unifiedMotion;
 
     return (
       <>
@@ -245,7 +223,7 @@ export default function CinematicBottomNav({
             aria-hidden="true"
             className="relative h-[calc(68px+env(safe-area-inset-bottom))] w-full shrink-0 overflow-hidden"
           >
-            <AnimatePresence initial={false}>
+            <AnimatePresence>
               {showDockedMenu ? (
                 <motion.div
                   key="bottom-docked-slot"
@@ -258,7 +236,7 @@ export default function CinematicBottomNav({
             </AnimatePresence>
           </div>
         ) : null}
-        <AnimatePresence initial={false}>
+        <AnimatePresence>
           {showFloatingMenu ? (
             <motion.div
               key="bottom-floating-fixed"
@@ -269,7 +247,7 @@ export default function CinematicBottomNav({
             </motion.div>
           ) : null}
         </AnimatePresence>
-        <AnimatePresence initial={false}>
+        <AnimatePresence>
           {showDockedMenu && !showDockedInSlot ? (
             <motion.div
               key="bottom-docked-fixed"
