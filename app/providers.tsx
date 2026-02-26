@@ -7,6 +7,7 @@ import { Suspense, useState } from "react";
 import { store } from "./store/store";
 import Toast from "./components/Toast";
 import AuthWatcher from "./components/AuthWatcher";
+import ScrollHistoryManager from "./components/ScrollHistoryManager";
 
 type ProvidersProps = {
   children: React.ReactNode;
@@ -30,6 +31,9 @@ export default function Providers({ children }: ProvidersProps) {
       <QueryClientProvider client={queryClient}>
         <MotionConfig reducedMotion="user">
           {children}
+          <Suspense fallback={null}>
+            <ScrollHistoryManager />
+          </Suspense>
           <Toast />
           <Suspense fallback={null}>
             <AuthWatcher />

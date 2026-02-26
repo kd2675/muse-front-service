@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "motion/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import PageShell from "../../../components/PageShell";
-import TopNav from "../../../components/TopNav";
+import AdminShell from "../../../components/AdminShell";
+import AdminActionButton from "../../../components/AdminActionButton";
 import { Skeleton } from "../../../components/Skeleton";
 import {
   getAdminContestEntries,
@@ -13,6 +13,13 @@ import {
   updateAdminContestEntryStatus,
 } from "../../../lib/contest";
 import { APP_ROUTES } from "../../../lib/router";
+import {
+  contestPhaseOrder,
+  getContestEntryStatusLabel,
+  getContestEntryStatusTone,
+  getContestPhaseLabel,
+  getContestPhaseTone,
+} from "../../../lib/statusTheme";
 import { getUserFromToken, isAdminRole } from "../../../lib/auth";
 import { useAppDispatch } from "../../../store/hooks";
 import { showToast } from "../../../store/uiSlice";
@@ -21,49 +28,26 @@ import { staggeredFadeUpMotion } from "../../../lib/motion";
 import type {
   AdminContest,
   AdminContestEntryReviewStatus,
-  ContestPhase,
   ContestPublicEntry,
 } from "../../../types/contest";
 
 type ReviewFilter = ContestPublicEntry["status"];
 
-const phaseLabel: Record<ContestPhase, string> = {
-  UPCOMING: "출품 대기",
-  SUBMISSION: "출품 진행",
-  REVIEW: "심사 중",
-  VOTING: "전시 중",
-  ENDED: "종료",
-};
-
-function phaseDisplayPriority(phase: ContestPhase): number {
-  if (phase === "VOTING") {
-    return 0;
-  }
-  if (phase === "REVIEW") {
-    return 1;
-  }
-  if (phase === "SUBMISSION") {
-    return 2;
-  }
-  if (phase === "UPCOMING") {
-    return 3;
-  }
-  return 4;
-}
-
-const statusLabel: Record<ReviewFilter, string> = {
-  SUBMITTED: "미선택",
-  REVIEWING: "검토 중",
-  APPROVED: "승인",
-  REJECTED: "반려",
-};
-
 const filterOrder: ReviewFilter[] = [
   "SUBMITTED",
-  "REVIEWING",
   "APPROVED",
   "REJECTED",
 ];
+
+function reviewActionVariant(status: AdminContestEntryReviewStatus): "neutral" | "success" | "danger" {
+  if (status === "APPROVED") {
+    return "success";
+  }
+  if (status === "REJECTED") {
+    return "danger";
+  }
+  return "neutral";
+}
 
 const IMAGE_BASE =
   process.env.NEXT_PUBLIC_IMAGE_BASE_URL ?? "http://localhost:8081";
@@ -172,40 +156,6 @@ function resolveReviewPriority(contest: AdminContest): ReviewPriority {
   return { code: "P3", rank: 4, label: "심사 완료" };
 }
 
-function getContestTone(phase: ContestPhase): {
-  cardClass: string;
-  badgeClass: string;
-} {
-  if (phase === "UPCOMING") {
-    return {
-      cardClass: "border-[#7c3aed]/28 bg-[#f5f3ff] hover:border-[#6d28d9]",
-      badgeClass: "border-[#7c3aed]/35 bg-[#ede9fe] text-[#5b21b6]",
-    };
-  }
-  if (phase === "SUBMISSION") {
-    return {
-      cardClass: "border-[#0f766e]/30 bg-[#ecfdf5] hover:border-[#0f766e]",
-      badgeClass: "border-[#0f766e]/40 bg-[#d1fae5] text-[#065f46]",
-    };
-  }
-  if (phase === "REVIEW") {
-    return {
-      cardClass: "border-[#ea580c]/32 bg-[#fff7ed] hover:border-[#c2410c]",
-      badgeClass: "border-[#c2410c]/36 bg-[#fed7aa] text-[#9a3412]",
-    };
-  }
-  if (phase === "VOTING") {
-    return {
-      cardClass: "border-[#2563eb]/30 bg-[#eff6ff] hover:border-[#1d4ed8]",
-      badgeClass: "border-[#2563eb]/35 bg-[#dbeafe] text-[#1e40af]",
-    };
-  }
-  return {
-    cardClass: "border-[#64748b]/25 bg-[#f8fafc] hover:border-[#475569]",
-    badgeClass: "border-[#64748b]/35 bg-[#e2e8f0] text-[#334155]",
-  };
-}
-
 export default function AdminContestReviewClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -244,7 +194,7 @@ export default function AdminContestReviewClient() {
         return left.rank - right.rank;
       }
       const phasePriorityDiff =
-        phaseDisplayPriority(a.phase) - phaseDisplayPriority(b.phase);
+        contestPhaseOrder[a.phase] - contestPhaseOrder[b.phase];
       if (phasePriorityDiff !== 0) {
         return phasePriorityDiff;
       }
@@ -335,7 +285,6 @@ export default function AdminContestReviewClient() {
       },
       {
         SUBMITTED: 0,
-        REVIEWING: 0,
         APPROVED: 0,
         REJECTED: 0,
       },
@@ -372,33 +321,39 @@ export default function AdminContestReviewClient() {
 
   if (!isAdminRole(role)) {
     return (
-      <PageShell>
-        <TopNav />
-        <section className="mt-10 rounded-[28px] border border-[color:var(--line)] bg-white/75 p-8 shadow-[var(--shadow)]">
+      <AdminShell
+        section="contest-review"
+        title="Contest Review Admin"
+        description="콘테스트별 출품 심사 큐를 상태 기반으로 관리합니다."
+      >
+        <section className="rounded-[28px] border border-[color:var(--line)] bg-[rgba(34,34,40,0.72)] p-8 shadow-[var(--shadow)]">
           <p className="text-sm text-[color:var(--muted)]">관리자 권한이 필요합니다.</p>
         </section>
-      </PageShell>
+      </AdminShell>
     );
   }
 
   return (
-    <PageShell>
-      <TopNav />
-      <Reveal index={0} className="mt-10">
+    <AdminShell
+      section="contest-review"
+      title="Contest Review Admin"
+      description="출품 심사 가능 시간대와 상태별 필터를 기준으로 빠르게 운영합니다."
+    >
+      <Reveal index={0}>
       <section className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <aside className="rounded-[28px] border border-[color:var(--line)] bg-white/80 p-6 shadow-[var(--shadow)] xl:sticky xl:top-24 xl:max-h-[calc(100vh-8.5rem)] xl:overflow-y-auto">
+        <aside className="rounded-[28px] border border-[color:var(--line)] bg-[rgba(18,18,24,0.82)] p-6 shadow-[var(--shadow)] xl:sticky xl:top-24 xl:max-h-[calc(100vh-8.5rem)] xl:overflow-y-auto">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">Admin</p>
               <h2 className="mt-2 font-[var(--font-display)] text-2xl">Contest Review</h2>
             </div>
-            <button
-              type="button"
-              className="rounded-full border border-[color:var(--line)] px-3 py-1.5 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+            <AdminActionButton
+              variant="secondary"
+              size="sm"
               onClick={() => router.push(APP_ROUTES.adminContestManage)}
             >
               관리 화면
-            </button>
+            </AdminActionButton>
           </div>
 
           {isLoading ? (
@@ -411,7 +366,7 @@ export default function AdminContestReviewClient() {
             <div className="mt-6 grid gap-3">
               {prioritizedContests.map((contest, index) => {
                 const priority = resolveReviewPriority(contest);
-                const tone = getContestTone(contest.phase);
+                const tone = getContestPhaseTone(contest.phase);
                 return (
                   <motion.button
                     key={contest.id}
@@ -424,7 +379,7 @@ export default function AdminContestReviewClient() {
                     onClick={() => setSelectedContestId(contest.id)}
                   >
                     <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
-                      #{contest.id} · {phaseLabel[contest.phase]}
+                      #{contest.id} · {getContestPhaseLabel(contest.phase)}
                     </p>
                     <p className="mt-1 font-medium">{contest.theme}</p>
                     <p className="mt-1 text-xs text-[color:var(--muted)]">{contest.period}</p>
@@ -449,7 +404,7 @@ export default function AdminContestReviewClient() {
                 );
               })}
               {!isLoading && prioritizedContests.length === 0 && (
-                <p className="rounded-[16px] border border-[color:var(--line)] bg-white/85 px-4 py-3 text-sm text-[color:var(--muted)]">
+                <p className="rounded-[16px] border border-[color:var(--line)] bg-[rgba(18,18,24,0.84)] px-4 py-3 text-sm text-[color:var(--muted)]">
                   등록된 콘테스트가 없습니다.
                 </p>
               )}
@@ -461,17 +416,17 @@ export default function AdminContestReviewClient() {
           )}
         </aside>
 
-        <section className="min-w-0 rounded-[28px] border border-[color:var(--line)] bg-white/80 p-6 shadow-[var(--shadow)]">
+        <section className="min-w-0 rounded-[28px] border border-[color:var(--line)] bg-[rgba(18,18,24,0.82)] p-6 shadow-[var(--shadow)]">
           <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">Entry Review</p>
           <h1 className="mt-2 font-[var(--font-display)] text-3xl">출품 심사 전용</h1>
           <p className="mt-2 text-sm text-[color:var(--muted)]">
-            아직 선택 안 한 출품, 검토 중, 승인, 반려 상태를 분리해서 대량 심사합니다.
+            출품 상태를 대기, 승인, 반려 기준으로 분리해서 대량 심사합니다.
           </p>
           <p className="mt-1 text-xs text-[color:var(--muted)]">
             심사는 출품 종료 후 전시 시작 전(여분 시간대)에만 가능합니다.
           </p>
           {selectedContest && !isSelectedContestReviewable && (
-            <p className="mt-2 rounded-[12px] border border-[color:var(--line)] bg-white px-3 py-2 text-xs text-[color:var(--accent-2)]">
+            <p className="mt-2 rounded-[12px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-3 py-2 text-xs text-[color:var(--accent-2)]">
               현재 선택한 콘테스트는 심사 가능 시간대가 아닙니다. 목록 조회는 가능하지만 상태 변경은 비활성화됩니다.
             </p>
           )}
@@ -486,7 +441,7 @@ export default function AdminContestReviewClient() {
                   참여 {formatNumber(selectedContest.participationCount)}
                 </span>
               </div>
-              <div className="rounded-[16px] border border-[color:var(--line)] bg-white/90 p-4">
+              <div className="rounded-[16px] border border-[color:var(--line)] bg-[rgba(18,18,24,0.86)] p-4">
                 <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Contest Schedule</p>
                 <div className="mt-3 grid gap-2 text-sm text-[color:var(--canvas-ink)]">
                   <p>
@@ -535,12 +490,12 @@ export default function AdminContestReviewClient() {
                     key={`review-filter-${value}`}
                     className={`rounded-[14px] border px-3 py-3 text-left transition ${
                       filter === value
-                        ? "border-[color:var(--accent)] bg-[color:var(--chip)]"
-                        : "border-[color:var(--line)] bg-white hover:border-[color:var(--accent)]"
+                        ? `${getContestEntryStatusTone(value).chipClass}`
+                        : "border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] hover:border-[color:var(--accent)]"
                     }`}
                     onClick={() => setFilter(value)}
                   >
-                    <p className="text-xs text-[color:var(--muted)]">{statusLabel[value]}</p>
+                    <p className="text-xs text-[color:var(--muted)]">{getContestEntryStatusLabel(value)}</p>
                     <p className="mt-1 text-lg font-semibold text-[color:var(--canvas-ink)]">
                       {statusCountMap[value]}
                     </p>
@@ -560,7 +515,7 @@ export default function AdminContestReviewClient() {
                     <motion.article
                       key={entry.entryId}
                       {...staggeredFadeUpMotion(index + 8, reduceMotion)}
-                      className="rounded-[14px] border border-[color:var(--line)] bg-white p-3"
+                      className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] p-3"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="flex min-w-0 flex-wrap items-start gap-3 sm:flex-nowrap">
@@ -582,9 +537,10 @@ export default function AdminContestReviewClient() {
                               {entry.artistName} · {entry.submittedAt}
                             </p>
                             {normalizeImageUrl(entry.imageUrl) && (
-                              <button
-                                type="button"
-                                className="mt-2 inline-flex rounded-full border border-[color:var(--line)] px-3 py-1 text-[11px] text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                              <AdminActionButton
+                                variant="secondary"
+                                size="sm"
+                                className="mt-2 inline-flex text-[11px]"
                                 onClick={() => {
                                   const resolvedUrl = normalizeImageUrl(entry.imageUrl);
                                   if (!resolvedUrl) {
@@ -596,24 +552,26 @@ export default function AdminContestReviewClient() {
                                 }}
                               >
                                 원본 보기
-                              </button>
+                              </AdminActionButton>
                             )}
                           </div>
                         </div>
-                        <span className="rounded-full bg-[color:var(--chip)] px-2 py-1 text-xs text-[color:var(--accent)]">
-                          {statusLabel[entry.status]}
+                        <span
+                          className={`rounded-full border px-2 py-1 text-xs ${
+                            getContestEntryStatusTone(entry.status).chipClass
+                          }`}
+                        >
+                          {getContestEntryStatusLabel(entry.status)}
                         </span>
                       </div>
 
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {(["REVIEWING", "APPROVED", "REJECTED"] as AdminContestEntryReviewStatus[]).map((nextStatus) => (
-                          <button
+                        {(["APPROVED", "REJECTED"] as AdminContestEntryReviewStatus[]).map((nextStatus) => (
+                          <AdminActionButton
                             key={`${entry.entryId}-${nextStatus}`}
-                            className={`rounded-full border px-3 py-1.5 text-xs transition ${
-                              entry.status === nextStatus
-                                ? "border-[color:var(--accent)] bg-[color:var(--chip)] text-[color:var(--accent)]"
-                                : "border-[color:var(--line)] text-[color:var(--muted)] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
-                            }`}
+                            variant={reviewActionVariant(nextStatus)}
+                            size="sm"
+                            active={entry.status === nextStatus}
                             disabled={
                               !selectedContest ||
                               !isSelectedContestReviewable ||
@@ -631,23 +589,23 @@ export default function AdminContestReviewClient() {
                               });
                             }}
                           >
-                            {statusLabel[nextStatus]}
-                          </button>
+                            {getContestEntryStatusLabel(nextStatus)}
+                          </AdminActionButton>
                         ))}
                       </div>
                     </motion.article>
                   ))}
 
                   {filteredEntries.length === 0 && (
-                    <div className="rounded-[14px] border border-[color:var(--line)] bg-white px-4 py-3 text-sm text-[color:var(--muted)]">
-                      {statusLabel[filter]} 상태 출품이 없습니다.
+                    <div className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3 text-sm text-[color:var(--muted)]">
+                      {getContestEntryStatusLabel(filter)} 상태 출품이 없습니다.
                     </div>
                   )}
                 </div>
               )}
             </>
           ) : (
-            <div className="mt-5 rounded-[14px] border border-[color:var(--line)] bg-white px-4 py-3 text-sm text-[color:var(--muted)]">
+            <div className="mt-5 rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3 text-sm text-[color:var(--muted)]">
               등록된 콘테스트가 없습니다.
             </div>
           )}
@@ -664,16 +622,17 @@ export default function AdminContestReviewClient() {
             <div className="flex items-center justify-between gap-3 border-b border-white/15 pb-3">
               <h2 className="truncate text-sm font-semibold text-white">{previewImageTitle}</h2>
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="rounded-full border border-white/30 px-3 py-1 text-xs text-white/90 transition hover:border-white hover:text-white"
+                <AdminActionButton
+                  variant="secondary"
+                  size="sm"
+                  className="border-white/30 bg-white/8 text-white/90 hover:border-white hover:text-white"
                   onClick={() => {
                     setPreviewImageUrl(null);
                     setPreviewImageTitle("");
                   }}
                 >
                   닫기
-                </button>
+                </AdminActionButton>
               </div>
             </div>
             <div className="mt-4 flex min-h-0 flex-1 items-center justify-center">
@@ -687,6 +646,6 @@ export default function AdminContestReviewClient() {
           </div>
         </section>
       )}
-    </PageShell>
+    </AdminShell>
   );
 }

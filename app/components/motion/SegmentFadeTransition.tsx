@@ -1,5 +1,8 @@
 "use client";
 
+import { motion, useReducedMotion } from "motion/react";
+import { pageTransitionMotion } from "../../lib/motion";
+
 type SegmentFadeTransitionProps = {
   children: React.ReactNode;
 };
@@ -7,5 +10,13 @@ type SegmentFadeTransitionProps = {
 export default function SegmentFadeTransition({
   children,
 }: SegmentFadeTransitionProps) {
-  return <>{children}</>;
+  const prefersReducedMotion = useReducedMotion();
+  const reduceMotion = Boolean(prefersReducedMotion);
+  const transition = pageTransitionMotion(reduceMotion);
+
+  return (
+    <motion.div {...transition}>
+      {children}
+    </motion.div>
+  );
 }

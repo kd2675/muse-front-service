@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion, type PanInfo } from "motion/react";
 import { useRouter } from "next/navigation";
 import {
   clearAccessToken,
@@ -17,6 +17,10 @@ import { showToast } from "../store/uiSlice";
 import useAuthSession from "../hooks/useAuthSession";
 
 const HOME_LABEL = "MUSE CINEMA";
+const STEP_INSIDE_MAX_DRAG = 140;
+const STEP_INSIDE_TRIGGER_OFFSET = -68;
+const STEP_INSIDE_TRIGGER_VELOCITY = -520;
+const STEP_INSIDE_BG_OVERSCAN = 160;
 
 export default function HomeClient() {
   const dispatch = useAppDispatch();
@@ -25,6 +29,9 @@ export default function HomeClient() {
   const reduceMotion = Boolean(prefersReducedMotion);
   const { isHydrated, authStatus, userLabel } = useAuthSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isStepDragging, setIsStepDragging] = useState(false);
+  const [isStepTransitioning, setIsStepTransitioning] = useState(false);
+  const [stepLiftProgress, setStepLiftProgress] = useState(0);
   const { data, isLoading } = useQuery({
     queryKey: ["home"],
     queryFn: getHomeData,
@@ -37,9 +44,45 @@ export default function HomeClient() {
   const featuredMuseums = payload?.featuredMuseums ?? [];
   const heroImageUrl =
     featuredMuseums.find((museum) => museum.coverImageUrl)?.coverImageUrl ?? null;
-  const handleStepInside = () => {
-    router.push(APP_ROUTES.galleryLobby);
+
+  const updateLiftProgressByOffset = (offsetY: number) => {
+    const clampedOffset = Math.max(Math.min(offsetY, 0), -STEP_INSIDE_MAX_DRAG);
+    const progress = Math.min(Math.abs(clampedOffset) / STEP_INSIDE_MAX_DRAG, 1);
+    setStepLiftProgress(progress);
   };
+
+  const moveToOverviewByDrag = () => {
+    if (isStepTransitioning) {
+      return;
+    }
+    setIsStepTransitioning(true);
+    setStepLiftProgress(1);
+    window.setTimeout(() => {
+      router.push(APP_ROUTES.homeOverview);
+    }, 260);
+  };
+
+  const handleStepDrag = (_event: PointerEvent, info: PanInfo) => {
+    updateLiftProgressByOffset(info.offset.y);
+  };
+
+  const handleStepDragEnd = (_event: PointerEvent, info: PanInfo) => {
+    setIsStepDragging(false);
+    const shouldMoveToOverview =
+      info.offset.y <= STEP_INSIDE_TRIGGER_OFFSET || info.velocity.y <= STEP_INSIDE_TRIGGER_VELOCITY;
+
+    if (shouldMoveToOverview) {
+      moveToOverviewByDrag();
+      return;
+    }
+    setStepLiftProgress(0);
+  };
+
+  const sceneShift = Math.round(stepLiftProgress * 96);
+  const sceneStyle = {
+    transform: `translate3d(0, -${sceneShift}px, 0)`,
+    transition: isStepDragging ? "none" : "transform 240ms cubic-bezier(0.22, 1, 0.36, 1)",
+  } as const;
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -57,45 +100,56 @@ export default function HomeClient() {
   };
 
   return (
-    <div className="relative h-[100dvh] overflow-hidden bg-[#08080c] text-slate-100">
-      {heroImageUrl ? (
-        <motion.div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: `url(${heroImageUrl})` }}
-          animate={reduceMotion ? undefined : { scale: [1.08, 1.15] }}
-          transition={
-            reduceMotion
-              ? undefined
-              : {
-                  duration: 22,
-                  ease: "easeInOut",
-                  repeat: Number.POSITIVE_INFINITY,
-                  repeatType: "reverse",
-                }
-          }
+    <div className="relative h-[100dvh] overflow-hidden bg-[#121212] text-slate-100">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_12%,rgba(84,90,111,0.22),transparent_34%),radial-gradient(circle_at_84%_18%,rgba(73,108,115,0.18),transparent_36%),radial-gradient(circle_at_52%_82%,rgba(120,86,64,0.14),transparent_38%)]" />
+      <div className="absolute inset-0" style={sceneStyle}>
+        {heroImageUrl ? (
+          <motion.div
+            className="absolute left-0 right-0 bg-cover bg-center"
+            style={{
+              top: -STEP_INSIDE_BG_OVERSCAN,
+              bottom: -STEP_INSIDE_BG_OVERSCAN,
+              backgroundImage: `url(${heroImageUrl})`,
+            }}
+            animate={reduceMotion ? undefined : { scale: [1.08, 1.15] }}
+            transition={
+              reduceMotion
+                ? undefined
+                : {
+                    duration: 22,
+                    ease: "easeInOut",
+                    repeat: Number.POSITIVE_INFINITY,
+                    repeatType: "reverse",
+                  }
+            }
+          />
+        ) : (
+          <motion.div
+            className="absolute left-0 right-0"
+            style={{
+              top: -STEP_INSIDE_BG_OVERSCAN,
+              bottom: -STEP_INSIDE_BG_OVERSCAN,
+              background: `linear-gradient(135deg, ${heroPick?.colorFrom ?? "#1a2438"} 0%, ${heroPick?.colorTo ?? "#485f80"} 100%)`,
+            }}
+            animate={reduceMotion ? undefined : { scale: [1.06, 1.12] }}
+            transition={
+              reduceMotion
+                ? undefined
+                : {
+                    duration: 18,
+                    ease: "easeInOut",
+                    repeat: Number.POSITIVE_INFINITY,
+                    repeatType: "reverse",
+                  }
+            }
+          />
+        )}
+        <div
+          className="absolute left-0 right-0 bg-[linear-gradient(180deg,rgba(8,8,12,0.45)_0%,rgba(8,8,12,0.15)_48%,rgba(8,8,12,0.88)_100%)]"
+          style={{ top: -STEP_INSIDE_BG_OVERSCAN, bottom: -STEP_INSIDE_BG_OVERSCAN }}
         />
-      ) : (
-        <motion.div
-          className="absolute inset-0"
-          style={{
-            background: `linear-gradient(135deg, ${heroPick?.colorFrom ?? "#1a2438"} 0%, ${heroPick?.colorTo ?? "#485f80"} 100%)`,
-          }}
-          animate={reduceMotion ? undefined : { scale: [1.06, 1.12] }}
-          transition={
-            reduceMotion
-              ? undefined
-              : {
-                  duration: 18,
-                  ease: "easeInOut",
-                  repeat: Number.POSITIVE_INFINITY,
-                  repeatType: "reverse",
-                }
-          }
-        />
-      )}
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,8,12,0.45)_0%,rgba(8,8,12,0.15)_48%,rgba(8,8,12,0.88)_100%)]" />
 
-      <main className="relative z-10 flex h-full w-full flex-col items-center justify-between px-6 pb-[calc(env(safe-area-inset-bottom)+116px)] pt-12 text-center md:px-8">
+        <main className="relative z-10 flex h-full w-full flex-col items-center justify-between px-6 pb-[calc(env(safe-area-inset-bottom)+116px)] pt-12 text-center md:px-8">
         {isLoading ? (
           <div className="flex h-full w-full max-w-5xl flex-col items-center justify-center">
             <p className="text-xs uppercase tracking-[0.32em] text-slate-200/65">{HOME_LABEL}</p>
@@ -154,16 +208,23 @@ export default function HomeClient() {
               className="flex w-full max-w-sm flex-col items-center gap-10"
               {...staggeredFadeUpMotion(2, reduceMotion)}
             >
-              <button
+              <motion.button
                 type="button"
-                onClick={handleStepInside}
+                drag="y"
+                dragConstraints={{ top: -STEP_INSIDE_MAX_DRAG, bottom: 0 }}
+                dragElastic={0.08}
+                dragMomentum={false}
+                onDragStart={() => setIsStepDragging(true)}
+                onDrag={handleStepDrag}
+                onDragEnd={handleStepDragEnd}
                 className="group flex flex-col items-center gap-3 text-slate-100 transition hover:opacity-85"
+                style={{ touchAction: "none" }}
               >
                 <span className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-100/20 bg-[rgba(8,8,12,0.4)] text-2xl backdrop-blur-md">
                   <span className="material-symbols-outlined text-[28px]">keyboard_double_arrow_up</span>
                 </span>
                 <span className="text-sm uppercase tracking-[0.2em]">Step Inside</span>
-              </button>
+              </motion.button>
             </motion.div>
           </>
         ) : (
@@ -175,7 +236,8 @@ export default function HomeClient() {
             </p>
           </div>
         )}
-      </main>
+        </main>
+      </div>
       <CinematicBottomNav activeTab="home" layout="fixed" />
     </div>
   );

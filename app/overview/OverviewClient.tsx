@@ -13,6 +13,7 @@ import {
 import { getContestList } from "../lib/contest";
 import { getHomeData } from "../lib/home";
 import { canAccessPath } from "../lib/routeGuard";
+import { getContestPhaseLabel, getContestPhaseTone } from "../lib/statusTheme";
 import { staggeredFadeUpMotion } from "../lib/motion";
 import { APP_ROUTES, galleryMuseumDetailRoute } from "../lib/router";
 import { useAppDispatch } from "../store/hooks";
@@ -210,7 +211,7 @@ export default function OverviewClient() {
 
               <div className="space-y-8">
                 <div>
-                  <p className="mb-3 text-xs uppercase tracking-[0.18em] text-[#c0a062]">전시중</p>
+                  <p className="mb-3 text-xs uppercase tracking-[0.18em] text-[#f8e6be]">전시중</p>
                   <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {contestListLoading ? (
                       <div className="h-44 w-[280px] rounded-[18px]   bg-white/6" />
@@ -224,8 +225,12 @@ export default function OverviewClient() {
                         >
                           <div>
                             <div className="flex items-start justify-between gap-2">
-                              <span className="rounded-full   bg-[#c0a062]/14 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-[#f8e6be]">
-                                전시 중
+                              <span
+                                className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.14em] ${
+                                  getContestPhaseTone("VOTING").chipClass
+                                }`}
+                              >
+                                {getContestPhaseLabel("VOTING")}
                               </span>
                               <span className="text-[10px] text-white/58">
                                 {contest.daysLeft <= 0 ? "Live now" : `${contest.daysLeft}d left`}
@@ -254,7 +259,7 @@ export default function OverviewClient() {
                 </div>
 
                 <div>
-                  <p className="mb-3 text-xs uppercase tracking-[0.18em] text-slate-400">출품대기중</p>
+                  <p className="mb-3 text-xs uppercase tracking-[0.18em] text-slate-300">출품대기중</p>
                   <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {contestListLoading ? (
                       <div className="h-44 w-[280px] rounded-[18px]   bg-white/6" />
@@ -268,8 +273,12 @@ export default function OverviewClient() {
                         >
                           <div>
                             <div className="flex items-start justify-between gap-2">
-                              <span className="rounded-full bg-slate-300/14 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-200">
-                                출품 대기
+                              <span
+                                className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.14em] ${
+                                  getContestPhaseTone("UPCOMING").chipClass
+                                }`}
+                              >
+                                {getContestPhaseLabel("UPCOMING")}
                               </span>
                               <span className="text-[10px] text-white/50">
                                 {contest.daysLeft <= 0 ? "Soon" : `D-${contest.daysLeft}`}

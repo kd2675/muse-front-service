@@ -10,6 +10,10 @@ import TopNav from "../../components/TopNav";
 import { Skeleton } from "../../components/Skeleton";
 import { getUserFromToken } from "../../lib/auth";
 import {
+  getGalleryModerationLabel,
+  getGalleryModerationTone,
+} from "../../lib/statusTheme";
+import {
   createMyMuseum,
   createMyMuseumArtwork,
   deleteMyMuseum,
@@ -250,7 +254,7 @@ export default function MyMuseumClient() {
       });
       queryClient.invalidateQueries({ queryKey: ["my", "museums"] });
       queryClient.invalidateQueries({ queryKey: ["gallery", "museums"] });
-      dispatch(showToast("작품 등록이 완료되었습니다. 현재 심사중 상태입니다."));
+      dispatch(showToast("작품 등록이 완료되었습니다. 현재 대기 상태입니다."));
     },
     onError: () => {
       setUploadStage("idle");
@@ -561,15 +565,16 @@ export default function MyMuseumClient() {
                         </div>
                         <div className="p-4">
                           <h4 className="font-medium">{artwork.title}</h4>
-                          <p className="mt-1 text-xs text-[color:var(--muted)]">
-                            상태: {artwork.moderationStatus === "REVIEWING"
-                              ? "심사중"
-                              : artwork.moderationStatus === "VISIBLE"
-                                ? "노출"
-                                : artwork.moderationStatus === "REMOVED"
-                                  ? "반려"
-                                  : artwork.moderationStatus}
-                          </p>
+                          <div className="mt-1 flex items-center gap-2 text-xs">
+                            <span className="text-[color:var(--muted)]">상태:</span>
+                            <span
+                              className={`rounded-full border px-2 py-1 ${
+                                getGalleryModerationTone(artwork.moderationStatus).chipClass
+                              }`}
+                            >
+                              {getGalleryModerationLabel(artwork.moderationStatus)}
+                            </span>
+                          </div>
                           <button
                             type="button"
                             onClick={() => {

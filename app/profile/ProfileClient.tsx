@@ -1,12 +1,21 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { getContestList } from "../lib/contest";
-import { deleteEntry, getMyEntries } from "../lib/entries";
+import { deleteEntry, getMyEntriesPage } from "../lib/entries";
 import { staggeredFadeUpMotion } from "../lib/motion";
 import { getProfileSummary } from "../lib/profile";
+import { getUserFromToken, isAdminRole } from "../lib/auth";
+import { onAuthChanged } from "../lib/authEvents";
+import { APP_ROUTES } from "../lib/router";
+import {
+  getContestEntryStatusLabel,
+  getContestEntryStatusTone,
+} from "../lib/statusTheme";
+import AdminActionButton from "../components/AdminActionButton";
 import CinematicBottomNav from "../components/CinematicBottomNav";
 import OverviewStyleHeader from "../components/OverviewStyleHeader";
 import { Skeleton, SkeletonText } from "../components/Skeleton";
@@ -14,6 +23,14 @@ import { useAppDispatch } from "../store/hooks";
 import { showToast } from "../store/uiSlice";
 
 const formatNumber = (value: number) => value.toLocaleString("ko-KR");
+const ENTRY_PAGE_SIZE = 5;
+
+function buildPaginationTokens(totalPages: number, currentPage: number): number[] {
+  const chunkSize = 5;
+  const start = Math.floor((currentPage - 1) / chunkSize) * chunkSize + 1;
+  const end = Math.min(start + chunkSize - 1, totalPages);
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+}
 
 export default function ProfileClient() {
   const dispatch = useAppDispatch();
@@ -21,14 +38,28 @@ export default function ProfileClient() {
   const prefersReducedMotion = useReducedMotion();
   const reduceMotion = Boolean(prefersReducedMotion);
   const queryClient = useQueryClient();
+  const [isAdminUser, setIsAdminUser] = useState(false);
+  const [entriesPage, setEntriesPage] = useState(1);
+
+  useEffect(() => {
+    const updateRole = () => {
+      const role = getUserFromToken()?.role;
+      setIsAdminUser(isAdminRole(role));
+    };
+    updateRole();
+    const unsubscribe = onAuthChanged(updateRole);
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   const { data, isLoading } = useQuery({
     queryKey: ["profile", "summary"],
     queryFn: getProfileSummary,
   });
   const { data: entriesData, isLoading: entriesLoading } = useQuery({
-    queryKey: ["entries"],
-    queryFn: getMyEntries,
+    queryKey: ["entries", "page", entriesPage, ENTRY_PAGE_SIZE],
+    queryFn: () => getMyEntriesPage({ page: entriesPage, size: ENTRY_PAGE_SIZE }),
   });
   const { data: contestsData } = useQuery({
     queryKey: ["contests"],
@@ -42,7 +73,7 @@ export default function ProfileClient() {
         dispatch(showToast(result.error));
         return;
       }
-      queryClient.invalidateQueries({ queryKey: ["entries"] });
+      queryClient.invalidateQueries({ queryKey: ["entries", "page"] });
       dispatch(showToast("출품이 삭제되었습니다."));
     },
     onError: () => {
@@ -52,16 +83,52 @@ export default function ProfileClient() {
 
   const profile = data?.data ?? null;
   const error = data?.error;
-  const entries = entriesData?.data ?? [];
+  const entriesPageData = entriesData?.data;
+  const entries = entriesPageData?.items ?? [];
   const entriesError = entriesData?.error;
   const contests = contestsData?.data ?? [];
-
-  const statusLabel: Record<string, string> = {
-    SUBMITTED: "제출 완료",
-    REVIEWING: "검토 중",
-    APPROVED: "승인",
-    REJECTED: "반려",
-  };
+  const totalEntryPages = Math.max(entriesPageData?.totalPages ?? 1, 1);
+  const currentEntryPage = Math.min(Math.max(entriesPageData?.page ?? entriesPage, 1), totalEntryPages);
+  const paginationTokens = useMemo(
+    () => buildPaginationTokens(totalEntryPages, currentEntryPage),
+    [currentEntryPage, totalEntryPages],
+  );
+  const renderEntriesPagination = (extraClassName = "") => (
+    <div
+      className={`flex flex-wrap items-center justify-center gap-2 rounded-[14px] bg-white/[0.05] px-3 py-3 ${extraClassName}`.trim()}
+    >
+      <button
+        type="button"
+        className="rounded-full bg-white/10 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/16 disabled:opacity-40"
+        onClick={() => setEntriesPage(Math.max(1, currentEntryPage - 1))}
+        disabled={currentEntryPage <= 1}
+      >
+        이전
+      </button>
+      {paginationTokens.map((token, index) =>
+        <button
+          key={`page-${token}-${index}`}
+          type="button"
+          className={`min-w-8 rounded-full px-3 py-1.5 text-xs transition ${
+            token === currentEntryPage
+              ? "bg-white text-black"
+              : "bg-white/10 text-slate-200 hover:bg-white/16"
+          }`}
+          onClick={() => setEntriesPage(token)}
+        >
+          {token}
+        </button>,
+      )}
+      <button
+        type="button"
+        className="rounded-full bg-white/10 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/16 disabled:opacity-40"
+        onClick={() => setEntriesPage(Math.min(totalEntryPages, currentEntryPage + 1))}
+        disabled={currentEntryPage >= totalEntryPages}
+      >
+        다음
+      </button>
+    </div>
+  );
 
   const handleNewEntry = () => {
     const submissionContest = contests.find((contest) => contest.phase === "SUBMISSION");
@@ -81,6 +148,28 @@ export default function ProfileClient() {
         <motion.div className="mb-8" {...staggeredFadeUpMotion(0, reduceMotion)}>
           <OverviewStyleHeader title="The Profile" />
         </motion.div>
+
+        {isAdminUser ? (
+          <motion.div
+            className="mb-6 flex flex-wrap items-center justify-end gap-2"
+            {...staggeredFadeUpMotion(1, reduceMotion)}
+          >
+            <AdminActionButton
+              variant="admin"
+              onClick={() => router.push(APP_ROUTES.adminContestManage)}
+              className="text-xs"
+            >
+              관리 콘솔
+            </AdminActionButton>
+            <AdminActionButton
+              variant="admin"
+              onClick={() => router.push(APP_ROUTES.adminContestReview)}
+              className="text-xs"
+            >
+              출품 심사
+            </AdminActionButton>
+          </motion.div>
+        ) : null}
 
         {isLoading ? (
           <section className="space-y-8">
@@ -153,13 +242,15 @@ export default function ProfileClient() {
                     <p className="mt-1 text-sm text-slate-300/84">{profile.artist.tagline}</p>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleNewEntry}
-                  className="rounded-full bg-cyan-300/22 px-4 py-2 text-xs text-cyan-100 transition hover:bg-cyan-300/32"
-                >
-                  새 출품하기
-                </button>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <AdminActionButton
+                    variant="primary"
+                    onClick={handleNewEntry}
+                    className="text-xs"
+                  >
+                    새 출품하기
+                  </AdminActionButton>
+                </div>
               </div>
 
               <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -228,6 +319,13 @@ export default function ProfileClient() {
                     <h3 className="font-[var(--font-display)] text-2xl text-slate-100">My Entries</h3>
                     <p className="mt-2 text-sm text-slate-300/84">제출한 출품을 관리하세요.</p>
                   </div>
+                  <div className="flex w-full flex-col items-end gap-2 sm:w-auto">
+                    <div className="text-xs text-slate-300/84">
+                      총 {formatNumber(entriesPageData?.totalElements ?? 0)}개 · 페이지 {currentEntryPage}/
+                      {totalEntryPages}
+                    </div>
+                    {renderEntriesPagination("w-full sm:w-auto")}
+                  </div>
                 </div>
 
                 {entriesLoading ? (
@@ -282,8 +380,12 @@ export default function ProfileClient() {
                               </div>
                             </div>
                             <div className="flex items-center gap-3 text-xs text-slate-300">
-                              <span className="rounded-full bg-white/16 px-3 py-1 text-xs text-slate-200">
-                                {statusLabel[entry.status] ?? entry.status}
+                              <span
+                                className={`rounded-full border px-3 py-1 text-xs ${
+                                  getContestEntryStatusTone(entry.status).chipClass
+                                }`}
+                              >
+                                {getContestEntryStatusLabel(entry.status)}
                               </span>
                               <button
                                 type="button"
@@ -296,6 +398,8 @@ export default function ProfileClient() {
                             </div>
                           </motion.div>
                         ))}
+
+                        {renderEntriesPagination("mt-2")}
                       </div>
                     )}
                   </>

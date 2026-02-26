@@ -11,6 +11,8 @@ import { Skeleton, SkeletonText } from "../../../components/Skeleton";
 import { getAccessToken } from "../../../lib/auth";
 import { getContestDetail, getContestEntries, voteContestEntry } from "../../../lib/contest";
 import { overlayFadeMotion, popInMotion, staggeredFadeUpMotion } from "../../../lib/motion";
+import { navigateBack } from "../../../lib/navigation";
+import { getContestPhaseLabel, getContestPhaseTone } from "../../../lib/statusTheme";
 import { useBodyScrollLock } from "../../../lib/useBodyScrollLock";
 import { useAppDispatch } from "../../../store/hooks";
 import { setPendingPath, showToast } from "../../../store/uiSlice";
@@ -124,11 +126,7 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
   };
 
   const goBackToDetail = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-      return;
-    }
-    router.push(`/contest/${id}?tab=contest`);
+    navigateBack(router, `/contest/${id}?tab=contest`);
   };
 
   return (
@@ -194,7 +192,7 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
                 <p className="text-[10px] uppercase tracking-[0.3em] text-[#c0a062]">Curated Exhibition</p>
                 <h2 className="mt-4 font-[var(--font-display)] text-4xl text-slate-100">전시 세션 준비 중</h2>
                 <p className="mt-3 text-sm text-slate-300">
-                  현재 상태는 <strong>{contest.phase}</strong> 입니다. 전시 중 상태에서 작품 집중 관람 페이지가 열립니다.
+                  현재 상태는 <strong>{getContestPhaseLabel(contest.phase)}</strong> 입니다. 전시 상태에서 작품 집중 관람 페이지가 열립니다.
                 </p>
                 <div className="mt-7 flex flex-wrap gap-3">
                   <Link
@@ -219,7 +217,11 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
                   className="rounded-[30px] border border-white/10 bg-[rgba(18,18,18,0.74)] p-7 shadow-[0_24px_56px_rgba(0,0,0,0.34)] backdrop-blur-md md:p-9"
                   {...staggeredFadeUpMotion(1, reduceMotion)}
                 >
-                  <p className="inline-flex rounded-full border border-[#c0a062]/45 bg-[#c0a062]/18 px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-[#f8e6be]">
+                  <p
+                    className={`inline-flex rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.3em] ${
+                      getContestPhaseTone("VOTING").chipClass
+                    }`}
+                  >
                     Curated Exhibition
                   </p>
                   <h1 className="mt-4 font-[var(--font-display)] text-4xl leading-tight text-slate-100 md:text-5xl">

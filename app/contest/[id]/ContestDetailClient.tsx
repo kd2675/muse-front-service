@@ -20,15 +20,20 @@ import {
 import { getAccessToken } from "../../lib/auth";
 import { uploadImage, type ImageUploadResult } from "../../lib/imageUpload";
 import { overlayFadeMotion, popInMotion, staggeredFadeUpMotion } from "../../lib/motion";
+import { navigateBack } from "../../lib/navigation";
+import {
+  getContestEntryStatusLabel,
+  getContestPhaseLabel,
+  getContestPhaseTone,
+} from "../../lib/statusTheme";
 import { useBodyScrollLock } from "../../lib/useBodyScrollLock";
 import { useAppDispatch } from "../../store/hooks";
 import { setPendingPath, showToast } from "../../store/uiSlice";
+import type { ContestPhase } from "../../types/contest";
 
 type ContestDetailClientProps = {
   id: number;
 };
-
-type ContestPhaseKey = "UPCOMING" | "SUBMISSION" | "REVIEW" | "VOTING" | "ENDED";
 
 const MIN_IMAGE_RESOLUTION_PX = 3000;
 const MAX_UPLOAD_SIZE_BYTES = 100 * 1024 * 1024;
@@ -44,15 +49,7 @@ type ContestDetailViewState = {
   updatedAt: number;
 };
 
-const phaseLabel: Record<ContestPhaseKey, string> = {
-  UPCOMING: "출품 대기",
-  SUBMISSION: "출품 진행 중",
-  REVIEW: "심사 중",
-  VOTING: "전시 중",
-  ENDED: "종료",
-};
-
-const phaseKicker: Record<ContestPhaseKey, string> = {
+const phaseKicker: Record<ContestPhase, string> = {
   UPCOMING: "Scheduled",
   SUBMISSION: "Submission Live",
   REVIEW: "Curator Review",
@@ -60,27 +57,12 @@ const phaseKicker: Record<ContestPhaseKey, string> = {
   ENDED: "Archive Closed",
 };
 
-const phaseNote: Record<ContestPhaseKey, string> = {
+const phaseNote: Record<ContestPhase, string> = {
   UPCOMING: "출품 시작 전 단계입니다. 일정과 규칙을 확인하고 작품을 준비하세요.",
   SUBMISSION: "해당 콘테스트 출품권 결제 후 작품 등록이 가능합니다.",
   REVIEW: "출품 마감 후 심사 단계입니다. 전시 시작 전까지 작품이 비공개로 유지됩니다.",
   VOTING: "전시 공개 단계입니다. 출품작을 감상하고 원하는 작품에 투표할 수 있습니다.",
   ENDED: "콘테스트가 종료되었습니다. 작품 기록과 최종 랭킹을 확인하세요.",
-};
-
-const phaseChipClass: Record<ContestPhaseKey, string> = {
-  UPCOMING: "border-slate-300/28 bg-slate-300/10 text-slate-200",
-  SUBMISSION: "border-cyan-300/34 bg-cyan-300/14 text-cyan-100",
-  REVIEW: "border-amber-300/34 bg-amber-300/14 text-amber-100",
-  VOTING: "border-[#c0a062]/45 bg-[#c0a062]/18 text-[#f8e6be]",
-  ENDED: "border-slate-500/34 bg-slate-700/24 text-slate-300",
-};
-
-const entryStatusLabel: Record<string, string> = {
-  SUBMITTED: "제출 완료",
-  REVIEWING: "검토 중",
-  APPROVED: "승인",
-  REJECTED: "반려",
 };
 
 async function readImageMeta(file: File): Promise<{ width: number; height: number }> {
@@ -362,7 +344,8 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
   const ranking = useMemo(() => rankingData?.data ?? [], [rankingData?.data]);
   const rankingError = rankingData?.error;
 
-  const phase = (contest?.phase ?? "UPCOMING") as ContestPhaseKey;
+  const phase = (contest?.phase ?? "UPCOMING") as ContestPhase;
+  const phaseTone = getContestPhaseTone(phase);
   const credits = creditData?.data?.credits ?? 0;
   const isSubmissionPhase = phase === "SUBMISSION";
   const isVotingPhase = phase === "VOTING";
@@ -584,6 +567,10 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
     },
   });
 
+  const goBackToContestList = () => {
+    navigateBack(router, "/contest?tab=contest");
+  };
+
   const openPayment = () => {
     if (!hasToken) {
       dispatch(setPendingPath(`/contest/${id}?tab=contest`));
@@ -680,7 +667,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
         >
           <button
             type="button"
-            onClick={() => router.push("/contest?tab=contest")}
+            onClick={goBackToContestList}
             className="flex h-10 w-10 items-center justify-center rounded-full border border-white/14 text-slate-400 transition hover:border-white/28 hover:text-white"
             aria-label="목록으로 돌아가기"
           >
@@ -688,7 +675,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
           </button>
 
           <div
-            className={`rounded-sm border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${phaseChipClass[phase]}`}
+            className={`rounded-sm border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${phaseTone.chipClass}`}
           >
             {phaseKicker[phase]}
           </div>
@@ -724,7 +711,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                 <h1 className="font-[var(--font-display)] text-4xl leading-tight text-slate-100 md:text-5xl">
                   {contest.theme}
                 </h1>
-                <span className="text-sm text-slate-500">{phaseLabel[phase]}</span>
+                <span className="text-sm text-slate-500">{getContestPhaseLabel(phase)}</span>
               </div>
 
               <div className="mt-7 h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent" />
@@ -742,15 +729,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                 </div>
                 <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
                   <div
-                    className={`h-full rounded-full ${
-                      phase === "VOTING"
-                        ? "bg-[#c0a062]"
-                        : phase === "SUBMISSION"
-                          ? "bg-cyan-300"
-                          : phase === "REVIEW"
-                            ? "bg-amber-300"
-                            : "bg-slate-300"
-                    }`}
+                    className={`h-full rounded-full ${phaseTone.progressBarClass}`}
                     style={{ width: `${progressValue}%` }}
                   />
                 </div>
@@ -1261,7 +1240,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                           {hideArtworkByPhase ? entry.artistName : entry.title ?? "Untitled"}
                         </h3>
                         <p className="text-xs uppercase tracking-[0.18em] text-[#c0a062]">
-                          {hideArtworkByPhase ? entryStatusLabel[entry.status] ?? entry.status : `by ${entry.artistName}`}
+                          {hideArtworkByPhase ? getContestEntryStatusLabel(entry.status) : `by ${entry.artistName}`}
                         </p>
                         <p className="text-sm leading-relaxed text-slate-400">
                           접수 시각 {formatDateTime(entry.submittedAt)}

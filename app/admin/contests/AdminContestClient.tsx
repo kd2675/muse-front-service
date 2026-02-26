@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
-import PageShell from "../../components/PageShell";
-import TopNav from "../../components/TopNav";
+import AdminShell from "../../components/AdminShell";
+import AdminActionButton from "../../components/AdminActionButton";
 import { Skeleton } from "../../components/Skeleton";
 import {
   createAdminContest,
@@ -15,6 +15,11 @@ import {
 } from "../../lib/contest";
 import { getUserFromToken, isAdminRole } from "../../lib/auth";
 import { adminContestReviewRoute } from "../../lib/router";
+import {
+  contestPhaseOrder,
+  getContestPhaseLabel,
+  getContestPhaseTone,
+} from "../../lib/statusTheme";
 import { useAppDispatch } from "../../store/hooks";
 import { showToast } from "../../store/uiSlice";
 import Reveal from "../../components/motion/Reveal";
@@ -23,66 +28,7 @@ import type {
   AdminContest,
   AdminContestUpsertRequest,
   ContestFinalizeResult,
-  ContestPhase,
 } from "../../types/contest";
-
-const phaseLabel: Record<ContestPhase, string> = {
-  UPCOMING: "출품 대기",
-  SUBMISSION: "출품 진행",
-  REVIEW: "심사 중",
-  VOTING: "전시 중",
-  ENDED: "종료",
-};
-
-function phaseDisplayPriority(phase: ContestPhase): number {
-  if (phase === "VOTING") {
-    return 0;
-  }
-  if (phase === "REVIEW") {
-    return 1;
-  }
-  if (phase === "SUBMISSION") {
-    return 2;
-  }
-  if (phase === "UPCOMING") {
-    return 3;
-  }
-  return 4;
-}
-
-function getContestTone(phase: ContestPhase): {
-  cardClass: string;
-  badgeClass: string;
-} {
-  if (phase === "UPCOMING") {
-    return {
-      cardClass: "border-[#7c3aed]/28 bg-[#f5f3ff] hover:border-[#6d28d9]",
-      badgeClass: "border-[#7c3aed]/35 bg-[#ede9fe] text-[#5b21b6]",
-    };
-  }
-  if (phase === "SUBMISSION") {
-    return {
-      cardClass: "border-[#0f766e]/30 bg-[#ecfdf5] hover:border-[#0f766e]",
-      badgeClass: "border-[#0f766e]/40 bg-[#d1fae5] text-[#065f46]",
-    };
-  }
-  if (phase === "REVIEW") {
-    return {
-      cardClass: "border-[#ea580c]/32 bg-[#fff7ed] hover:border-[#c2410c]",
-      badgeClass: "border-[#c2410c]/36 bg-[#fed7aa] text-[#9a3412]",
-    };
-  }
-  if (phase === "VOTING") {
-    return {
-      cardClass: "border-[#2563eb]/30 bg-[#eff6ff] hover:border-[#1d4ed8]",
-      badgeClass: "border-[#2563eb]/35 bg-[#dbeafe] text-[#1e40af]",
-    };
-  }
-  return {
-    cardClass: "border-[#64748b]/25 bg-[#f8fafc] hover:border-[#475569]",
-    badgeClass: "border-[#64748b]/35 bg-[#e2e8f0] text-[#334155]",
-  };
-}
 
 type FormState = {
   theme: string;
@@ -219,7 +165,7 @@ export default function AdminContestClient() {
     () =>
       [...contests].sort((a, b) => {
         const priorityDiff =
-          phaseDisplayPriority(a.phase) - phaseDisplayPriority(b.phase);
+          contestPhaseOrder[a.phase] - contestPhaseOrder[b.phase];
         if (priorityDiff !== 0) {
           return priorityDiff;
         }
@@ -280,23 +226,29 @@ export default function AdminContestClient() {
 
   if (!isAdminRole(role)) {
     return (
-      <PageShell>
-        <TopNav />
-        <section className="mt-10 rounded-[28px] border border-[color:var(--line)] bg-white/75 p-8 shadow-[var(--shadow)]">
+      <AdminShell
+        section="contest-manage"
+        title="Contest Admin"
+        description="콘테스트 생성/수정/결과 확정을 한 화면에서 관리합니다."
+      >
+        <section className="rounded-[28px] border border-[color:var(--line)] bg-[rgba(34,34,40,0.72)] p-8 shadow-[var(--shadow)]">
           <p className="text-sm text-[color:var(--muted)]">
             관리자 권한이 필요합니다.
           </p>
         </section>
-      </PageShell>
+      </AdminShell>
     );
   }
 
   return (
-    <PageShell>
-      <TopNav />
-      <Reveal index={0} className="mt-10">
+    <AdminShell
+      section="contest-manage"
+      title="Contest Admin"
+      description="출품·심사·전시 흐름을 기준으로 콘테스트를 운영합니다."
+    >
+      <Reveal index={0}>
       <section className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-        <aside className="rounded-[28px] border border-[color:var(--line)] bg-white/75 p-6 shadow-[var(--shadow)]">
+        <aside className="rounded-[28px] border border-[color:var(--line)] bg-[rgba(34,34,40,0.72)] p-6 shadow-[var(--shadow)]">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">
@@ -304,8 +256,8 @@ export default function AdminContestClient() {
               </p>
               <h2 className="mt-2 font-[var(--font-display)] text-2xl">Contest Schedule</h2>
             </div>
-            <button
-              className="rounded-full border border-[color:var(--line)] px-4 py-2 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+            <AdminActionButton
+              variant="secondary"
               onClick={() => {
                 setMode("create");
                 setSelectedContestId(null);
@@ -314,7 +266,7 @@ export default function AdminContestClient() {
               }}
             >
               + 새 콘테스트
-            </button>
+            </AdminActionButton>
           </div>
 
           {isLoading ? (
@@ -327,7 +279,7 @@ export default function AdminContestClient() {
             <div className="mt-6 grid gap-3">
               {sortedContests.map((contest, index) => {
                 const isSelected = contest.id === selectedContestId;
-                const tone = getContestTone(contest.phase);
+                const tone = getContestPhaseTone(contest.phase);
                 return (
                   <motion.button
                     key={contest.id}
@@ -351,7 +303,7 @@ export default function AdminContestClient() {
                     <p className="mt-1 text-xs text-[color:var(--muted)]">{contest.period}</p>
                     <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-[color:var(--muted)]">
                       <span className={`rounded-full border px-2 py-1 ${tone.badgeClass}`}>
-                        {phaseLabel[contest.phase]}
+                        {getContestPhaseLabel(contest.phase)}
                       </span>
                       <span className="rounded-full border border-[color:var(--line)] px-2 py-1">
                         참가비 {formatNumber(contest.entryFee)}원
@@ -364,7 +316,7 @@ export default function AdminContestClient() {
                 );
               })}
               {!isLoading && sortedContests.length === 0 && (
-                <p className="rounded-[18px] border border-[color:var(--line)] bg-white/80 px-4 py-3 text-sm text-[color:var(--muted)]">
+                <p className="rounded-[18px] border border-[color:var(--line)] bg-[rgba(18,18,24,0.82)] px-4 py-3 text-sm text-[color:var(--muted)]">
                   등록된 콘테스트가 없습니다.
                 </p>
               )}
@@ -378,8 +330,11 @@ export default function AdminContestClient() {
           )}
 
           {selectedContest && (
-            <button
-              className="mt-6 w-full rounded-full bg-[color:var(--accent-2)] px-4 py-3 text-sm text-white transition hover:opacity-90 disabled:opacity-60"
+            <AdminActionButton
+              variant="warning"
+              size="md"
+              fullWidth
+              className="mt-6 py-3 text-sm"
               onClick={() => finalizeMutation.mutate(selectedContest.id)}
               disabled={finalizeMutation.isPending || !canFinalizeSelectedContest}
             >
@@ -388,22 +343,22 @@ export default function AdminContestClient() {
                 : canFinalizeSelectedContest
                   ? `결과 확정 실행 (#${selectedContest.id})`
                   : `종료 후 확정 가능 (#${selectedContest.id})`}
-            </button>
+            </AdminActionButton>
           )}
 
           {selectedContest && !canFinalizeSelectedContest && (
             <p className="mt-2 text-xs text-[color:var(--muted)]">
-              현재 상태: {phaseLabel[selectedContest.phase]} · 전시 종료 이후에만 결과 확정이 가능합니다.
+              현재 상태: {getContestPhaseLabel(selectedContest.phase)} · 전시 종료 이후에만 결과 확정이 가능합니다.
             </p>
           )}
 
           {finalizeResult && (
-            <div className="mt-6 rounded-[18px] border border-[color:var(--line)] bg-white/80 p-4">
+            <div className="mt-6 rounded-[18px] border border-[color:var(--line)] bg-[rgba(18,18,24,0.82)] p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                 Finalized #{finalizeResult.contestId}
               </p>
               {finalizeResult.winners.length === 0 ? (
-                <p className="mt-3 rounded-[14px] border border-[color:var(--line)] bg-white px-3 py-2 text-sm text-[color:var(--muted)]">
+                <p className="mt-3 rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-3 py-2 text-sm text-[color:var(--muted)]">
                   확정 완료: 대상 출품작이 없어 수상자 없이 종료 처리되었습니다.
                 </p>
               ) : (
@@ -411,7 +366,7 @@ export default function AdminContestClient() {
                   {finalizeResult.winners.map((winner) => (
                     <li
                       key={winner.entryId}
-                      className="rounded-[14px] border border-[color:var(--line)] bg-white px-3 py-2"
+                      className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-3 py-2"
                     >
                       <p className="font-medium">
                         {winner.rank}등 · {winner.artistName}
@@ -427,7 +382,7 @@ export default function AdminContestClient() {
           )}
         </aside>
 
-        <div className="rounded-[28px] border border-[color:var(--line)] bg-white/75 p-8 shadow-[var(--shadow)]">
+        <div className="rounded-[28px] border border-[color:var(--line)] bg-[rgba(34,34,40,0.72)] p-8 shadow-[var(--shadow)]">
           <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">
             {mode === "create" ? "Create" : "Update"}
           </p>
@@ -435,13 +390,12 @@ export default function AdminContestClient() {
             콘테스트 관리
           </h1>
           <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="rounded-full border border-[#1d4ed8] bg-[#2563eb] px-4 py-2 text-xs font-semibold text-white shadow-[0_10px_24px_rgba(37,99,235,0.25)] transition hover:bg-[#1d4ed8]"
+            <AdminActionButton
+              variant="primary"
               onClick={() => router.push(adminContestReviewRoute(selectedContest?.id))}
             >
               출품 심사 페이지로 이동
-            </button>
+            </AdminActionButton>
             <p className="self-center text-xs text-[color:var(--muted)]">
               대량 출품 심사는 전용 화면에서 상태 필터로 처리합니다.
             </p>
@@ -462,7 +416,7 @@ export default function AdminContestClient() {
             <label className="grid gap-2 text-sm">
               <span>테마</span>
               <input
-                className="rounded-[14px] border border-[color:var(--line)] bg-white px-4 py-3"
+                className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3"
                 value={form.theme}
                 onChange={(event) => setForm((prev) => ({ ...prev, theme: event.target.value }))}
                 placeholder="예: 빛의 결"
@@ -472,7 +426,7 @@ export default function AdminContestClient() {
             <label className="grid gap-2 text-sm">
               <span>설명</span>
               <textarea
-                className="min-h-24 rounded-[14px] border border-[color:var(--line)] bg-white px-4 py-3"
+                className="min-h-24 rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3"
                 value={form.description}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, description: event.target.value }))
@@ -487,7 +441,7 @@ export default function AdminContestClient() {
                 <input
                   type="number"
                   min={1}
-                  className="rounded-[14px] border border-[color:var(--line)] bg-white px-4 py-3"
+                  className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3"
                   value={form.entryFee}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, entryFee: event.target.value }))
@@ -499,7 +453,7 @@ export default function AdminContestClient() {
                 <input
                   type="number"
                   min={0}
-                  className="rounded-[14px] border border-[color:var(--line)] bg-white px-4 py-3"
+                  className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3"
                   value={form.prizePool}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, prizePool: event.target.value }))
@@ -513,7 +467,7 @@ export default function AdminContestClient() {
                 <span>출품 시작</span>
                 <input
                   type="datetime-local"
-                  className="rounded-[14px] border border-[color:var(--line)] bg-white px-4 py-3"
+                  className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3"
                   value={form.submissionStartAt}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, submissionStartAt: event.target.value }))
@@ -524,7 +478,7 @@ export default function AdminContestClient() {
                 <span>출품 종료</span>
                 <input
                   type="datetime-local"
-                  className="rounded-[14px] border border-[color:var(--line)] bg-white px-4 py-3"
+                  className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3"
                   value={form.submissionEndAt}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, submissionEndAt: event.target.value }))
@@ -535,7 +489,7 @@ export default function AdminContestClient() {
                 <span>전시 시작</span>
                 <input
                   type="datetime-local"
-                  className="rounded-[14px] border border-[color:var(--line)] bg-white px-4 py-3"
+                  className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3"
                   value={form.votingStartAt}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, votingStartAt: event.target.value }))
@@ -546,7 +500,7 @@ export default function AdminContestClient() {
                 <span>전시 종료</span>
                 <input
                   type="datetime-local"
-                  className="rounded-[14px] border border-[color:var(--line)] bg-white px-4 py-3"
+                  className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3"
                   value={form.votingEndAt}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, votingEndAt: event.target.value }))
@@ -558,7 +512,7 @@ export default function AdminContestClient() {
             <label className="grid gap-2 text-sm">
               <span>규칙(줄바꿈으로 구분)</span>
               <textarea
-                className="min-h-32 rounded-[14px] border border-[color:var(--line)] bg-white px-4 py-3"
+                className="min-h-32 rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3"
                 value={form.rulesText}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, rulesText: event.target.value }))
@@ -567,9 +521,10 @@ export default function AdminContestClient() {
             </label>
 
             <div className="flex flex-wrap gap-3 pt-2">
-              <button
+              <AdminActionButton
                 type="submit"
-                className="rounded-full bg-[color:var(--accent)] px-6 py-3 text-sm text-white shadow-[var(--shadow)] transition hover:opacity-90 disabled:opacity-60"
+                variant="primary"
+                className="px-6 py-3 text-sm"
                 disabled={saveMutation.isPending}
               >
                 {saveMutation.isPending
@@ -577,10 +532,10 @@ export default function AdminContestClient() {
                   : mode === "create"
                     ? "콘테스트 생성"
                     : "콘테스트 수정"}
-              </button>
-              <button
-                type="button"
-                className="rounded-full border border-[color:var(--line)] px-6 py-3 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+              </AdminActionButton>
+              <AdminActionButton
+                variant="secondary"
+                className="px-6 py-3 text-sm"
                 onClick={() => {
                   if (selectedContest) {
                     setForm(toForm(selectedContest));
@@ -590,12 +545,12 @@ export default function AdminContestClient() {
                 }}
               >
                 입력 초기화
-              </button>
+              </AdminActionButton>
             </div>
           </form>
         </div>
       </section>
       </Reveal>
-    </PageShell>
+    </AdminShell>
   );
 }

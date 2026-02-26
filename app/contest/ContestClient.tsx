@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -12,70 +12,27 @@ import {
   getContestList,
   purchaseEntryCredit,
 } from "../lib/contest";
-import { getAccessToken, getUserFromToken, isAdminRole } from "../lib/auth";
+import { getAccessToken } from "../lib/auth";
 import { useBodyScrollLock } from "../lib/useBodyScrollLock";
-import { APP_ROUTES } from "../lib/router";
 import {
   overlayFadeMotion,
   popInMotion,
   staggeredFadeUpMotion,
 } from "../lib/motion";
+import {
+  contestPhaseOrder,
+  getContestPhaseLabel,
+  getContestPhaseTone,
+} from "../lib/statusTheme";
 import CinematicBottomNav from "../components/CinematicBottomNav";
 import OverviewStyleHeader from "../components/OverviewStyleHeader";
-import type { ContestPhase, ContestSummary } from "../types/contest";
-
-const phaseLabel: Record<ContestPhase, string> = {
-  UPCOMING: "출품 대기",
-  SUBMISSION: "출품 진행 중",
-  REVIEW: "심사 중",
-  VOTING: "전시 중",
-  ENDED: "종료",
-};
-
-const phaseOrder: Record<ContestPhase, number> = {
-  VOTING: 0,
-  SUBMISSION: 1,
-  REVIEW: 2,
-  UPCOMING: 3,
-  ENDED: 4,
-};
-
-const phaseTone: Record<ContestPhase, { chip: string; dot: string }> = {
-  VOTING: {
-    chip: "bg-emerald-300/15 text-emerald-100",
-    dot: "bg-emerald-400",
-  },
-  SUBMISSION: {
-    chip: "bg-cyan-300/15 text-cyan-100",
-    dot: "bg-cyan-300",
-  },
-  REVIEW: {
-    chip: "bg-amber-300/15 text-amber-100",
-    dot: "bg-amber-300",
-  },
-  UPCOMING: {
-    chip: "bg-slate-300/12 text-slate-200",
-    dot: "bg-slate-400",
-  },
-  ENDED: {
-    chip: "bg-slate-700/30 text-slate-300",
-    dot: "bg-slate-500",
-  },
-};
+import type { ContestSummary } from "../types/contest";
 
 const livePalettes = [
   "linear-gradient(150deg, rgba(16,26,38,0.86), rgba(46,76,102,0.72)), radial-gradient(circle at 78% 18%, rgba(188,217,238,0.35), transparent 48%)",
   "linear-gradient(160deg, rgba(25,20,34,0.88), rgba(65,56,104,0.72)), radial-gradient(circle at 84% 22%, rgba(219,193,248,0.32), transparent 52%)",
   "linear-gradient(160deg, rgba(19,29,29,0.9), rgba(37,87,79,0.72)), radial-gradient(circle at 80% 20%, rgba(174,238,212,0.3), transparent 52%)",
 ];
-
-function subscribeHydration(callback: () => void) {
-  if (typeof window === "undefined") {
-    return () => undefined;
-  }
-  const id = window.requestAnimationFrame(callback);
-  return () => window.cancelAnimationFrame(id);
-}
 
 function formatNumber(value: number) {
   return value.toLocaleString("ko-KR");
@@ -126,11 +83,6 @@ function deadlineText(contest: ContestSummary) {
 export default function ContestClient() {
   const dispatch = useAppDispatch();
   const router = useRouter();
-  const isHydrated = useSyncExternalStore(
-    subscribeHydration,
-    () => true,
-    () => false,
-  );
   const [paymentStep, setPaymentStep] = useState<
     "closed" | "payment" | "confirm"
   >("closed");
@@ -142,8 +94,6 @@ export default function ContestClient() {
   const reduceMotion = Boolean(prefersReducedMotion);
   useBodyScrollLock(paymentStep !== "closed");
 
-  const authUser = isHydrated ? getUserFromToken() : null;
-  const isAdmin = isAdminRole(authUser?.role);
 
   const { data, isLoading } = useQuery({
     queryKey: ["contests"],
@@ -154,7 +104,7 @@ export default function ContestClient() {
   const sortedContests = useMemo(
     () =>
       [...contests].sort((a, b) => {
-        const phaseDiff = phaseOrder[a.phase] - phaseOrder[b.phase];
+        const phaseDiff = contestPhaseOrder[a.phase] - contestPhaseOrder[b.phase];
         if (phaseDiff !== 0) {
           return phaseDiff;
         }
@@ -254,38 +204,6 @@ export default function ContestClient() {
           <OverviewStyleHeader title="The Contest" />
         </motion.div>
 
-        {isAdmin ? (
-          <motion.div
-            className="mb-8 flex flex-wrap items-center gap-2"
-            {...staggeredFadeUpMotion(1, reduceMotion)}
-          >
-            <div
-              role="button"
-              tabIndex={0}
-              className="rounded-full bg-blue-400/30 px-4 py-2 text-xs font-semibold text-blue-100 transition hover:bg-blue-400/42"
-              onClick={() => router.push(APP_ROUTES.adminContestManage)}
-              onKeyDown={(event) =>
-                onPressEnterOrSpace(event, () =>
-                  router.push(APP_ROUTES.adminContestManage)
-                )}
-            >
-              관리 콘솔
-            </div>
-            <div
-              role="button"
-              tabIndex={0}
-              className="rounded-full bg-blue-300/16 px-4 py-2 text-xs font-semibold text-blue-100 transition hover:bg-blue-300/28"
-              onClick={() => router.push(APP_ROUTES.adminContestReview)}
-              onKeyDown={(event) =>
-                onPressEnterOrSpace(event, () =>
-                  router.push(APP_ROUTES.adminContestReview)
-                )}
-            >
-              출품 심사
-            </div>
-          </motion.div>
-        ) : null}
-
         {isLoading ? (
           <section className="space-y-8">
             <div className="h-[360px] animate-pulse rounded-[28px] bg-white/10" />
@@ -310,8 +228,12 @@ export default function ContestClient() {
               <div className="flex items-end justify-between">
                 <h2 className="text-2xl text-slate-100">
                   Exhibiting
-                  <span className="ml-3 rounded-full   bg-emerald-300/18 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-emerald-100">
-                    전시 중
+                  <span
+                    className={`ml-3 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] ${
+                      getContestPhaseTone("VOTING").chipClass
+                    }`}
+                  >
+                    {getContestPhaseLabel("VOTING")}
                   </span>
                 </h2>
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
@@ -393,8 +315,12 @@ export default function ContestClient() {
               <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
                 <h2 className="text-2xl text-slate-100">
                   Submission Open
-                  <span className="ml-3 rounded-full   bg-cyan-300/16 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-cyan-100">
-                    출품 진행 중
+                  <span
+                    className={`ml-3 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] ${
+                      getContestPhaseTone("SUBMISSION").chipClass
+                    }`}
+                  >
+                    {getContestPhaseLabel("SUBMISSION")}
                   </span>
                 </h2>
                 <button
@@ -415,8 +341,12 @@ export default function ContestClient() {
                       className="rounded-[22px] bg-[linear-gradient(160deg,rgba(20,62,78,0.88)_0%,rgba(27,73,92,0.72)_100%)] p-5 shadow-[0_14px_34px_rgba(0,0,0,0.3)]"
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <span className={`rounded-full  px-3 py-1 text-[11px] ${phaseTone.SUBMISSION.chip}`}>
-                          {phaseLabel.SUBMISSION}
+                        <span
+                          className={`rounded-full border px-3 py-1 text-[11px] ${
+                            getContestPhaseTone("SUBMISSION").chipClass
+                          }`}
+                        >
+                          {getContestPhaseLabel("SUBMISSION")}
                         </span>
                         <span className="text-xs text-cyan-100/80">
                           {deadlineText(contest)}
@@ -474,7 +404,11 @@ export default function ContestClient() {
               <div className="mb-5 flex items-end justify-between">
                 <h2 className="text-2xl text-slate-100">
                   Review & Queue
-                  <span className="ml-3 rounded-full   bg-amber-300/14 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-amber-100">
+                  <span
+                    className={`ml-3 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] ${
+                      getContestPhaseTone("REVIEW").chipClass
+                    }`}
+                  >
                     심사 · 대기
                   </span>
                 </h2>
@@ -486,7 +420,7 @@ export default function ContestClient() {
               {queueContests.length > 0 ? (
                 <div className="space-y-3">
                   {queueContests.map((contest, index) => {
-                    const tone = phaseTone[contest.phase];
+                    const tone = getContestPhaseTone(contest.phase);
                     return (
                       <motion.div
                         key={contest.id}
@@ -495,9 +429,9 @@ export default function ContestClient() {
                       >
                         <div>
                           <div className="mb-2 flex items-center gap-2">
-                            <span className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
+                            <span className={`h-1.5 w-1.5 rounded-full ${tone.dotClass}`} />
                             <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400">
-                              {phaseLabel[contest.phase]}
+                              {getContestPhaseLabel(contest.phase)}
                             </span>
                           </div>
                           <h3 className="font-[var(--font-display)] text-2xl text-slate-200 transition group-hover:text-white">
@@ -510,7 +444,7 @@ export default function ContestClient() {
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={`rounded-full  px-3 py-1 text-[11px] ${tone.chip}`}>
+                          <span className={`rounded-full border px-3 py-1 text-[11px] ${tone.chipClass}`}>
                             {contest.phase === "REVIEW" ? "심사 큐 운영" : "오픈 대기"}
                           </span>
                           <div
@@ -544,8 +478,12 @@ export default function ContestClient() {
               <div className="mb-5 flex items-end justify-between">
                 <h2 className="text-2xl text-slate-100">
                   Ended
-                  <span className="ml-3 rounded-full   bg-slate-500/14 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-slate-300">
-                    종료
+                  <span
+                    className={`ml-3 rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] ${
+                      getContestPhaseTone("ENDED").chipClass
+                    }`}
+                  >
+                    {getContestPhaseLabel("ENDED")}
                   </span>
                 </h2>
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">

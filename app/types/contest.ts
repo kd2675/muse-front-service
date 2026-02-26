@@ -53,8 +53,17 @@ export type ContestEntrySummary = {
   contestTheme: string;
   title?: string;
   imageUrl?: string | null;
-  status: "SUBMITTED" | "REVIEWING" | "APPROVED" | "REJECTED";
+  status: "SUBMITTED" | "APPROVED" | "REJECTED";
   submittedAt: string;
+};
+
+export type ContestEntrySummaryPage = {
+  items: ContestEntrySummary[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  hasNext: boolean;
 };
 
 export type ContestPublicEntry = {
@@ -63,7 +72,7 @@ export type ContestPublicEntry = {
   title?: string | null;
   imageUrl?: string | null;
   artistName: string;
-  status: "SUBMITTED" | "REVIEWING" | "APPROVED" | "REJECTED";
+  status: "SUBMITTED" | "APPROVED" | "REJECTED";
   submittedAt: string;
 };
 
@@ -79,7 +88,7 @@ export type ContestPublicEntryPage = {
   mode: ContestEntryPageMode;
 };
 
-export type AdminContestEntryReviewStatus = "REVIEWING" | "APPROVED" | "REJECTED";
+export type AdminContestEntryReviewStatus = "APPROVED" | "REJECTED";
 
 export type ContestRankingItem = {
   rank: number;

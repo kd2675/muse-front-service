@@ -5,6 +5,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { setAccessToken } from "../lib/auth";
+import { navigateBack } from "../lib/navigation";
 import { initializeProfile } from "../lib/profile";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { setPendingPath, showToast } from "../store/uiSlice";
@@ -68,7 +69,7 @@ function LoginPageContent() {
             <div className="mb-6 flex items-center justify-between text-xs text-[color:var(--muted)]">
               <button
                 className="rounded-full border border-[color:var(--line)] px-3 py-1 transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
-                onClick={() => router.back()}
+                onClick={() => navigateBack(router, "/?tab=home")}
               >
                 뒤로가기
               </button>
@@ -104,7 +105,7 @@ function LoginPageContent() {
         <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
           <button
             className="rounded-full border border-gray-300 px-3 py-1 transition hover:border-[#03C75A] hover:text-[#03C75A] dark:border-gray-600"
-            onClick={() => router.back()}
+            onClick={() => navigateBack(router, "/?tab=home")}
           >
             뒤로가기
           </button>
