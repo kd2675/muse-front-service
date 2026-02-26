@@ -1,7 +1,6 @@
 "use client";
 
 import { useQueries, useQuery } from "@tanstack/react-query";
-import Link from "next/link";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -42,23 +41,23 @@ const phaseOrder: Record<ContestPhase, number> = {
 
 const phaseTone: Record<ContestPhase, { chip: string; dot: string }> = {
   VOTING: {
-    chip: "border-emerald-300/35 bg-emerald-300/15 text-emerald-100",
+    chip: "bg-emerald-300/15 text-emerald-100",
     dot: "bg-emerald-400",
   },
   SUBMISSION: {
-    chip: "border-cyan-300/35 bg-cyan-300/15 text-cyan-100",
+    chip: "bg-cyan-300/15 text-cyan-100",
     dot: "bg-cyan-300",
   },
   REVIEW: {
-    chip: "border-amber-300/35 bg-amber-300/15 text-amber-100",
+    chip: "bg-amber-300/15 text-amber-100",
     dot: "bg-amber-300",
   },
   UPCOMING: {
-    chip: "border-slate-300/25 bg-slate-300/12 text-slate-200",
+    chip: "bg-slate-300/12 text-slate-200",
     dot: "bg-slate-400",
   },
   ENDED: {
-    chip: "border-slate-500/30 bg-slate-700/30 text-slate-300",
+    chip: "bg-slate-700/30 text-slate-300",
     dot: "bg-slate-500",
   },
 };
@@ -236,17 +235,27 @@ export default function ContestClient() {
     setPaymentStep("payment");
   };
 
+  const onPressEnterOrSpace = (
+    event: React.KeyboardEvent<HTMLElement>,
+    action: () => void,
+  ) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      action();
+    }
+  };
+
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-[#121212] text-slate-100">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_10%,rgba(103,129,161,0.16),transparent_38%),radial-gradient(circle_at_82%_18%,rgba(93,112,151,0.12),transparent_40%),radial-gradient(circle_at_50%_82%,rgba(113,88,65,0.14),transparent_42%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_12%,rgba(84,90,111,0.22),transparent_34%),radial-gradient(circle_at_84%_18%,rgba(73,108,115,0.18),transparent_36%),radial-gradient(circle_at_52%_82%,rgba(120,86,64,0.14),transparent_38%)]" />
 
-      <main className="relative mx-auto w-full max-w-6xl px-6 pb-40 pt-8 md:px-8">
+      <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 pb-40 pt-8 md:px-8">
         <motion.header
           className="mb-10 flex flex-wrap items-start justify-between gap-4"
           {...staggeredFadeUpMotion(0, reduceMotion)}
         >
           <div>
-            <p className="text-[10px] uppercase tracking-[0.38em] text-slate-500">
+            <p className="text-[10px] uppercase tracking-[0.38em] text-slate-400">
               Artium Contest
             </p>
             <h1 className="mt-3 font-[var(--font-display)] text-4xl italic text-slate-100 md:text-5xl">
@@ -260,48 +269,64 @@ export default function ContestClient() {
           <div className="flex flex-wrap items-center gap-2">
             {isAdmin && (
               <>
-                <button
-                  className="rounded-full border border-blue-300/35 bg-blue-400/25 px-4 py-2 text-xs font-semibold text-blue-100 transition hover:bg-blue-400/34"
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="rounded-full bg-blue-400/30 px-4 py-2 text-xs font-semibold text-blue-100 transition hover:bg-blue-400/42"
                   onClick={() => router.push(APP_ROUTES.adminContestManage)}
+                  onKeyDown={(event) =>
+                    onPressEnterOrSpace(event, () =>
+                      router.push(APP_ROUTES.adminContestManage)
+                    )}
                 >
                   관리 콘솔
-                </button>
-                <button
-                  className="rounded-full border border-blue-200/35 bg-transparent px-4 py-2 text-xs font-semibold text-blue-100 transition hover:bg-blue-300/14"
+                </div>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="rounded-full bg-blue-300/16 px-4 py-2 text-xs font-semibold text-blue-100 transition hover:bg-blue-300/28"
                   onClick={() => router.push(APP_ROUTES.adminContestReview)}
+                  onKeyDown={(event) =>
+                    onPressEnterOrSpace(event, () =>
+                      router.push(APP_ROUTES.adminContestReview)
+                    )}
                 >
                   출품 심사
-                </button>
+                </div>
               </>
             )}
             {isLoggedIn ? (
-              <span className="rounded-full border border-white/20 bg-white/8 px-4 py-2 text-xs text-slate-200">
+              <span className="rounded-full bg-white/14 px-4 py-2 text-xs text-slate-100">
                 {authUser?.name ?? authUser?.email ?? "Signed in"}
               </span>
             ) : (
-              <Link
-                href="/login"
-                className="rounded-full border border-white/25 bg-white/8 px-4 py-2 text-xs text-slate-200 transition hover:bg-white/14"
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => router.push("/login")}
+                onKeyDown={(event) =>
+                  onPressEnterOrSpace(event, () => router.push("/login"))}
+                className="rounded-full bg-white/14 px-4 py-2 text-xs text-slate-100 transition hover:bg-white/24"
               >
                 Sign in
-              </Link>
+              </div>
             )}
           </div>
         </motion.header>
 
         {isLoading ? (
           <section className="space-y-8">
-            <div className="h-[360px] animate-pulse rounded-[28px] border border-white/10 bg-white/6" />
+            <div className="h-[360px] animate-pulse rounded-[28px] bg-white/10" />
             <div className="grid gap-4 md:grid-cols-2">
-              <div className="h-52 animate-pulse rounded-[24px] border border-white/10 bg-white/6" />
-              <div className="h-52 animate-pulse rounded-[24px] border border-white/10 bg-white/6" />
+              <div className="h-52 animate-pulse rounded-[24px] bg-white/10" />
+              <div className="h-52 animate-pulse rounded-[24px] bg-white/10" />
             </div>
-            <div className="h-80 animate-pulse rounded-[24px] border border-white/10 bg-white/6" />
+            <div className="h-80 animate-pulse rounded-[24px] bg-white/10" />
           </section>
         ) : (
           <div className="space-y-12">
             {error && (
-              <div className="rounded-[18px] border border-rose-300/30 bg-rose-300/12 px-4 py-3 text-sm text-rose-100">
+              <div className="rounded-[18px] bg-rose-300/18 px-4 py-3 text-sm text-rose-50">
                 콘테스트 데이터를 불러오지 못했습니다. {error}
               </div>
             )}
@@ -313,7 +338,7 @@ export default function ContestClient() {
               <div className="flex items-end justify-between">
                 <h2 className="text-2xl text-slate-100">
                   Exhibiting
-                  <span className="ml-3 rounded-full border border-emerald-300/35 bg-emerald-300/18 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-emerald-100">
+                  <span className="ml-3 rounded-full   bg-emerald-300/18 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-emerald-100">
                     전시 중
                   </span>
                 </h2>
@@ -323,17 +348,17 @@ export default function ContestClient() {
               </div>
 
               {liveContests.length > 0 ? (
-                <Swiper
-                  className="!overflow-visible"
-                  spaceBetween={16}
-                  slidesPerView={1.06}
-                  breakpoints={{
-                    640: { slidesPerView: 1.18 },
-                    1024: { slidesPerView: 1.32 },
-                  }}
-                >
-                  {liveContests.map((contest, index) => (
-                    <SwiperSlide key={contest.id} className="!h-auto">
+                <div className="overflow-hidden rounded-[26px] bg-white/[0.04] shadow-[0_18px_46px_rgba(0,0,0,0.34)]">
+                  <Swiper
+                    className="w-full"
+                    spaceBetween={16}
+                    slidesPerView={1}
+                    breakpoints={{
+                      1024: { slidesPerView: 1 },
+                    }}
+                  >
+                    {liveContests.map((contest, index) => (
+                      <SwiperSlide key={contest.id} className="!h-auto">
                       {(() => {
                         const liveBackground = liveBackgroundByContestId[contest.id];
                         const hasArtworkBackground = Boolean(liveBackground);
@@ -348,18 +373,18 @@ export default function ContestClient() {
                                 livePalettes[(contest.id + index) % livePalettes.length],
                             };
                         return (
-                      <Link
-                        href={contestHref(contest.id)}
-                        className="group relative block h-[420px] overflow-hidden rounded-[26px] border border-white/12"
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => router.push(contestHref(contest.id))}
+                        onKeyDown={(event) =>
+                          onPressEnterOrSpace(event, () =>
+                            router.push(contestHref(contest.id))
+                          )}
+                        className="group relative block h-[420px] overflow-hidden rounded-[26px]"
                         style={backgroundStyle}
                       >
-                        <div
-                          className={`absolute inset-0 ${
-                            hasArtworkBackground
-                              ? "bg-[linear-gradient(0deg,rgba(10,11,15,0.9)_0%,rgba(10,11,15,0.26)_58%,rgba(10,11,15,0.1)_100%)]"
-                              : "bg-[linear-gradient(0deg,rgba(10,11,15,0.88)_0%,rgba(10,11,15,0.18)_60%,rgba(10,11,15,0)_100%)]"
-                          }`}
-                        />
+                        <div className="absolute inset-[2px] rounded-[24px] bg-[linear-gradient(0deg,rgba(10,11,15,0.9)_0%,rgba(10,11,15,0.26)_58%,rgba(10,11,15,0.1)_100%)]" />
                         <div className="absolute right-6 bottom-6 left-6">
                           <div className="mb-3 flex items-center gap-2">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
@@ -375,34 +400,35 @@ export default function ContestClient() {
                             {contest.period}
                           </p>
                         </div>
-                      </Link>
+                      </div>
                         );
                       })()}
-                    </SwiperSlide>
-                  ))}
-                </Swiper>
+                      </SwiperSlide>
+                    ))}
+                  </Swiper>
+                </div>
               ) : (
-                <div className="rounded-[22px] border border-white/12 bg-white/6 px-5 py-8 text-sm text-slate-300/76">
+                <div className="rounded-[22px] bg-white/10 px-5 py-8 text-sm text-slate-200/88">
                   현재 전시 중인 콘테스트가 없습니다.
                 </div>
               )}
             </motion.section>
 
             <motion.section
-              className="rounded-[26px] border border-white/10 bg-[rgba(18,18,18,0.68)] p-6 backdrop-blur-md md:p-8"
+              className="rounded-[26px] bg-[rgba(40,40,46,0.72)] p-6 shadow-[0_18px_52px_rgba(0,0,0,0.34)] backdrop-blur-md md:p-8"
               {...staggeredFadeUpMotion(2, reduceMotion)}
             >
               <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
                 <h2 className="text-2xl text-slate-100">
                   Submission Open
-                  <span className="ml-3 rounded-full border border-cyan-300/35 bg-cyan-300/16 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-cyan-100">
+                  <span className="ml-3 rounded-full   bg-cyan-300/16 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-cyan-100">
                     출품 진행 중
                   </span>
                 </h2>
                 <button
                   type="button"
                   onClick={() => openPayment()}
-                  className="rounded-full border border-cyan-300/35 bg-cyan-300/16 px-4 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-300/24"
+                  className="rounded-full   bg-cyan-300/16 px-4 py-2 text-xs font-semibold text-cyan-100 transition hover:bg-cyan-300/24"
                 >
                   출품권 결제
                 </button>
@@ -414,10 +440,10 @@ export default function ContestClient() {
                     <motion.article
                       key={contest.id}
                       {...staggeredFadeUpMotion(index + 3, reduceMotion)}
-                      className="rounded-[22px] border border-cyan-300/22 bg-[linear-gradient(160deg,rgba(11,31,37,0.72)_0%,rgba(17,44,58,0.56)_100%)] p-5"
+                      className="rounded-[22px] bg-[linear-gradient(160deg,rgba(20,62,78,0.88)_0%,rgba(27,73,92,0.72)_100%)] p-5 shadow-[0_14px_34px_rgba(0,0,0,0.3)]"
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <span className={`rounded-full border px-3 py-1 text-[11px] ${phaseTone.SUBMISSION.chip}`}>
+                        <span className={`rounded-full  px-3 py-1 text-[11px] ${phaseTone.SUBMISSION.chip}`}>
                           {phaseLabel.SUBMISSION}
                         </span>
                         <span className="text-xs text-cyan-100/80">
@@ -431,24 +457,30 @@ export default function ContestClient() {
                         {contest.period}
                       </p>
                       <div className="mt-5 grid grid-cols-2 gap-2 text-xs text-cyan-100/86">
-                        <span className="rounded-full border border-cyan-300/22 bg-cyan-300/12 px-3 py-1.5">
+                        <span className="rounded-full bg-cyan-300/24 px-3 py-1.5">
                           참가비 {formatNumber(contest.entryFee)}원
                         </span>
-                        <span className="rounded-full border border-cyan-300/22 bg-cyan-300/12 px-3 py-1.5">
+                        <span className="rounded-full bg-cyan-300/24 px-3 py-1.5">
                           상금풀 {formatNumber(contest.prizePool)}원
                         </span>
                       </div>
                       <div className="mt-6 grid grid-cols-2 gap-2">
-                        <Link
-                          href={contestHref(contest.id)}
-                          className="rounded-full border border-cyan-200/30 bg-white/8 px-3 py-2 text-center text-xs text-cyan-50 transition hover:bg-white/14"
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => router.push(contestHref(contest.id))}
+                          onKeyDown={(event) =>
+                            onPressEnterOrSpace(event, () =>
+                              router.push(contestHref(contest.id))
+                            )}
+                          className="rounded-full bg-white/16 px-3 py-2 text-center text-xs text-cyan-50 transition hover:bg-white/24"
                         >
                           상세 보기
-                        </Link>
+                        </div>
                         <button
                           type="button"
                           onClick={() => openPayment(contest.id)}
-                          className="rounded-full border border-cyan-300/35 bg-cyan-300/18 px-3 py-2 text-xs text-cyan-50 transition hover:bg-cyan-300/28"
+                          className="rounded-full bg-cyan-300/28 px-3 py-2 text-xs text-cyan-50 transition hover:bg-cyan-300/40"
                         >
                           출품권 결제
                         </button>
@@ -457,20 +489,20 @@ export default function ContestClient() {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-[20px] border border-white/12 bg-white/6 px-4 py-6 text-sm text-slate-300/76">
+                <div className="rounded-[20px] bg-white/10 px-4 py-6 text-sm text-slate-200/88">
                   현재 출품 가능한 콘테스트가 없습니다.
                 </div>
               )}
             </motion.section>
 
             <motion.section
-              className="rounded-[26px] border border-white/10 bg-[rgba(18,18,18,0.62)] p-6 backdrop-blur-md md:p-8"
+              className="rounded-[26px] bg-[rgba(40,40,46,0.72)] p-6 shadow-[0_18px_52px_rgba(0,0,0,0.34)] backdrop-blur-md md:p-8"
               {...staggeredFadeUpMotion(3, reduceMotion)}
             >
               <div className="mb-5 flex items-end justify-between">
                 <h2 className="text-2xl text-slate-100">
                   Review & Queue
-                  <span className="ml-3 rounded-full border border-amber-300/30 bg-amber-300/14 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-amber-100">
+                  <span className="ml-3 rounded-full   bg-amber-300/14 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-amber-100">
                     심사 · 대기
                   </span>
                 </h2>
@@ -480,14 +512,14 @@ export default function ContestClient() {
               </div>
 
               {queueContests.length > 0 ? (
-                <div className="divide-y divide-white/10">
+                <div className="space-y-3">
                   {queueContests.map((contest, index) => {
                     const tone = phaseTone[contest.phase];
                     return (
                       <motion.div
                         key={contest.id}
                         {...staggeredFadeUpMotion(index + 4, reduceMotion)}
-                        className="group grid gap-3 py-4 md:grid-cols-[1fr_auto]"
+                        className="group grid gap-3 rounded-[16px] bg-white/[0.06] px-4 py-4 transition hover:bg-white/[0.1] md:grid-cols-[1fr_auto]"
                       >
                         <div>
                           <div className="mb-2 flex items-center gap-2">
@@ -506,39 +538,45 @@ export default function ContestClient() {
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className={`rounded-full border px-3 py-1 text-[11px] ${tone.chip}`}>
+                          <span className={`rounded-full  px-3 py-1 text-[11px] ${tone.chip}`}>
                             {contest.phase === "REVIEW" ? "심사 큐 운영" : "오픈 대기"}
                           </span>
-                          <Link
-                            href={contestHref(contest.id)}
-                            className="rounded-full border border-white/20 bg-white/8 px-3 py-1 text-xs text-slate-200 transition hover:bg-white/14"
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => router.push(contestHref(contest.id))}
+                            onKeyDown={(event) =>
+                              onPressEnterOrSpace(event, () =>
+                                router.push(contestHref(contest.id))
+                              )}
+                            className="rounded-full bg-white/16 px-3 py-1 text-xs text-slate-100 transition hover:bg-white/24"
                           >
                             상세 보기
-                          </Link>
+                          </div>
                         </div>
                       </motion.div>
                     );
                   })}
                 </div>
               ) : (
-                <div className="rounded-[20px] border border-white/12 bg-white/6 px-4 py-6 text-sm text-slate-300/76">
+                <div className="rounded-[20px] bg-white/10 px-4 py-6 text-sm text-slate-200/88">
                   심사 중 또는 대기 중인 콘테스트가 없습니다.
                 </div>
               )}
             </motion.section>
 
             <motion.section
-              className="rounded-[26px] border border-white/10 bg-[rgba(14,14,16,0.6)] p-6 backdrop-blur-md md:p-8"
+              className="rounded-[26px] bg-[rgba(40,40,46,0.72)] p-6 shadow-[0_18px_52px_rgba(0,0,0,0.34)] backdrop-blur-md md:p-8"
               {...staggeredFadeUpMotion(4, reduceMotion)}
             >
               <div className="mb-5 flex items-end justify-between">
                 <h2 className="text-2xl text-slate-100">
                   Ended
-                  <span className="ml-3 rounded-full border border-slate-400/30 bg-slate-500/14 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+                  <span className="ml-3 rounded-full   bg-slate-500/14 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-slate-300">
                     종료
                   </span>
                 </h2>
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-600">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
                   Archive
                 </p>
               </div>
@@ -549,27 +587,33 @@ export default function ContestClient() {
                     <motion.div
                       key={contest.id}
                       {...staggeredFadeUpMotion(index + 5, reduceMotion)}
-                      className="group flex items-baseline justify-between gap-4 rounded-[14px] px-2 py-3 transition hover:bg-white/[0.04]"
+                      className="group flex items-baseline justify-between gap-4 rounded-[14px] bg-white/[0.05] px-3 py-3 transition hover:bg-white/[0.1]"
                     >
                       <div className="flex min-w-0 items-baseline gap-5">
-                        <span className="w-14 shrink-0 text-xs text-slate-600">
+                        <span className="w-14 shrink-0 text-xs text-slate-400">
                           {archiveStamp(contest)}
                         </span>
                         <h4 className="truncate font-[var(--font-display)] text-xl text-slate-300 transition group-hover:text-white">
                           {contest.theme}
                         </h4>
                       </div>
-                      <Link
-                        href={contestHref(contest.id)}
-                        className="rounded-full border border-slate-400/24 bg-white/5 px-3 py-1 text-[11px] text-slate-300 transition hover:bg-white/12"
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => router.push(contestHref(contest.id))}
+                        onKeyDown={(event) =>
+                          onPressEnterOrSpace(event, () =>
+                            router.push(contestHref(contest.id))
+                          )}
+                        className="rounded-full bg-white/16 px-3 py-1 text-[11px] text-slate-100 transition hover:bg-white/24"
                       >
                         보기
-                      </Link>
+                      </div>
                     </motion.div>
                   ))}
                 </div>
               ) : (
-                <div className="rounded-[20px] border border-white/12 bg-white/6 px-4 py-6 text-sm text-slate-300/76">
+                <div className="rounded-[20px] bg-white/10 px-4 py-6 text-sm text-slate-200/88">
                   종료된 콘테스트가 없습니다.
                 </div>
               )}
@@ -592,7 +636,7 @@ export default function ContestClient() {
           >
             <motion.div
               {...popInMotion(reduceMotion)}
-              className="w-full max-w-lg rounded-[28px] border border-white/14 bg-[rgba(15,15,18,0.96)] p-8 shadow-[0_20px_60px_rgba(0,0,0,0.45)]"
+              className="w-full max-w-lg rounded-[28px]   bg-[rgba(15,15,18,0.96)] p-8 shadow-[0_20px_60px_rgba(0,0,0,0.45)]"
             >
               {paymentStep === "payment" && (
                 <>
@@ -609,7 +653,7 @@ export default function ContestClient() {
                       </p>
                     </div>
                     <button
-                      className="rounded-full border border-white/20 px-3 py-1 text-xs text-slate-300 transition hover:bg-white/10"
+                      className="rounded-full   px-3 py-1 text-xs text-slate-300 transition hover:bg-white/10"
                       onClick={() => setPaymentStep("closed")}
                     >
                       닫기
@@ -623,7 +667,7 @@ export default function ContestClient() {
                     <select
                       value={selectedContestId ?? undefined}
                       onChange={(event) => setSelectedContestId(Number(event.target.value))}
-                      className="h-11 rounded-[14px] border border-white/14 bg-black/25 px-4 text-sm text-slate-100 focus:border-cyan-300/50 focus:outline-none"
+                      className="h-11 rounded-[14px]   bg-black/25 px-4 text-sm text-slate-100  focus:outline-none"
                     >
                       {submissionContests.map((contest) => (
                         <option key={contest.id} value={contest.id}>
@@ -632,7 +676,7 @@ export default function ContestClient() {
                       ))}
                     </select>
 
-                    <div className="rounded-[14px] border border-white/12 bg-white/6 px-4 py-3 text-sm text-slate-200">
+                    <div className="rounded-[14px]   bg-white/6 px-4 py-3 text-sm text-slate-200">
                       참가비{" "}
                       <strong>
                         {selectedContest ? formatNumber(selectedContest.entryFee) : 0}원
@@ -652,10 +696,10 @@ export default function ContestClient() {
                           <button
                             key={method.id}
                             type="button"
-                            className={`rounded-full border px-4 py-2 text-xs transition ${
+                            className={`rounded-full  px-4 py-2 text-xs transition ${
                               paymentMethod === method.id
-                                ? "border-cyan-300/45 bg-cyan-300/18 text-cyan-100"
-                                : "border-white/18 bg-transparent text-slate-300 hover:bg-white/10"
+                                ? "bg-cyan-300/18 text-cyan-100"
+                                : "bg-transparent text-slate-300 hover:bg-white/10"
                             }`}
                             onClick={() => setPaymentMethod(method.id)}
                           >
@@ -668,13 +712,13 @@ export default function ContestClient() {
 
                   <div className="mt-6 grid grid-cols-2 gap-3">
                     <button
-                      className="rounded-full border border-cyan-300/45 bg-cyan-300/20 px-4 py-3 text-sm text-cyan-100 transition hover:bg-cyan-300/30"
+                      className="rounded-full   bg-cyan-300/20 px-4 py-3 text-sm text-cyan-100 transition hover:bg-cyan-300/30"
                       onClick={() => setPaymentStep("confirm")}
                     >
                       테스트 결제 진행
                     </button>
                     <button
-                      className="rounded-full border border-white/18 bg-transparent px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10"
+                      className="rounded-full   bg-transparent px-4 py-3 text-sm text-slate-300 transition hover:bg-white/10"
                       onClick={() => setPaymentStep("closed")}
                     >
                       취소
@@ -694,11 +738,11 @@ export default function ContestClient() {
                   <p className="mt-2 text-sm text-slate-300/74">
                     테스트 결제이므로 실제 결제는 진행되지 않습니다.
                   </p>
-                  <div className="mt-6 rounded-[14px] border border-white/12 bg-white/6 px-4 py-3 text-sm text-slate-200">
+                  <div className="mt-6 rounded-[14px]   bg-white/6 px-4 py-3 text-sm text-slate-200">
                     {selectedContest?.theme ?? "선택된 콘테스트"} 출품권 구매가 완료되었습니다.
                   </div>
                   <button
-                    className="mt-6 w-full rounded-full border border-cyan-300/45 bg-cyan-300/20 px-5 py-3 text-sm text-cyan-100 transition hover:bg-cyan-300/30 disabled:opacity-60"
+                    className="mt-6 w-full rounded-full   bg-cyan-300/20 px-5 py-3 text-sm text-cyan-100 transition hover:bg-cyan-300/30 disabled:opacity-60"
                     disabled={!selectedContest?.id}
                     onClick={async () => {
                       if (!selectedContest?.id) {
@@ -716,12 +760,18 @@ export default function ContestClient() {
                     확인
                   </button>
                   {selectedContest?.id && (
-                    <Link
-                      href={contestHref(selectedContest.id)}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => router.push(contestHref(selectedContest.id))}
+                      onKeyDown={(event) =>
+                        onPressEnterOrSpace(event, () =>
+                          router.push(contestHref(selectedContest.id))
+                        )}
                       className="mt-3 block text-center text-xs text-cyan-100/86 hover:underline"
                     >
                       바로 출품하러 가기
-                    </Link>
+                    </div>
                   )}
                 </>
               )}

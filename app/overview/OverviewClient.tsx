@@ -65,6 +65,7 @@ export default function OverviewClient() {
   const spotlightPick = todaysPick[0] ?? null;
   const featuredMuseums = payload?.featuredMuseums ?? [];
   const spotlightMuseum = featuredMuseums.find((museum) => museum.coverImageUrl) ?? featuredMuseums[0];
+  const spotlightContest = payload?.activeContests?.[0] ?? null;
   const {
     status: authStatus,
     label: userLabel,
@@ -151,9 +152,9 @@ export default function OverviewClient() {
       <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 pb-24 pt-6 md:px-8">
         {isLoading ? (
           <div className="flex min-h-screen flex-col justify-center gap-4">
-            <div className="h-8 w-36 rounded-full border border-white/10 bg-white/10" />
-            <div className="h-[46vh] rounded-[26px] border border-white/10 bg-white/6" />
-            <div className="h-40 rounded-[22px] border border-white/10 bg-white/6" />
+            <div className="h-8 w-36 rounded-full   bg-white/10" />
+            <div className="h-[46vh] rounded-[26px]   bg-white/6" />
+            <div className="h-40 rounded-[22px]   bg-white/6" />
           </div>
         ) : payload ? (
           <div className="space-y-10">
@@ -169,11 +170,11 @@ export default function OverviewClient() {
               </div>
 
               {!isHydrated ? (
-                <div className="h-9 w-24 rounded-full border border-white/10 bg-white/8" />
+                <div className="h-9 w-24 rounded-full   bg-white/8" />
               ) : authStatus === "in" ? (
                 <div className="flex items-center gap-2">
                   {userLabel ? (
-                    <span className="hidden rounded-full border border-white/14 bg-white/6 px-3 py-1 text-xs text-slate-200/85 md:inline-flex">
+                    <span className="hidden rounded-full   bg-white/6 px-3 py-1 text-xs text-slate-200/85 md:inline-flex">
                       {userLabel}
                     </span>
                   ) : null}
@@ -181,7 +182,7 @@ export default function OverviewClient() {
                     type="button"
                     onClick={handleSignOut}
                     disabled={isSigningOut}
-                    className="rounded-full border border-white/18 bg-white/8 px-4 py-2 text-xs text-slate-200/88 transition hover:border-white/34 hover:bg-white/14 disabled:opacity-60"
+                    className="rounded-full   bg-white/8 px-4 py-2 text-xs text-slate-200/88 transition  hover:bg-white/14 disabled:opacity-60"
                   >
                     {isSigningOut ? "Signing out..." : "Sign out"}
                   </button>
@@ -190,46 +191,69 @@ export default function OverviewClient() {
                 <button
                   type="button"
                   onClick={() => router.push("/login")}
-                  className="rounded-full border border-white/18 bg-white/8 px-4 py-2 text-xs text-slate-200/88 transition hover:border-white/34 hover:bg-white/14"
+                  className="rounded-full   bg-white/8 px-4 py-2 text-xs text-slate-200/88 transition  hover:bg-white/14"
                 >
                   Sign in
                 </button>
               )}
             </motion.header>
 
-            <motion.section
-              className="rounded-[28px] border border-white/8 bg-white/5 p-4 shadow-[0_26px_70px_rgba(0,0,0,0.36)]"
-              {...staggeredFadeUpMotion(1, reduceMotion)}
-            >
-              <button
-                type="button"
+            <motion.section {...staggeredFadeUpMotion(1, reduceMotion)}>
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={() =>
-                  spotlightMuseum
+                  spotlightContest
+                    ? router.push(contestDetailRoute(spotlightContest.id))
+                    : spotlightMuseum
                     ? router.push(museumDetailRoute(spotlightMuseum.museumId))
                     : navigateWithGuard("/gallery", "gallery")
                 }
-                className="group relative block w-full overflow-hidden rounded-[22px]"
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    if (spotlightContest) {
+                      router.push(contestDetailRoute(spotlightContest.id));
+                      return;
+                    }
+                    if (spotlightMuseum) {
+                      router.push(museumDetailRoute(spotlightMuseum.museumId));
+                      return;
+                    }
+                    navigateWithGuard("/gallery", "gallery");
+                  }
+                }}
+                className="group relative block h-[420px] overflow-hidden rounded-[26px]"
+                style={
+                  spotlightMuseum?.coverImageUrl
+                    ? {
+                        backgroundImage: `url(${spotlightMuseum.coverImageUrl})`,
+                        backgroundSize: "cover",
+                        backgroundPosition: "center center",
+                      }
+                    : {
+                        background: "linear-gradient(145deg,#2e3647_0%,#4a576d_100%)",
+                      }
+                }
               >
-                {spotlightMuseum?.coverImageUrl ? (
-                  <img
-                    src={spotlightMuseum.coverImageUrl}
-                    alt="Weekly Spotlight"
-                    className="h-[360px] w-full object-cover transition duration-700 group-hover:scale-[1.04] md:h-[500px]"
-                  />
-                ) : (
-                  <div className="h-[360px] w-full bg-[linear-gradient(145deg,#2e3647_0%,#4a576d_100%)] md:h-[500px]" />
-                )}
-                <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.84)_8%,rgba(0,0,0,0.18)_48%,rgba(0,0,0,0.06)_100%)]" />
-                <div className="absolute right-0 bottom-0 left-0 p-6 md:p-8">
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-white/62">Weekly Spotlight</p>
-                  <h2 className="mt-3 font-[var(--font-display)] text-3xl italic text-white md:text-5xl">
-                    {spotlightPick?.title ?? spotlightMuseum?.name ?? "Curated Spotlight"}
-                  </h2>
-                  <p className="mt-2 text-xs text-white/65 md:text-sm">
-                    by {spotlightPick?.artist ?? spotlightMuseum?.ownerName ?? "Muse Curator"}
+                <div className="absolute inset-[2px] rounded-[24px] bg-[linear-gradient(0deg,rgba(10,11,15,0.9)_0%,rgba(10,11,15,0.26)_58%,rgba(10,11,15,0.1)_100%)]" />
+                <div className="absolute right-6 bottom-6 left-6">
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
+                    <span className="text-[10px] uppercase tracking-[0.22em] text-emerald-100/90">
+                      Live Now
+                    </span>
+                  </div>
+                  <h3 className="font-[var(--font-display)] text-4xl leading-[1.08] text-white transition group-hover:translate-y-[-2px]">
+                    {spotlightContest?.theme ?? spotlightPick?.title ?? spotlightMuseum?.name ?? "Curated Spotlight"}
+                  </h3>
+                  <div className="mt-4 h-px w-10 bg-white/55" />
+                  <p className="mt-3 text-xs uppercase tracking-[0.18em] text-white/82">
+                    {spotlightContest?.period ??
+                      (spotlightMuseum ? `${spotlightMuseum.ownerName} · ${formatNumber(spotlightMuseum.artworkCount)} WORKS` : "MUSEUM SPOTLIGHT")}
                   </p>
                 </div>
-              </button>
+              </div>
             </motion.section>
 
             <motion.section {...staggeredFadeUpMotion(2, reduceMotion)}>
@@ -249,18 +273,18 @@ export default function OverviewClient() {
                   <p className="mb-3 text-xs uppercase tracking-[0.18em] text-[#c0a062]">전시중</p>
                   <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {contestListLoading ? (
-                      <div className="h-44 w-[280px] rounded-[18px] border border-white/10 bg-white/6" />
+                      <div className="h-44 w-[280px] rounded-[18px]   bg-white/6" />
                     ) : exhibitingContests.length > 0 ? (
                       exhibitingContests.map((contest) => (
                         <button
                           type="button"
                           key={contest.id}
                           onClick={() => router.push(contestDetailRoute(contest.id))}
-                          className="flex h-44 w-[280px] flex-none flex-col justify-between rounded-[18px] border border-[#c0a062]/26 bg-[linear-gradient(160deg,rgba(192,160,98,0.08),rgba(255,255,255,0.03))] p-5"
+                          className="flex h-44 w-[280px] flex-none flex-col justify-between rounded-[18px]   bg-[linear-gradient(160deg,rgba(192,160,98,0.08),rgba(255,255,255,0.03))] p-5"
                         >
                           <div>
                             <div className="flex items-start justify-between gap-2">
-                              <span className="rounded-full border border-[#c0a062]/42 bg-[#c0a062]/14 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-[#f8e6be]">
+                              <span className="rounded-full   bg-[#c0a062]/14 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-[#f8e6be]">
                                 전시 중
                               </span>
                               <span className="text-[10px] text-white/58">
@@ -282,7 +306,7 @@ export default function OverviewClient() {
                         </button>
                       ))
                     ) : (
-                      <div className="w-full rounded-[18px] border border-white/10 bg-white/6 px-5 py-8 text-sm text-slate-300/75">
+                      <div className="w-full rounded-[18px]   bg-white/6 px-5 py-8 text-sm text-slate-300/75">
                         현재 전시중인 콘테스트가 없습니다.
                       </div>
                     )}
@@ -293,14 +317,14 @@ export default function OverviewClient() {
                   <p className="mb-3 text-xs uppercase tracking-[0.18em] text-slate-400">출품대기중</p>
                   <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {contestListLoading ? (
-                      <div className="h-44 w-[280px] rounded-[18px] border border-white/10 bg-white/6" />
+                      <div className="h-44 w-[280px] rounded-[18px]   bg-white/6" />
                     ) : upcomingContests.length > 0 ? (
                       upcomingContests.map((contest) => (
                         <button
                           type="button"
                           key={contest.id}
                           onClick={() => router.push(contestDetailRoute(contest.id))}
-                          className="flex h-44 w-[280px] flex-none flex-col justify-between rounded-[18px] border border-white/10 bg-white/6 p-5"
+                          className="flex h-44 w-[280px] flex-none flex-col justify-between rounded-[18px]   bg-white/6 p-5"
                         >
                           <div>
                             <div className="flex items-start justify-between gap-2">
@@ -322,7 +346,7 @@ export default function OverviewClient() {
                         </button>
                       ))
                     ) : (
-                      <div className="w-full rounded-[18px] border border-white/10 bg-white/6 px-5 py-8 text-sm text-slate-300/75">
+                      <div className="w-full rounded-[18px]   bg-white/6 px-5 py-8 text-sm text-slate-300/75">
                         현재 출품대기중인 콘테스트가 없습니다.
                       </div>
                     )}
@@ -357,7 +381,7 @@ export default function OverviewClient() {
                       onClick={() => router.push(museumDetailRoute(museum.museumId))}
                       className="group text-left"
                     >
-                      <div className="overflow-hidden rounded-[18px] border border-white/10 bg-white/6 shadow-[0_18px_36px_rgba(0,0,0,0.34)]">
+                      <div className="overflow-hidden rounded-[18px]   bg-white/6 shadow-[0_18px_36px_rgba(0,0,0,0.34)]">
                         {museum.coverImageUrl ? (
                           <img
                             src={museum.coverImageUrl}
@@ -380,7 +404,7 @@ export default function OverviewClient() {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-[18px] border border-white/10 bg-white/6 px-5 py-8 text-sm text-slate-300/75">
+                <div className="rounded-[18px]   bg-white/6 px-5 py-8 text-sm text-slate-300/75">
                   노출 중인 뮤지엄이 없습니다.
                 </div>
               )}
