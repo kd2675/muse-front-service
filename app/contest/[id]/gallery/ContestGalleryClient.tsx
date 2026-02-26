@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import CinematicBottomNav from "../../../components/CinematicBottomNav";
+import OverviewStyleHeader from "../../../components/OverviewStyleHeader";
 import { Skeleton, SkeletonText } from "../../../components/Skeleton";
 import { getAccessToken } from "../../../lib/auth";
 import { getContestDetail, getContestEntries, voteContestEntry } from "../../../lib/contest";
@@ -135,9 +136,13 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_9%_8%,rgba(110,132,162,0.2),transparent_35%),radial-gradient(circle_at_86%_14%,rgba(157,128,82,0.18),transparent_40%),radial-gradient(circle_at_56%_82%,rgba(90,87,84,0.2),transparent_42%)]" />
 
       <main className="relative mx-auto w-full max-w-5xl px-6 pb-44 pt-8">
+        <motion.div className="mb-4" {...staggeredFadeUpMotion(0, reduceMotion)}>
+          <OverviewStyleHeader title="The Contest" />
+        </motion.div>
+
         <motion.div
           className="mb-5 flex items-center justify-between"
-          {...staggeredFadeUpMotion(0, reduceMotion)}
+          {...staggeredFadeUpMotion(1, reduceMotion)}
         >
           <button
             type="button"

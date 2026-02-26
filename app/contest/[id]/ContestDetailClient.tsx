@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import CinematicBottomNav from "../../components/CinematicBottomNav";
+import OverviewStyleHeader from "../../components/OverviewStyleHeader";
 import { Skeleton, SkeletonText } from "../../components/Skeleton";
 import {
   getContestDetail,
@@ -669,9 +670,13 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_8%,rgba(110,132,162,0.2),transparent_36%),radial-gradient(circle_at_85%_16%,rgba(157,128,82,0.18),transparent_40%),radial-gradient(circle_at_52%_78%,rgba(90,87,84,0.2),transparent_40%)]" />
 
       <main className="relative mx-auto w-full max-w-5xl px-6 pb-44 pt-8">
+        <motion.div className="mb-4" {...staggeredFadeUpMotion(0, reduceMotion)}>
+          <OverviewStyleHeader title="The Contest" />
+        </motion.div>
+
         <motion.div
           className="mb-5 flex items-center gap-3"
-          {...staggeredFadeUpMotion(0, reduceMotion)}
+          {...staggeredFadeUpMotion(1, reduceMotion)}
         >
           <button
             type="button"

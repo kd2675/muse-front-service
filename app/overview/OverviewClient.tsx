@@ -1,20 +1,15 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import CinematicBottomNav from "../components/CinematicBottomNav";
 import {
   clearAccessToken,
-  getAccessToken,
-  getUserFromToken,
-  isTokenExpired,
   logout,
-  scheduleTokenExpiry,
 } from "../lib/auth";
-import { onAuthChanged } from "../lib/authEvents";
 import { getContestList } from "../lib/contest";
 import { getHomeData } from "../lib/home";
 import { canAccessPath } from "../lib/routeGuard";
@@ -22,29 +17,19 @@ import { staggeredFadeUpMotion } from "../lib/motion";
 import { APP_ROUTES, galleryMuseumDetailRoute } from "../lib/router";
 import { useAppDispatch } from "../store/hooks";
 import { setPendingPath, showToast } from "../store/uiSlice";
+import useAuthSession from "../hooks/useAuthSession";
 
 const formatNumber = (value: number) => value.toLocaleString("ko-KR");
 const contestDetailRoute = (contestId: number) => `/contest/${contestId}?tab=contest`;
 const museumDetailRoute = (museumId: number) =>
   `${galleryMuseumDetailRoute(museumId)}?tab=gallery`;
 
-type AuthSnapshot = {
-  status: "unknown" | "in" | "out";
-  label: string | null;
-  exp: number | null;
-};
-
 export default function OverviewClient() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
   const reduceMotion = Boolean(prefersReducedMotion);
-  const [authSnapshot, setAuthSnapshot] = useState<AuthSnapshot>({
-    status: "unknown",
-    label: null,
-    exp: null,
-  });
-  const [isHydrated, setIsHydrated] = useState(false);
+  const { isHydrated, authStatus, userLabel } = useAuthSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ["home", "overview"],
@@ -66,51 +51,6 @@ export default function OverviewClient() {
   const featuredMuseums = payload?.featuredMuseums ?? [];
   const spotlightMuseum = featuredMuseums.find((museum) => museum.coverImageUrl) ?? featuredMuseums[0];
   const spotlightContest = payload?.activeContests?.[0] ?? null;
-  const {
-    status: authStatus,
-    label: userLabel,
-    exp: tokenExp,
-  } = authSnapshot;
-
-  useEffect(() => {
-    const updateAuth = () => {
-      const token = getAccessToken();
-      const user = getUserFromToken();
-      const exp = typeof user?.exp === "number" ? user.exp : null;
-      if (exp && isTokenExpired(exp)) {
-        setAuthSnapshot({ status: "out", label: null, exp: null });
-        clearAccessToken();
-        return;
-      }
-      setAuthSnapshot({
-        status: token ? "in" : "out",
-        label: user?.name ?? user?.email ?? null,
-        exp,
-      });
-    };
-    setIsHydrated(true);
-    updateAuth();
-    const unsubscribe = onAuthChanged(updateAuth);
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isHydrated || !tokenExp) {
-      return;
-    }
-    if (isTokenExpired(tokenExp)) {
-      setAuthSnapshot({ status: "out", label: null, exp: null });
-      clearAccessToken();
-      return;
-    }
-    return scheduleTokenExpiry(() => {
-      setAuthSnapshot({ status: "out", label: null, exp: null });
-      clearAccessToken();
-    }, tokenExp);
-  }, [isHydrated, tokenExp]);
-
   const navigateWithGuard = (
     path: string,
     tab: "home" | "overview" | "contest" | "gallery" | "profile",

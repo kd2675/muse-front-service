@@ -6,9 +6,10 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import CinematicBottomNav from "../components/CinematicBottomNav";
+import OverviewStyleHeader from "../components/OverviewStyleHeader";
 import { Skeleton } from "../components/Skeleton";
 import { getPublicMuseums } from "../lib/museum";
-import { APP_ROUTES, galleryMuseumDetailRoute } from "../lib/router";
+import { galleryMuseumDetailRoute } from "../lib/router";
 
 const WHEEL_THRESHOLD = 120;
 const MOVE_LOCK_MS = 360;
@@ -232,28 +233,8 @@ export default function GalleryClient() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center_top,rgba(120,140,170,0.2),transparent_48%)]" />
 
       <header className="pointer-events-none absolute top-0 left-0 z-40 w-full">
-        <div className="mx-auto flex w-full max-w-6xl items-start justify-between px-6 pt-10 md:px-8">
-          <div className="pointer-events-auto">
-            <p className="text-[10px] uppercase tracking-[0.4em] text-white/50">Museum Planner</p>
-            <p className="mt-1 text-xs italic text-slate-500">Curated Perspective</p>
-          </div>
-          <div className="pointer-events-auto flex items-center gap-4">
-            <button
-              type="button"
-              aria-label="검색"
-              className="material-symbols-outlined text-[26px] text-white/40 transition hover:text-white"
-            >
-              search
-            </button>
-            <button
-              type="button"
-              aria-label="프로필 페이지 이동"
-              onClick={() => router.push(APP_ROUTES.profile)}
-              className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-white/5 text-white/75 transition hover:border-white/30"
-            >
-              <span className="material-symbols-outlined text-[18px]">person</span>
-            </button>
-          </div>
+        <div className="pointer-events-auto mx-auto w-full max-w-6xl px-6 pt-8 md:px-8">
+          <OverviewStyleHeader title="The Gallery" />
         </div>
       </header>
 

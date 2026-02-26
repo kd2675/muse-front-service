@@ -1,44 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import {
   clearAccessToken,
-  getAccessToken,
-  getUserFromToken,
-  isTokenExpired,
   logout,
-  scheduleTokenExpiry,
 } from "../lib/auth";
-import { onAuthChanged } from "../lib/authEvents";
 import CinematicBottomNav from "../components/CinematicBottomNav";
 import { getHomeData } from "../lib/home";
 import { staggeredFadeUpMotion } from "../lib/motion";
 import { APP_ROUTES } from "../lib/router";
 import { useAppDispatch } from "../store/hooks";
 import { showToast } from "../store/uiSlice";
+import useAuthSession from "../hooks/useAuthSession";
 
 const HOME_LABEL = "MUSE CINEMA";
-
-type AuthSnapshot = {
-  status: "unknown" | "in" | "out";
-  label: string | null;
-  exp: number | null;
-};
 
 export default function HomeClient() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
   const reduceMotion = Boolean(prefersReducedMotion);
-  const [authSnapshot, setAuthSnapshot] = useState<AuthSnapshot>({
-    status: "unknown",
-    label: null,
-    exp: null,
-  });
-  const [isHydrated, setIsHydrated] = useState(false);
+  const { isHydrated, authStatus, userLabel } = useAuthSession();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const { data, isLoading } = useQuery({
     queryKey: ["home"],
@@ -52,51 +37,6 @@ export default function HomeClient() {
   const featuredMuseums = payload?.featuredMuseums ?? [];
   const heroImageUrl =
     featuredMuseums.find((museum) => museum.coverImageUrl)?.coverImageUrl ?? null;
-  const {
-    status: authStatus,
-    label: userLabel,
-    exp: tokenExp,
-  } = authSnapshot;
-
-  useEffect(() => {
-    const updateAuth = () => {
-      const token = getAccessToken();
-      const user = getUserFromToken();
-      const exp = typeof user?.exp === "number" ? user.exp : null;
-      if (exp && isTokenExpired(exp)) {
-        setAuthSnapshot({ status: "out", label: null, exp: null });
-        clearAccessToken();
-        return;
-      }
-      setAuthSnapshot({
-        status: token ? "in" : "out",
-        label: user?.name ?? user?.email ?? null,
-        exp,
-      });
-    };
-    setIsHydrated(true);
-    updateAuth();
-    const unsubscribe = onAuthChanged(updateAuth);
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isHydrated || !tokenExp) {
-      return;
-    }
-    if (isTokenExpired(tokenExp)) {
-      setAuthSnapshot({ status: "out", label: null, exp: null });
-      clearAccessToken();
-      return;
-    }
-    return scheduleTokenExpiry(() => {
-      setAuthSnapshot({ status: "out", label: null, exp: null });
-      clearAccessToken();
-    }, tokenExp);
-  }, [isHydrated, tokenExp]);
-
   const handleStepInside = () => {
     router.push(APP_ROUTES.galleryLobby);
   };

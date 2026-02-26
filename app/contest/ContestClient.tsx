@@ -21,6 +21,7 @@ import {
   staggeredFadeUpMotion,
 } from "../lib/motion";
 import CinematicBottomNav from "../components/CinematicBottomNav";
+import OverviewStyleHeader from "../components/OverviewStyleHeader";
 import type { ContestPhase, ContestSummary } from "../types/contest";
 
 const phaseLabel: Record<ContestPhase, string> = {
@@ -143,7 +144,6 @@ export default function ContestClient() {
 
   const authUser = isHydrated ? getUserFromToken() : null;
   const isAdmin = isAdminRole(authUser?.role);
-  const isLoggedIn = isHydrated && Boolean(getAccessToken());
 
   const { data, isLoading } = useQuery({
     queryKey: ["contests"],
@@ -250,69 +250,41 @@ export default function ContestClient() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_12%,rgba(84,90,111,0.22),transparent_34%),radial-gradient(circle_at_84%_18%,rgba(73,108,115,0.18),transparent_36%),radial-gradient(circle_at_52%_82%,rgba(120,86,64,0.14),transparent_38%)]" />
 
       <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 pb-40 pt-8 md:px-8">
-        <motion.header
-          className="mb-10 flex flex-wrap items-start justify-between gap-4"
-          {...staggeredFadeUpMotion(0, reduceMotion)}
-        >
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.38em] text-slate-400">
-              Artium Contest
-            </p>
-            <h1 className="mt-3 font-[var(--font-display)] text-4xl italic text-slate-100 md:text-5xl">
-              Curated Seasons
-            </h1>
-            <p className="mt-3 text-sm text-slate-300/80">
-              전시와 출품의 흐름을 상태별로 나눠 확인하고 즉시 참여하세요.
-            </p>
-          </div>
+        <motion.div className="mb-6" {...staggeredFadeUpMotion(0, reduceMotion)}>
+          <OverviewStyleHeader title="The Contest" />
+        </motion.div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {isAdmin && (
-              <>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  className="rounded-full bg-blue-400/30 px-4 py-2 text-xs font-semibold text-blue-100 transition hover:bg-blue-400/42"
-                  onClick={() => router.push(APP_ROUTES.adminContestManage)}
-                  onKeyDown={(event) =>
-                    onPressEnterOrSpace(event, () =>
-                      router.push(APP_ROUTES.adminContestManage)
-                    )}
-                >
-                  관리 콘솔
-                </div>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  className="rounded-full bg-blue-300/16 px-4 py-2 text-xs font-semibold text-blue-100 transition hover:bg-blue-300/28"
-                  onClick={() => router.push(APP_ROUTES.adminContestReview)}
-                  onKeyDown={(event) =>
-                    onPressEnterOrSpace(event, () =>
-                      router.push(APP_ROUTES.adminContestReview)
-                    )}
-                >
-                  출품 심사
-                </div>
-              </>
-            )}
-            {isLoggedIn ? (
-              <span className="rounded-full bg-white/14 px-4 py-2 text-xs text-slate-100">
-                {authUser?.name ?? authUser?.email ?? "Signed in"}
-              </span>
-            ) : (
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => router.push("/login")}
-                onKeyDown={(event) =>
-                  onPressEnterOrSpace(event, () => router.push("/login"))}
-                className="rounded-full bg-white/14 px-4 py-2 text-xs text-slate-100 transition hover:bg-white/24"
-              >
-                Sign in
-              </div>
-            )}
-          </div>
-        </motion.header>
+        {isAdmin ? (
+          <motion.div
+            className="mb-8 flex flex-wrap items-center gap-2"
+            {...staggeredFadeUpMotion(1, reduceMotion)}
+          >
+            <div
+              role="button"
+              tabIndex={0}
+              className="rounded-full bg-blue-400/30 px-4 py-2 text-xs font-semibold text-blue-100 transition hover:bg-blue-400/42"
+              onClick={() => router.push(APP_ROUTES.adminContestManage)}
+              onKeyDown={(event) =>
+                onPressEnterOrSpace(event, () =>
+                  router.push(APP_ROUTES.adminContestManage)
+                )}
+            >
+              관리 콘솔
+            </div>
+            <div
+              role="button"
+              tabIndex={0}
+              className="rounded-full bg-blue-300/16 px-4 py-2 text-xs font-semibold text-blue-100 transition hover:bg-blue-300/28"
+              onClick={() => router.push(APP_ROUTES.adminContestReview)}
+              onKeyDown={(event) =>
+                onPressEnterOrSpace(event, () =>
+                  router.push(APP_ROUTES.adminContestReview)
+                )}
+            >
+              출품 심사
+            </div>
+          </motion.div>
+        ) : null}
 
         {isLoading ? (
           <section className="space-y-8">
