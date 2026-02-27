@@ -3,6 +3,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { EffectCoverflow, Keyboard, Mousewheel } from "swiper/modules";
@@ -152,6 +153,43 @@ const FX_PANEL_PEEK = 26;
 const ARTWORK_MIN_ASPECT_RATIO = 0.56;
 const ARTWORK_MAX_ASPECT_RATIO = 1.9;
 const ARTWORK_DEFAULT_ASPECT_RATIO = 1;
+const LIGHTBOX_MIN_ZOOM = 1;
+const LIGHTBOX_MAX_ZOOM = 4;
+const LIGHTBOX_ZOOM_STEP = 0.18;
+const LIGHTBOX_ZOOM_EPSILON = 0.001;
+const LIGHTBOX_SWIPE_TRIGGER_PX = 56;
+const LIGHTBOX_SWIPE_DIRECTION_RATIO = 1.2;
+
+type LightboxPoint = {
+  x: number;
+  y: number;
+};
+
+type LightboxPan = {
+  x: number;
+  y: number;
+};
+
+type LightboxGesture =
+  | {
+      mode: "pan";
+      pointerId: number;
+      startPoint: LightboxPoint;
+      startPan: LightboxPan;
+    }
+  | {
+      mode: "pinch";
+      startDistance: number;
+      startScale: number;
+      startCenter: LightboxPoint;
+      startPan: LightboxPan;
+    };
+
+type LightboxSwipe = {
+  pointerId: number;
+  startPoint: LightboxPoint;
+  currentPoint: LightboxPoint;
+};
 
 function clampArtworkAspectRatio(ratio: number): number {
   return Math.min(ARTWORK_MAX_ASPECT_RATIO, Math.max(ARTWORK_MIN_ASPECT_RATIO, ratio));
@@ -168,9 +206,12 @@ function hashString(input: string): number {
 export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps) {
   const prefersReducedMotion = useReducedMotion();
   const reduceMotion = Boolean(prefersReducedMotion);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const [activeIndex, setActiveIndex] = useState(0);
-  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const isLightboxOpen = searchParams.get("immersive") === "1";
   const [effectMode, setEffectMode] = useState<ExhibitEffectMode>("random");
   const [effectShuffleSeed, setEffectShuffleSeed] = useState(0);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
@@ -178,6 +219,10 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
   const [isFxPanelExpanded, setIsFxPanelExpanded] = useState(false);
   const [fxPanelDragTranslate, setFxPanelDragTranslate] = useState<number | null>(null);
   const [artworkAspectRatioById, setArtworkAspectRatioById] = useState<Record<number, number>>({});
+  const [lightboxZoom, setLightboxZoom] = useState(LIGHTBOX_MIN_ZOOM);
+  const [lightboxPan, setLightboxPan] = useState<LightboxPan>({ x: 0, y: 0 });
+  const [lightboxRotationQuarterTurns, setLightboxRotationQuarterTurns] = useState(0);
+  const [isLightboxPanning, setIsLightboxPanning] = useState(false);
 
   const swiperRef = useRef<SwiperType | null>(null);
   const sheetDragRef = useRef<{
@@ -196,6 +241,13 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
     hasMoved: boolean;
   } | null>(null);
   const fxPanelSuppressClickRef = useRef(false);
+  const lightboxViewportRef = useRef<HTMLDivElement | null>(null);
+  const lightboxPointersRef = useRef<Map<number, LightboxPoint>>(new Map());
+  const lightboxGestureRef = useRef<LightboxGesture | null>(null);
+  const lightboxSwipeRef = useRef<LightboxSwipe | null>(null);
+  const lightboxSuppressClickRef = useRef(false);
+  const lightboxZoomRef = useRef(LIGHTBOX_MIN_ZOOM);
+  const lightboxPanRef = useRef<LightboxPan>({ x: 0, y: 0 });
 
   const { data, isLoading } = useQuery({
     queryKey: ["gallery", "museum", museumId, "cylindrical-hall"],
@@ -277,6 +329,14 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
   const safeActiveIndex =
     artworks.length > 0 ? ((activeIndex % artworks.length) + artworks.length) % artworks.length : 0;
   const currentArtwork = artworks.length > 0 ? artworks[safeActiveIndex] : null;
+  const currentArtworkAspectRatio = currentArtwork
+    ? artworkAspectRatioById[currentArtwork.museumArtworkId] ?? ARTWORK_DEFAULT_ASPECT_RATIO
+    : ARTWORK_DEFAULT_ASPECT_RATIO;
+  const normalizedRotationQuarterTurns = ((lightboxRotationQuarterTurns % 4) + 4) % 4;
+  const isLightboxQuarterRotated = normalizedRotationQuarterTurns % 2 === 1;
+  const lightboxDisplayAspectRatio = isLightboxQuarterRotated
+    ? 1 / currentArtworkAspectRatio
+    : currentArtworkAspectRatio;
   const currentEffect = currentArtwork
     ? effectPresetByArtworkId.get(currentArtwork.museumArtworkId) ?? EXHIBIT_EFFECT_PRESETS[0]
     : EXHIBIT_EFFECT_PRESETS[0];
@@ -298,6 +358,127 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
     transform: `translateX(-${effectiveFxTranslate}px)`,
   } as const;
 
+  const clampLightboxZoom = (zoom: number) => {
+    return Math.min(LIGHTBOX_MAX_ZOOM, Math.max(LIGHTBOX_MIN_ZOOM, zoom));
+  };
+  const clampLightboxPan = useCallback(
+    (pan: LightboxPan, zoom: number): LightboxPan => {
+      const viewport = lightboxViewportRef.current;
+      if (!viewport || zoom <= LIGHTBOX_MIN_ZOOM + LIGHTBOX_ZOOM_EPSILON) {
+        return { x: 0, y: 0 };
+      }
+
+      const viewportWidth = viewport.clientWidth;
+      const viewportHeight = viewport.clientHeight;
+      if (viewportWidth <= 0 || viewportHeight <= 0) {
+        return { x: 0, y: 0 };
+      }
+
+      const viewportAspectRatio = viewportWidth / viewportHeight;
+      let baseWidth = viewportWidth;
+      let baseHeight = viewportHeight;
+      if (lightboxDisplayAspectRatio >= viewportAspectRatio) {
+        baseHeight = baseWidth / lightboxDisplayAspectRatio;
+      } else {
+        baseWidth = baseHeight * lightboxDisplayAspectRatio;
+      }
+
+      const maxPanX = Math.max((baseWidth * zoom - baseWidth) / 2, 0);
+      const maxPanY = Math.max((baseHeight * zoom - baseHeight) / 2, 0);
+      return {
+        x: Math.min(maxPanX, Math.max(-maxPanX, pan.x)),
+        y: Math.min(maxPanY, Math.max(-maxPanY, pan.y)),
+      };
+    },
+    [lightboxDisplayAspectRatio],
+  );
+  const setLightboxTransform = useCallback(
+    (nextZoom: number, nextPan: LightboxPan) => {
+      const clampedZoom = clampLightboxZoom(nextZoom);
+      const clampedPan = clampLightboxPan(nextPan, clampedZoom);
+      lightboxZoomRef.current = clampedZoom;
+      lightboxPanRef.current = clampedPan;
+      setLightboxZoom(clampedZoom);
+      setLightboxPan(clampedPan);
+    },
+    [clampLightboxPan],
+  );
+  const zoomLightboxTo = useCallback(
+    (nextZoom: number, anchorClientPoint?: LightboxPoint) => {
+      const viewport = lightboxViewportRef.current;
+      const currentZoom = lightboxZoomRef.current;
+      const targetZoom = clampLightboxZoom(nextZoom);
+      if (Math.abs(targetZoom - currentZoom) < LIGHTBOX_ZOOM_EPSILON) {
+        return;
+      }
+
+      const zoomRatio = targetZoom / currentZoom;
+      const currentPan = lightboxPanRef.current;
+      let nextPan: LightboxPan = {
+        x: currentPan.x * zoomRatio,
+        y: currentPan.y * zoomRatio,
+      };
+
+      if (viewport && anchorClientPoint) {
+        const rect = viewport.getBoundingClientRect();
+        const anchorOffset = {
+          x: anchorClientPoint.x - rect.left - rect.width / 2,
+          y: anchorClientPoint.y - rect.top - rect.height / 2,
+        };
+        nextPan = {
+          x: anchorOffset.x * (1 - zoomRatio) + currentPan.x * zoomRatio,
+          y: anchorOffset.y * (1 - zoomRatio) + currentPan.y * zoomRatio,
+        };
+      }
+
+      setLightboxTransform(targetZoom, nextPan);
+    },
+    [setLightboxTransform],
+  );
+
+  useEffect(() => {
+    lightboxZoomRef.current = lightboxZoom;
+  }, [lightboxZoom]);
+
+  useEffect(() => {
+    lightboxPanRef.current = lightboxPan;
+  }, [lightboxPan]);
+
+  useEffect(() => {
+    let resetTimerId: number | undefined;
+    if (!isLightboxOpen) {
+      lightboxPointersRef.current.clear();
+      lightboxGestureRef.current = null;
+      lightboxSwipeRef.current = null;
+      lightboxSuppressClickRef.current = false;
+      resetTimerId = window.setTimeout(() => setIsLightboxPanning(false), 0);
+      return () => {
+        if (resetTimerId != null) {
+          window.clearTimeout(resetTimerId);
+        }
+      };
+    }
+
+    resetTimerId = window.setTimeout(() => {
+      lightboxZoomRef.current = LIGHTBOX_MIN_ZOOM;
+      lightboxPanRef.current = { x: 0, y: 0 };
+      setLightboxZoom(LIGHTBOX_MIN_ZOOM);
+      setLightboxPan({ x: 0, y: 0 });
+      setLightboxRotationQuarterTurns(0);
+      setIsLightboxPanning(false);
+    }, 0);
+    lightboxPointersRef.current.clear();
+    lightboxGestureRef.current = null;
+    lightboxSwipeRef.current = null;
+    lightboxSuppressClickRef.current = false;
+
+    return () => {
+      if (resetTimerId != null) {
+        window.clearTimeout(resetTimerId);
+      }
+    };
+  }, [isLightboxOpen, currentArtwork?.museumArtworkId]);
+
   useBodyScrollLock(isLightboxOpen);
 
   const goPrev = useCallback(() => {
@@ -313,6 +494,30 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
     swiperRef.current.slideNext();
   }, [artworks.length]);
 
+  const openLightbox = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (params.get("immersive") === "1") {
+      return;
+    }
+    params.set("immersive", "1");
+    const query = params.toString();
+    router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
+
+  const closeLightbox = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (params.get("immersive") !== "1") {
+      return;
+    }
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    params.delete("immersive");
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "ArrowLeft") {
@@ -322,12 +527,12 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
         goNext();
       }
       if (event.key === "Escape") {
-        setIsLightboxOpen(false);
+        closeLightbox();
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [goNext, goPrev]);
+  }, [closeLightbox, goNext, goPrev]);
 
   const today = useMemo(() => new Date(), []);
   const dayLabel = String(today.getDate()).padStart(2, "0");
@@ -341,6 +546,14 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
   };
   const clampFxTranslate = (value: number) => {
     return Math.min(collapsedFxTranslate, Math.max(0, value));
+  };
+  const toggleDescriptionExpanded = () => {
+    setSheetDragTranslate(null);
+    setIsDescriptionExpanded((prev) => !prev);
+  };
+  const toggleFxPanelExpanded = () => {
+    setFxPanelDragTranslate(null);
+    setIsFxPanelExpanded((prev) => !prev);
   };
 
   const isInteractiveTarget = (target: EventTarget | null) => {
@@ -488,6 +701,226 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
     }
   };
 
+  const handleLightboxPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "mouse" && event.button !== 0) {
+      return;
+    }
+
+    lightboxSuppressClickRef.current = false;
+    const point = { x: event.clientX, y: event.clientY };
+    lightboxPointersRef.current.set(event.pointerId, point);
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    const activePointers = Array.from(lightboxPointersRef.current.values());
+    if (activePointers.length >= 2) {
+      lightboxSwipeRef.current = null;
+      const [first, second] = activePointers;
+      const distance = Math.hypot(second.x - first.x, second.y - first.y);
+      const center = {
+        x: (first.x + second.x) / 2,
+        y: (first.y + second.y) / 2,
+      };
+      lightboxGestureRef.current = {
+        mode: "pinch",
+        startDistance: Math.max(distance, 1),
+        startScale: lightboxZoomRef.current,
+        startCenter: center,
+        startPan: lightboxPanRef.current,
+      };
+      setIsLightboxPanning(false);
+      return;
+    }
+
+    if (lightboxZoomRef.current <= LIGHTBOX_MIN_ZOOM + LIGHTBOX_ZOOM_EPSILON) {
+      lightboxGestureRef.current = null;
+      lightboxSwipeRef.current = {
+        pointerId: event.pointerId,
+        startPoint: point,
+        currentPoint: point,
+      };
+      setIsLightboxPanning(false);
+      return;
+    }
+
+    lightboxSwipeRef.current = null;
+    lightboxGestureRef.current = {
+      mode: "pan",
+      pointerId: event.pointerId,
+      startPoint: point,
+      startPan: lightboxPanRef.current,
+    };
+    setIsLightboxPanning(true);
+  };
+
+  const handleLightboxPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!lightboxPointersRef.current.has(event.pointerId)) {
+      return;
+    }
+
+    lightboxPointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const swipe = lightboxSwipeRef.current;
+    if (swipe && swipe.pointerId === event.pointerId) {
+      swipe.currentPoint = { x: event.clientX, y: event.clientY };
+      const swipeDeltaX = swipe.currentPoint.x - swipe.startPoint.x;
+      const swipeDeltaY = swipe.currentPoint.y - swipe.startPoint.y;
+      if (Math.hypot(swipeDeltaX, swipeDeltaY) > 6) {
+        lightboxSuppressClickRef.current = true;
+      }
+    }
+    const gesture = lightboxGestureRef.current;
+    if (!gesture) {
+      return;
+    }
+
+    const viewport = lightboxViewportRef.current;
+    if (!viewport) {
+      return;
+    }
+
+    if (gesture.mode === "pinch") {
+      const activePointers = Array.from(lightboxPointersRef.current.values());
+      if (activePointers.length < 2) {
+        return;
+      }
+      event.preventDefault();
+      const [first, second] = activePointers;
+      const currentDistance = Math.hypot(second.x - first.x, second.y - first.y);
+      const currentCenter = {
+        x: (first.x + second.x) / 2,
+        y: (first.y + second.y) / 2,
+      };
+      const zoomRatio = currentDistance / Math.max(gesture.startDistance, 1);
+      const targetZoom = clampLightboxZoom(gesture.startScale * zoomRatio);
+      const relativeZoom = targetZoom / gesture.startScale;
+      const rect = viewport.getBoundingClientRect();
+      const startCenterOffset = {
+        x: gesture.startCenter.x - rect.left - rect.width / 2,
+        y: gesture.startCenter.y - rect.top - rect.height / 2,
+      };
+      const currentCenterOffset = {
+        x: currentCenter.x - rect.left - rect.width / 2,
+        y: currentCenter.y - rect.top - rect.height / 2,
+      };
+      const zoomPan = {
+        x: startCenterOffset.x * (1 - relativeZoom) + gesture.startPan.x * relativeZoom,
+        y: startCenterOffset.y * (1 - relativeZoom) + gesture.startPan.y * relativeZoom,
+      };
+      const nextPan = {
+        x: zoomPan.x + (currentCenterOffset.x - startCenterOffset.x),
+        y: zoomPan.y + (currentCenterOffset.y - startCenterOffset.y),
+      };
+      setLightboxTransform(targetZoom, nextPan);
+      return;
+    }
+
+    if (gesture.mode === "pan" && gesture.pointerId === event.pointerId) {
+      event.preventDefault();
+      const deltaX = event.clientX - gesture.startPoint.x;
+      const deltaY = event.clientY - gesture.startPoint.y;
+      setLightboxTransform(lightboxZoomRef.current, {
+        x: gesture.startPan.x + deltaX,
+        y: gesture.startPan.y + deltaY,
+      });
+    }
+  };
+
+  const handleLightboxPointerUpOrCancel = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    const swipe = lightboxSwipeRef.current;
+    if (swipe && swipe.pointerId === event.pointerId) {
+      swipe.currentPoint = { x: event.clientX, y: event.clientY };
+    }
+
+    lightboxPointersRef.current.delete(event.pointerId);
+    const remainingEntries = Array.from(lightboxPointersRef.current.entries());
+    if (
+      swipe &&
+      swipe.pointerId === event.pointerId &&
+      remainingEntries.length === 0 &&
+      lightboxZoomRef.current <= LIGHTBOX_MIN_ZOOM + LIGHTBOX_ZOOM_EPSILON
+    ) {
+      const deltaX = swipe.currentPoint.x - swipe.startPoint.x;
+      const deltaY = swipe.currentPoint.y - swipe.startPoint.y;
+      const isHorizontalSwipe =
+        Math.abs(deltaX) >= LIGHTBOX_SWIPE_TRIGGER_PX &&
+        Math.abs(deltaX) >= Math.abs(deltaY) * LIGHTBOX_SWIPE_DIRECTION_RATIO;
+      if (isHorizontalSwipe) {
+        if (deltaX < 0) {
+          goNext();
+        } else {
+          goPrev();
+        }
+        lightboxSuppressClickRef.current = true;
+      }
+    }
+    if (swipe && swipe.pointerId === event.pointerId) {
+      lightboxSwipeRef.current = null;
+    }
+
+    if (remainingEntries.length >= 2) {
+      const points = remainingEntries.map(([, point]) => point);
+      const [first, second] = points;
+      const distance = Math.hypot(second.x - first.x, second.y - first.y);
+      const center = {
+        x: (first.x + second.x) / 2,
+        y: (first.y + second.y) / 2,
+      };
+      lightboxGestureRef.current = {
+        mode: "pinch",
+        startDistance: Math.max(distance, 1),
+        startScale: lightboxZoomRef.current,
+        startCenter: center,
+        startPan: lightboxPanRef.current,
+      };
+      setIsLightboxPanning(false);
+      return;
+    }
+
+    if (remainingEntries.length === 1 && lightboxZoomRef.current > LIGHTBOX_MIN_ZOOM + LIGHTBOX_ZOOM_EPSILON) {
+      const [pointerId, point] = remainingEntries[0];
+      lightboxGestureRef.current = {
+        mode: "pan",
+        pointerId,
+        startPoint: point,
+        startPan: lightboxPanRef.current,
+      };
+      setIsLightboxPanning(true);
+      return;
+    }
+
+    lightboxGestureRef.current = null;
+    lightboxSwipeRef.current = null;
+    setIsLightboxPanning(false);
+  };
+
+  const handleLightboxWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const direction = event.deltaY < 0 ? 1 : -1;
+    const zoomMultiplier = direction > 0 ? 1 + LIGHTBOX_ZOOM_STEP : 1 - LIGHTBOX_ZOOM_STEP;
+    const targetZoom = lightboxZoomRef.current * zoomMultiplier;
+    zoomLightboxTo(targetZoom, { x: event.clientX, y: event.clientY });
+  };
+
+  const handleLightboxDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    const shouldExpand = lightboxZoomRef.current <= LIGHTBOX_MIN_ZOOM + LIGHTBOX_ZOOM_EPSILON;
+    zoomLightboxTo(shouldExpand ? 2 : LIGHTBOX_MIN_ZOOM, {
+      x: event.clientX,
+      y: event.clientY,
+    });
+  };
+  const resetLightboxView = () => {
+    lightboxPointersRef.current.clear();
+    lightboxGestureRef.current = null;
+    lightboxSwipeRef.current = null;
+    lightboxSuppressClickRef.current = false;
+    setLightboxTransform(LIGHTBOX_MIN_ZOOM, { x: 0, y: 0 });
+    setLightboxRotationQuarterTurns(0);
+    setIsLightboxPanning(false);
+  };
+
   return (
     <section className="relative h-screen overflow-hidden bg-[#020202] text-slate-100 touch-pan-y">
       <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(circle_at_50%_0%,rgba(156,156,156,0.18)_0%,rgba(0,0,0,0)_68%)]" />
@@ -524,6 +957,12 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                   fxPanelSuppressClickRef.current = false;
                 }
               }}
+              onClick={(event) => {
+                if (isInteractiveTarget(event.target)) {
+                  return;
+                }
+                toggleFxPanelExpanded();
+              }}
             >
               <div className="rounded-r-[12px] border border-white/10 bg-black/58 px-2 py-3 backdrop-blur-md">
                 <p className="text-[10px] uppercase tracking-[0.18em] text-white/56">Exhibit FX</p>
@@ -552,9 +991,17 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                   </button>
                 </div>
               </div>
-              <div className="absolute right-2 top-2 rounded-[8px] border border-white/14 bg-black/66 px-1.5 py-1.5 text-[9px] uppercase tracking-[0.2em] text-white/66 backdrop-blur-md">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  toggleFxPanelExpanded();
+                }}
+                className="absolute right-2 top-2 rounded-[8px] border border-white/14 bg-black/66 px-1.5 py-1.5 text-[9px] uppercase tracking-[0.2em] text-white/66 backdrop-blur-md transition hover:bg-white/16"
+                aria-label={isFxPanelExpanded ? "FX 패널 닫기" : "FX 패널 열기"}
+              >
                 FX
-              </div>
+              </button>
             </div>
           </div>
 
@@ -626,7 +1073,7 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                       <SwiperSlide key={artwork.museumArtworkId} className="!h-auto pb-8 pt-6 md:pt-6 md:pb-10">
                         <button
                           type="button"
-                          onClick={() => setIsLightboxOpen(true)}
+                          onClick={openLightbox}
                           className="artwork-shell relative mx-auto overflow-visible rounded-none [transform-style:preserve-3d]"
                           style={{
                             aspectRatio: artworkAspectRatioCss,
@@ -791,7 +1238,17 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                   onPointerCancel={handleDescriptionPointerCancel}
                 >
                   <div className="cursor-ns-resize px-4 pt-2 pb-1">
-                    <div className="mx-auto h-1.5 w-14 rounded-full bg-white/35" />
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        toggleDescriptionExpanded();
+                      }}
+                      className="mx-auto block rounded-full p-1"
+                      aria-label={isDescriptionExpanded ? "설명 접기" : "설명 펼치기"}
+                    >
+                      <span className="block h-1.5 w-14 rounded-full bg-white/35" />
+                    </button>
                   </div>
 
                   <div className="px-4 pb-4">
@@ -821,7 +1278,7 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                         액자 프리셋은 왼쪽 `FX` 패널을 드래그/터치해 선택
                       </p>
                     ) : (
-                      <p className="mt-2 text-[11px] text-white/58">드래그/터치로 올려 설명 펼치기</p>
+                      <p className="mt-2 text-[11px] text-white/58">드래그/터치 또는 탭으로 설명 펼치기</p>
                     )}
                   </div>
                 </div>
@@ -849,32 +1306,88 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
             >
               <div className="mb-4 flex items-center justify-between gap-3 text-slate-100">
                 <p className="text-xs uppercase tracking-[0.28em] text-slate-300">Immersive View</p>
-                <button
-                  className="rounded-full bg-white/16 px-4 py-2 text-sm text-slate-100 transition hover:bg-white/24"
-                  onClick={() => setIsLightboxOpen(false)}
-                >
-                  닫기
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/22 bg-white/8 px-3 py-2 text-xs text-slate-100 transition hover:bg-white/16 disabled:opacity-45"
+                    onClick={() => zoomLightboxTo(lightboxZoom - LIGHTBOX_ZOOM_STEP)}
+                    disabled={lightboxZoom <= LIGHTBOX_MIN_ZOOM + LIGHTBOX_ZOOM_EPSILON}
+                    aria-label="축소"
+                  >
+                    -
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/22 bg-white/8 px-3 py-2 text-xs text-slate-100 transition hover:bg-white/16"
+                    onClick={resetLightboxView}
+                    aria-label="줌 초기화"
+                  >
+                    {Math.round(lightboxZoom * 100)}%
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/22 bg-white/8 px-3 py-2 text-xs text-slate-100 transition hover:bg-white/16 disabled:opacity-45"
+                    onClick={() => zoomLightboxTo(lightboxZoom + LIGHTBOX_ZOOM_STEP)}
+                    disabled={lightboxZoom >= LIGHTBOX_MAX_ZOOM - LIGHTBOX_ZOOM_EPSILON}
+                    aria-label="확대"
+                  >
+                    +
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/22 bg-white/8 px-3 py-2 text-xs text-slate-100 transition hover:bg-white/16"
+                    onClick={() => setLightboxRotationQuarterTurns((prev) => prev + 1)}
+                    aria-label="90도 회전"
+                  >
+                    90°
+                  </button>
+                  <button
+                    className="rounded-full bg-white/16 px-4 py-2 text-sm text-slate-100 transition hover:bg-white/24"
+                    onClick={closeLightbox}
+                  >
+                    닫기
+                  </button>
+                </div>
               </div>
 
-              <div className="relative flex-1 overflow-hidden rounded-none bg-black/72">
-                <img
-                  src={currentArtwork.imageUrl}
-                  alt={currentArtwork.title}
-                  className="h-full w-full object-contain"
-                />
-                <button
-                  type="button"
-                  aria-label="이전 작품"
-                  className="absolute inset-y-0 left-0 z-10 w-1/2 cursor-w-resize bg-transparent"
-                  onClick={goPrev}
-                />
-                <button
-                  type="button"
-                  aria-label="다음 작품"
-                  className="absolute inset-y-0 right-0 z-10 w-1/2 cursor-e-resize bg-transparent"
-                  onClick={goNext}
-                />
+              <div
+                ref={lightboxViewportRef}
+                className={`relative flex-1 overflow-hidden rounded-none bg-black/72 touch-none ${
+                  lightboxZoom > LIGHTBOX_MIN_ZOOM + LIGHTBOX_ZOOM_EPSILON
+                    ? isLightboxPanning
+                      ? "cursor-grabbing"
+                      : "cursor-grab"
+                    : "cursor-default"
+                }`}
+                onWheel={handleLightboxWheel}
+                onDoubleClick={handleLightboxDoubleClick}
+                onPointerDown={handleLightboxPointerDown}
+                onPointerMove={handleLightboxPointerMove}
+                onPointerUp={handleLightboxPointerUpOrCancel}
+                onPointerCancel={handleLightboxPointerUpOrCancel}
+                onClickCapture={(event) => {
+                  if (lightboxSuppressClickRef.current) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    lightboxSuppressClickRef.current = false;
+                  }
+                }}
+              >
+                <div
+                  className="absolute inset-0 flex items-center justify-center"
+                  style={{
+                    transform: `translate(${lightboxPan.x}px, ${lightboxPan.y}px) scale(${lightboxZoom}) rotate(${normalizedRotationQuarterTurns * 90}deg)`,
+                    transition: isLightboxPanning ? "none" : "transform 180ms ease-out",
+                    transformOrigin: "center center",
+                  }}
+                >
+                  <img
+                    src={currentArtwork.imageUrl}
+                    alt={currentArtwork.title}
+                    className="h-full w-full object-contain select-none"
+                    draggable={false}
+                  />
+                </div>
               </div>
 
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-slate-200">

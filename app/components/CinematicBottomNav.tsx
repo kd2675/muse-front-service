@@ -12,7 +12,6 @@ type NavTab = "home" | "overview" | "contest" | "gallery" | "profile";
 type CinematicBottomNavProps = {
   activeTab: NavTab;
   layout?: "inline" | "fixed";
-  reserveSpace?: boolean;
 };
 
 type NavItem = {
@@ -55,17 +54,17 @@ const items: NavItem[] = [
   },
 ];
 
+const DOCK_TRIGGER_OFFSET_PX = 120;
+
 export default function CinematicBottomNav({
   activeTab,
   layout = "inline",
-  reserveSpace = true,
 }: CinematicBottomNavProps) {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
   const reduceMotion = Boolean(prefersReducedMotion);
   const [isDocked, setIsDocked] = useState(false);
-  const [hasScrollableContent, setHasScrollableContent] = useState(false);
   const [showFloatingMenu, setShowFloatingMenu] = useState(false);
   const [showDockedMenu, setShowDockedMenu] = useState(false);
 
@@ -83,8 +82,7 @@ export default function CinematicBottomNav({
       const scrollTop = window.scrollY || doc.scrollTop || 0;
       const contentHeight = Math.max(doc.scrollHeight, body.scrollHeight);
       const nextHasScrollable = contentHeight > viewportHeight + 2;
-      setHasScrollableContent(nextHasScrollable);
-      const atBottom = scrollTop + viewportHeight >= contentHeight - 2;
+      const atBottom = scrollTop + viewportHeight >= contentHeight - DOCK_TRIGGER_OFFSET_PX;
       setIsDocked(!nextHasScrollable || atBottom);
     };
 
@@ -197,7 +195,6 @@ export default function CinematicBottomNav({
   );
 
   if (layout === "fixed") {
-    const showDockedInSlot = reserveSpace && hasScrollableContent;
     const unifiedMotion = reduceMotion
       ? {
           initial: false,
@@ -213,29 +210,10 @@ export default function CinematicBottomNav({
         };
 
     const dockedFixedMotion = unifiedMotion;
-    const dockedSlotMotion = unifiedMotion;
     const floatingMotion = unifiedMotion;
 
     return (
       <>
-        {showDockedInSlot ? (
-          <div
-            aria-hidden="true"
-            className="relative h-[calc(68px+env(safe-area-inset-bottom))] w-full shrink-0 overflow-hidden"
-          >
-            <AnimatePresence>
-              {showDockedMenu ? (
-                <motion.div
-                  key="bottom-docked-slot"
-                  {...dockedSlotMotion}
-                  className="pointer-events-auto absolute inset-x-0 bottom-0 flex flex-col items-stretch"
-                >
-                  {DockedMenu}
-                </motion.div>
-              ) : null}
-            </AnimatePresence>
-          </div>
-        ) : null}
         <AnimatePresence>
           {showFloatingMenu ? (
             <motion.div
@@ -248,7 +226,7 @@ export default function CinematicBottomNav({
           ) : null}
         </AnimatePresence>
         <AnimatePresence>
-          {showDockedMenu && !showDockedInSlot ? (
+          {showDockedMenu ? (
             <motion.div
               key="bottom-docked-fixed"
               {...dockedFixedMotion}
