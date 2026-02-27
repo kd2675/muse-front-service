@@ -9,6 +9,76 @@ import type { ResponseEnvelope } from "../types/response";
 
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+const IMAGE_BASE =
+  process.env.NEXT_PUBLIC_IMAGE_BASE_URL ?? "http://localhost:8081";
+const IMAGE_URL_KEY_PATTERN = /imageUrl$/i;
+
+function normalizeBaseUrl(baseUrl: string): string {
+  return baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+}
+
+function toImagePath(value: string): string {
+  if (value.startsWith("/images/") || value === "/images") {
+    return value;
+  }
+  if (value.startsWith("/")) {
+    return `/images${value}`;
+  }
+  return `/images/${value.replace(/^\/+/, "")}`;
+}
+
+function normalizeImageUrlValue(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+  if (/^data:/i.test(trimmed)) {
+    return trimmed;
+  }
+
+  let rawPath = trimmed;
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      rawPath = new URL(trimmed).pathname;
+    } catch {
+      rawPath = trimmed;
+    }
+  }
+
+  const normalizedPath = toImagePath(rawPath);
+  const base = normalizeBaseUrl(IMAGE_BASE);
+  if (!base) {
+    return normalizedPath;
+  }
+  return `${base}${normalizedPath}`;
+}
+
+function normalizeImageUrlsDeep<T>(payload: T): T {
+  if (Array.isArray(payload)) {
+    return payload.map((item) => normalizeImageUrlsDeep(item)) as T;
+  }
+  if (payload && typeof payload === "object") {
+    const record = payload as Record<string, unknown>;
+    let changed = false;
+    const next: Record<string, unknown> = {};
+
+    for (const [key, value] of Object.entries(record)) {
+      let normalizedValue = value;
+      if (typeof value === "string" && IMAGE_URL_KEY_PATTERN.test(key)) {
+        normalizedValue = normalizeImageUrlValue(value);
+      } else if (Array.isArray(value) || (value && typeof value === "object")) {
+        normalizedValue = normalizeImageUrlsDeep(value);
+      }
+      if (normalizedValue !== value) {
+        changed = true;
+      }
+      next[key] = normalizedValue;
+    }
+
+    return (changed ? next : payload) as T;
+  }
+  return payload;
+}
 
 const apiClient = axios.create({
   baseURL: API_BASE,
@@ -141,7 +211,8 @@ async function requestJson<T>(
       ...config,
     });
     const durationMs = Date.now() - startedAt;
-    const envelope = response.data as BackendEnvelope;
+    const normalizedResponseData = normalizeImageUrlsDeep(response.data);
+    const envelope = normalizedResponseData as BackendEnvelope;
     const mapped = mapBackendCode(envelope?.code);
     if (envelope?.success === false) {
       if (shouldLogError()) {
@@ -174,10 +245,10 @@ async function requestJson<T>(
         backendMessage: envelope?.message,
         backendMapped: mapped,
         success: envelope?.success,
-        dataSummary: summarizePayload(response.data),
+        dataSummary: summarizePayload(normalizedResponseData),
       });
     }
-    return { data: response.data, status: response.status, durationMs };
+    return { data: normalizedResponseData as T, status: response.status, durationMs };
   } catch (error) {
     const err = error as AxiosError;
     const status = err.response?.status;

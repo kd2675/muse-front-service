@@ -228,9 +228,21 @@ export default function GalleryClient() {
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchCancel}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#000_0%,#0a0a0a_52%,#050505_100%)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-35 [background-image:url('https://www.transparenttextures.com/patterns/dark-concrete.png')]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center_top,rgba(120,140,170,0.2),transparent_48%)]" />
+      <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(circle_at_50%_0%,rgba(156,156,156,0.18)_0%,rgba(0,0,0,0)_68%)]" />
+      <div className="pointer-events-none absolute inset-0 z-[1] bg-[linear-gradient(to_bottom,rgba(0,0,0,0.44)_0%,rgba(0,0,0,0.16)_34%,rgba(0,0,0,0.18)_68%,rgba(0,0,0,0.9)_100%)]" />
+      <div
+        className="pointer-events-none absolute top-[-20%] left-1/2 z-0 h-[122%] w-[210%] -translate-x-1/2 rounded-[50%] shadow-[inset_0_0_260px_rgba(0,0,0,0.9),inset_0_0_0_1px_rgba(210,210,210,0.08)]"
+        style={{
+          backgroundImage:
+            "radial-gradient(ellipse at center, rgba(122,122,122,0.42) 0%, rgba(82,82,82,0.58) 40%, rgba(36,36,36,0.82) 72%, rgba(8,8,8,0.98) 100%), url(https://www.transparenttextures.com/patterns/dark-concrete.png)",
+          backgroundSize: "100% 100%, 220px 220px",
+          backgroundPosition: "center, center",
+          backgroundBlendMode: "normal, soft-light",
+        }}
+      />
+      <div className="pointer-events-none absolute top-[10%] left-1/2 z-[1] h-[48%] w-[170%] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgba(232,232,232,0.16)_0%,rgba(220,220,220,0)_72%)] opacity-[0.46]" />
+      <div className="pointer-events-none absolute bottom-[-12%] left-1/2 z-[1] h-[52%] w-[220%] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center_top,rgba(40,40,40,0.92)_0%,rgba(14,14,14,0.92)_62%,rgba(0,0,0,1)_100%)] [transform:rotateX(64deg)] opacity-94" />
+      <div className="pointer-events-none absolute top-[18%] left-1/2 z-[4] h-[42%] w-[112%] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgba(232,232,232,0.14)_0%,rgba(255,255,255,0)_74%)] opacity-[0.58] md:top-[12%] md:h-[48%] md:w-[102%]" />
 
       <header className="pointer-events-none absolute top-0 left-0 z-40 w-full">
         <div className="pointer-events-auto mx-auto w-full max-w-6xl px-6 pt-8 md:px-8">

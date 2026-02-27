@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/run-next-with-env.mjs .env.dev dev",
+    "local": "node scripts/run-next-with-env.mjs .env.local dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
