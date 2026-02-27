@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { canAccessPath } from "../lib/routeGuard";
 import { useAppDispatch } from "../store/hooks";
 import { setPendingPath, showToast } from "../store/uiSlice";
@@ -55,6 +55,7 @@ const items: NavItem[] = [
 ];
 
 const DOCK_TRIGGER_OFFSET_PX = 120;
+let persistedDockedState = true;
 
 export default function CinematicBottomNav({
   activeTab,
@@ -62,11 +63,14 @@ export default function CinematicBottomNav({
 }: CinematicBottomNavProps) {
   const dispatch = useAppDispatch();
   const router = useRouter();
+  const pathname = usePathname();
   const prefersReducedMotion = useReducedMotion();
   const reduceMotion = Boolean(prefersReducedMotion);
-  const [isDocked, setIsDocked] = useState(false);
-  const [showFloatingMenu, setShowFloatingMenu] = useState(false);
-  const [showDockedMenu, setShowDockedMenu] = useState(false);
+  const [isDocked, setIsDocked] = useState(() => persistedDockedState);
+
+  useEffect(() => {
+    persistedDockedState = isDocked;
+  }, [isDocked]);
 
   useEffect(() => {
     if (layout !== "fixed") {
@@ -100,41 +104,7 @@ export default function CinematicBottomNav({
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
     };
-  }, [layout]);
-
-  useEffect(() => {
-    if (layout !== "fixed") {
-      return;
-    }
-
-    let timerId: number | undefined;
-    let instantId: number | undefined;
-    const floatingExitDelay = reduceMotion ? 0 : 307;
-    const dockedExitDelay = reduceMotion ? 0 : 307;
-
-    if (isDocked) {
-      instantId = window.setTimeout(() => setShowFloatingMenu(false), 0);
-      timerId = window.setTimeout(
-        () => setShowDockedMenu(true),
-        floatingExitDelay,
-      );
-    } else {
-      instantId = window.setTimeout(() => setShowDockedMenu(false), 0);
-      timerId = window.setTimeout(
-        () => setShowFloatingMenu(true),
-        dockedExitDelay,
-      );
-    }
-
-    return () => {
-      if (instantId) {
-        window.clearTimeout(instantId);
-      }
-      if (timerId) {
-        window.clearTimeout(timerId);
-      }
-    };
-  }, [isDocked, layout, reduceMotion]);
+  }, [layout, pathname]);
 
   const navigateWithGuard = (path: string, tab: NavTab) => {
     const guard = canAccessPath(path);
@@ -159,7 +129,7 @@ export default function CinematicBottomNav({
         <button
           key={item.key}
           type="button"
-          className={`flex h-10 w-10 items-center justify-center rounded-full transition ${
+          className={`flex h-10 w-10 touch-manipulation items-center justify-center rounded-full transition ${
             isActive ? "text-slate-100" : "text-slate-100/40 hover:text-slate-100"
           }`}
           onClick={() => navigateWithGuard(item.path, item.tab)}
@@ -177,21 +147,17 @@ export default function CinematicBottomNav({
   );
 
   const FloatingMenu = (
-    <div className="pointer-events-auto">
-      <nav className="flex w-[clamp(280px,33vw,460px)] max-w-[calc(100vw-2.5rem)] items-center justify-center gap-3 rounded-full border border-slate-100/10 bg-[rgba(8,8,12,0.4)] px-4 py-3 backdrop-blur-md">
-        {renderButtons()}
-      </nav>
-    </div>
+    <nav className="flex w-[clamp(280px,33vw,460px)] max-w-[calc(100vw-2.5rem)] items-center justify-center gap-3 rounded-full border border-slate-100/10 bg-[rgba(8,8,12,0.4)] px-4 py-3 backdrop-blur-md">
+      {renderButtons()}
+    </nav>
   );
 
   const DockedMenu = (
-    <div className="pointer-events-auto">
-      <nav className="flex w-full items-center justify-center border-t border-slate-100/12 bg-[rgba(8,8,12,0.88)] px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] backdrop-blur-md">
-        <div className="flex w-[clamp(360px,44vw,640px)] max-w-[calc(100vw-1.5rem)] items-center justify-center gap-6">
-          {renderButtons()}
-        </div>
-      </nav>
-    </div>
+    <nav className="flex w-full items-center justify-center border-t border-slate-100/12 bg-[rgba(8,8,12,0.88)] px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] backdrop-blur-md">
+      <div className="flex w-[clamp(360px,44vw,640px)] max-w-[calc(100vw-1.5rem)] items-center justify-center gap-6">
+        {renderButtons()}
+      </div>
+    </nav>
   );
 
   if (layout === "fixed") {
@@ -213,30 +179,25 @@ export default function CinematicBottomNav({
     const floatingMotion = unifiedMotion;
 
     return (
-      <>
-        <AnimatePresence>
-          {showFloatingMenu ? (
-            <motion.div
-              key="bottom-floating-fixed"
-              {...floatingMotion}
-              className="pointer-events-none fixed bottom-0 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-4 pb-[calc(env(safe-area-inset-bottom)+12px)]"
-            >
-              {FloatingMenu}
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-        <AnimatePresence>
-          {showDockedMenu ? (
-            <motion.div
-              key="bottom-docked-fixed"
-              {...dockedFixedMotion}
-              className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex flex-col items-stretch"
-            >
-              {DockedMenu}
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
-      </>
+      <AnimatePresence initial={false}>
+        {isDocked ? (
+          <motion.div
+            key="bottom-docked-fixed"
+            {...dockedFixedMotion}
+            className="pointer-events-auto fixed inset-x-0 bottom-0 z-30 flex flex-col items-stretch"
+          >
+            {DockedMenu}
+          </motion.div>
+        ) : (
+          <motion.div
+            key="bottom-floating-fixed"
+            {...floatingMotion}
+            className="pointer-events-auto fixed bottom-0 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-4 pb-[calc(env(safe-area-inset-bottom)+12px)]"
+          >
+            {FloatingMenu}
+          </motion.div>
+        )}
+      </AnimatePresence>
     );
   }
 
