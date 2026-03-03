@@ -348,9 +348,10 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
   const phaseTone = getContestPhaseTone(phase);
   const credits = creditData?.data?.credits ?? 0;
   const isSubmissionPhase = phase === "SUBMISSION";
+  const isReviewPhase = phase === "REVIEW";
   const isVotingPhase = phase === "VOTING";
   const isEndedPhase = phase === "ENDED";
-  const hideArtworkByPhase = phase === "UPCOMING" || phase === "SUBMISSION" || phase === "REVIEW";
+  const hideArtworkByPhase = phase === "UPCOMING" || phase === "REVIEW";
   const canSubmit = hasToken && isSubmissionPhase && credits > 0;
   const needsCredit = hasToken && isSubmissionPhase && credits <= 0;
 
@@ -1200,40 +1201,42 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                         </div>
                       </div>
 
-                      <Link
-                        href={focusGalleryHref}
-                        onClick={persistDetailViewState}
-                        className="relative block overflow-hidden rounded-[8px] bg-slate-900"
-                      >
-                        {hideArtworkByPhase ? (
-                          <div className="flex aspect-[4/5] w-full items-center justify-center border border-white/10 bg-[linear-gradient(160deg,rgba(34,34,37,0.9),rgba(24,24,26,0.92))] text-sm text-slate-500">
-                            {phase === "REVIEW" ? "심사 진행 중 비공개" : "전시 시작 전 비공개"}
-                          </div>
-                        ) : entry.imageUrl ? (
-                          <>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={entry.imageUrl}
-                              alt={entry.title ?? "contest entry"}
-                              className="aspect-[4/5] w-full object-cover opacity-90 transition duration-700 group-hover:scale-[1.03] group-hover:opacity-100"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-transparent to-transparent opacity-65" />
-                            <div className="absolute right-4 bottom-4 flex items-center gap-1 rounded-full border border-white/12 bg-black/45 px-3 py-1 text-[10px] text-white">
-                              <span className="material-symbols-outlined text-sm">visibility</span>
-                              <span>{formatNumber(voteCount)}</span>
+                      {!(isSubmissionPhase || isReviewPhase) && (
+                        <Link
+                          href={focusGalleryHref}
+                          onClick={persistDetailViewState}
+                          className="relative block overflow-hidden rounded-[8px] bg-slate-900"
+                        >
+                          {hideArtworkByPhase ? (
+                            <div className="flex aspect-[4/5] w-full items-center justify-center border border-white/10 bg-[linear-gradient(160deg,rgba(34,34,37,0.9),rgba(24,24,26,0.92))] text-sm text-slate-500">
+                              전시 시작 전 비공개
                             </div>
-                            {isEndedPhase && currentRank && currentRank <= 3 && (
-                              <div className="absolute left-4 top-4 rounded-full border border-[#c0a062]/40 bg-[#c0a062]/18 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#f8e6be]">
-                                #{currentRank}
+                          ) : entry.imageUrl ? (
+                            <>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={entry.imageUrl}
+                                alt={entry.title ?? "contest entry"}
+                                className="aspect-[4/5] w-full object-cover opacity-90 transition duration-700 group-hover:scale-[1.03] group-hover:opacity-100"
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-transparent to-transparent opacity-65" />
+                              <div className="absolute right-4 bottom-4 flex items-center gap-1 rounded-full border border-white/12 bg-black/45 px-3 py-1 text-[10px] text-white">
+                                <span className="material-symbols-outlined text-sm">visibility</span>
+                                <span>{formatNumber(voteCount)}</span>
                               </div>
-                            )}
-                          </>
-                        ) : (
-                          <div className="flex aspect-[4/5] w-full items-center justify-center border border-white/10 bg-[linear-gradient(160deg,rgba(32,32,34,0.9),rgba(24,24,26,0.92))] text-sm text-slate-500">
-                            이미지 없음
-                          </div>
-                        )}
-                      </Link>
+                              {isEndedPhase && currentRank && currentRank <= 3 && (
+                                <div className="absolute left-4 top-4 rounded-full border border-[#c0a062]/40 bg-[#c0a062]/18 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#f8e6be]">
+                                  #{currentRank}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="flex aspect-[4/5] w-full items-center justify-center border border-white/10 bg-[linear-gradient(160deg,rgba(32,32,34,0.9),rgba(24,24,26,0.92))] text-sm text-slate-500">
+                              이미지 없음
+                            </div>
+                          )}
+                        </Link>
+                      )}
 
                       <div className="space-y-2">
                         <h3 className="text-2xl text-slate-100">
