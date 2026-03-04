@@ -36,7 +36,7 @@ export default function AdminActionButton({
   ...props
 }: AdminActionButtonProps) {
   const base =
-    "rounded-full border transition disabled:cursor-not-allowed disabled:opacity-60";
+    " border transition disabled:cursor-not-allowed disabled:opacity-60";
   const sized =
     size === "sm"
       ? "px-3 py-1.5 text-xs"

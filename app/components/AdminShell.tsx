@@ -51,7 +51,7 @@ export default function AdminShell({ section, title, description, children }: Ad
       >
         <OverviewStyleHeader title={title} subtitle="Admin Hub" />
 
-        <div className="mt-5 rounded-[20px] bg-[rgba(22,24,31,0.74)] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.28)]">
+        <div className="mt-5  bg-[rgba(22,24,31,0.74)] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.28)]">
           <nav className="flex flex-wrap items-center gap-2">
             {menuItems.map((item) => {
               const isActive = item.key === section;
@@ -60,7 +60,7 @@ export default function AdminShell({ section, title, description, children }: Ad
                   key={item.key}
                   type="button"
                   onClick={() => router.push(item.path)}
-                  className={`rounded-full px-4 py-2 text-xs uppercase tracking-[0.14em] transition ${
+                  className={` px-4 py-2 text-xs uppercase tracking-[0.14em] transition ${
                     isActive
                       ? "bg-cyan-300/22 text-cyan-100"
                       : "bg-white/8 text-slate-300 hover:bg-white/14 hover:text-white"

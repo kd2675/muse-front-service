@@ -43,13 +43,13 @@ export default function OverviewStyleHeader({
       </div>
       {rightSlot ?? (
         !isHydrated || authStatus === "unknown" ? (
-          <div className="h-9 w-24 rounded-full bg-white/8" />
+          <div className="h-9 w-24  bg-white/8" />
         ) : authStatus === "in" ? (
           <button
             type="button"
             onClick={handleSignOut}
             disabled={isSigningOut}
-            className="rounded-full bg-white/8 px-4 py-2 text-xs text-slate-200/88 transition hover:bg-white/14 disabled:opacity-60"
+            className=" bg-white/8 px-4 py-2 text-xs text-slate-200/88 transition hover:bg-white/14 disabled:opacity-60"
           >
             {isSigningOut ? "Signing out..." : "Sign out"}
           </button>
@@ -57,7 +57,7 @@ export default function OverviewStyleHeader({
           <button
             type="button"
             onClick={() => router.push("/login")}
-            className="rounded-full bg-white/8 px-4 py-2 text-xs text-slate-200/88 transition hover:bg-white/14"
+            className=" bg-white/8 px-4 py-2 text-xs text-slate-200/88 transition hover:bg-white/14"
           >
             Sign in
           </button>

@@ -142,7 +142,7 @@ export default function TopNav() {
   }, [isHydrated, tokenExp]);
 
   const navItemClass = (tab: TabKey) =>
-    `rounded-full border px-4 py-2 transition ${
+    ` border px-4 py-2 transition ${
       activeTab === tab
         ? "border-[color:var(--accent)] text-[color:var(--accent)]"
         : "border-[color:var(--line)] text-[color:var(--muted)] hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
@@ -211,7 +211,7 @@ export default function TopNav() {
           muse
         </h1>
         <button
-          className="ml-auto flex h-11 w-11 items-center justify-center rounded-full border border-[color:var(--line)] text-lg text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] md:hidden"
+          className="ml-auto flex h-11 w-11 items-center justify-center  border border-[color:var(--line)] text-lg text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] md:hidden"
           onClick={() => setIsMenuOpen((prev) => !prev)}
         >
           <span className="leading-none">{isMenuOpen ? "✕" : "☰"}</span>
@@ -230,17 +230,17 @@ export default function TopNav() {
       </nav>
       <div className="hidden items-center gap-3 md:flex">
         {!isHydrated ? (
-          <Skeleton className="h-9 w-24 rounded-full border border-[color:var(--line)]" />
+          <Skeleton className="h-9 w-24  border border-[color:var(--line)]" />
         ) : (
           <>
             {authStatus === "in" && userLabel && (
-              <span className="rounded-full border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)]">
+              <span className=" border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)]">
                 {userLabel}
               </span>
             )}
             {authStatus === "in" ? (
               <button
-                className="rounded-full border border-[color:var(--line)] px-4 py-2 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] disabled:opacity-60"
+                className=" border border-[color:var(--line)] px-4 py-2 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] disabled:opacity-60"
                 onClick={handleSignOut}
                 disabled={isSigningOut}
               >
@@ -249,7 +249,7 @@ export default function TopNav() {
             ) : (
               <Link
                 href="/login"
-                className="inline-flex items-center justify-center rounded-full border border-[color:var(--line)] px-4 py-2 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                className="inline-flex items-center justify-center  border border-[color:var(--line)] px-4 py-2 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
               >
                 Sign in
               </Link>
@@ -257,7 +257,7 @@ export default function TopNav() {
           </>
         )}
         <button
-          className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm text-white shadow-[var(--shadow)] transition hover:opacity-90"
+          className=" bg-[color:var(--accent)] px-4 py-2 text-sm text-white shadow-[var(--shadow)] transition hover:opacity-90"
           onClick={handleCta}
         >
           {authStatus === "in" ? "Start contest" : "Get started"}
@@ -283,7 +283,7 @@ export default function TopNav() {
                   <h2 className="font-[var(--font-display)] text-xl">muse</h2>
                 </div>
                 <button
-                  className="rounded-full border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                  className=" border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   닫기
@@ -302,17 +302,17 @@ export default function TopNav() {
               </div>
               <div className="mt-6 flex flex-col gap-2">
                 {!isHydrated ? (
-                  <Skeleton className="h-9 w-24 rounded-full border border-[color:var(--line)]" />
+                  <Skeleton className="h-9 w-24  border border-[color:var(--line)]" />
                 ) : (
                   <>
                     {authStatus === "in" && userLabel && (
-                      <span className="rounded-full border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)]">
+                      <span className=" border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)]">
                         {userLabel}
                       </span>
                     )}
                     {authStatus === "in" ? (
                       <button
-                        className="rounded-full border border-[color:var(--line)] px-4 py-2 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] disabled:opacity-60"
+                        className=" border border-[color:var(--line)] px-4 py-2 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)] disabled:opacity-60"
                         onClick={handleSignOut}
                         disabled={isSigningOut}
                       >
@@ -321,7 +321,7 @@ export default function TopNav() {
                     ) : (
                       <Link
                         href="/login"
-                        className="inline-flex items-center justify-center rounded-full border border-[color:var(--line)] px-4 py-2 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                        className="inline-flex items-center justify-center  border border-[color:var(--line)] px-4 py-2 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
                       >
                         Sign in
                       </Link>
@@ -329,7 +329,7 @@ export default function TopNav() {
                   </>
                 )}
                 <button
-                  className="rounded-full bg-[color:var(--accent)] px-4 py-2 text-sm text-white shadow-[var(--shadow)] transition hover:opacity-90"
+                  className=" bg-[color:var(--accent)] px-4 py-2 text-sm text-white shadow-[var(--shadow)] transition hover:opacity-90"
                   onClick={handleCta}
                 >
                   {authStatus === "in" ? "Start contest" : "Get started"}

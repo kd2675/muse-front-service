@@ -231,7 +231,7 @@ export default function GalleryClient() {
       <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(circle_at_50%_0%,rgba(156,156,156,0.18)_0%,rgba(0,0,0,0)_68%)]" />
       <div className="pointer-events-none absolute inset-0 z-[1] bg-[linear-gradient(to_bottom,rgba(0,0,0,0.44)_0%,rgba(0,0,0,0.16)_34%,rgba(0,0,0,0.18)_68%,rgba(0,0,0,0.9)_100%)]" />
       <div
-        className="pointer-events-none absolute top-[-20%] left-1/2 z-0 h-[122%] w-[210%] -translate-x-1/2 rounded-[50%] shadow-[inset_0_0_260px_rgba(0,0,0,0.9),inset_0_0_0_1px_rgba(210,210,210,0.08)]"
+        className="pointer-events-none absolute top-[-20%] left-1/2 z-0 h-[122%] w-[210%] -translate-x-1/2  shadow-[inset_0_0_260px_rgba(0,0,0,0.9),inset_0_0_0_1px_rgba(210,210,210,0.08)]"
         style={{
           backgroundImage:
             "radial-gradient(ellipse at center, rgba(122,122,122,0.42) 0%, rgba(82,82,82,0.58) 40%, rgba(36,36,36,0.82) 72%, rgba(8,8,8,0.98) 100%), url(https://www.transparenttextures.com/patterns/dark-concrete.png)",
@@ -245,21 +245,21 @@ export default function GalleryClient() {
       <div className="pointer-events-none absolute top-[18%] left-1/2 z-[4] h-[42%] w-[112%] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgba(232,232,232,0.14)_0%,rgba(255,255,255,0)_74%)] opacity-[0.58] md:top-[12%] md:h-[48%] md:w-[102%]" />
 
       <header className="pointer-events-none absolute top-0 left-0 z-40 w-full">
-        <div className="pointer-events-auto mx-auto w-full max-w-6xl px-6 pt-8 md:px-8">
+        <div className="pointer-events-auto mx-auto w-full max-w-[1120px] px-6 pt-10 md:px-8">
           <OverviewStyleHeader title="The Gallery" />
         </div>
       </header>
 
-      <main className="relative z-20 mx-auto flex h-full w-full max-w-6xl items-center justify-end px-6 pb-28 pt-16 md:px-8">
+      <main className="relative z-20 mx-auto flex h-full w-full max-w-[1120px] items-center justify-end px-6 pb-30 pt-20 md:px-8">
         <div className="pointer-events-none absolute top-24 left-8 z-20 flex flex-col items-start opacity-80">
-          <h1 className="font-[var(--font-display)] text-6xl font-thin tracking-tighter text-white/90">{dateLabel.day}</h1>
-          <span className="mt-2 ml-1 block text-xs uppercase tracking-[0.3em] text-slate-400">{dateLabel.month}</span>
+          <h1 className="font-[var(--font-display)] text-7xl font-thin tracking-tight text-white/90">{dateLabel.day}</h1>
+          <span className="mt-2 ml-1 block text-xs uppercase tracking-[0.34em] text-slate-400">{dateLabel.month}</span>
           <div className="mt-8 ml-2 h-16 w-px bg-gradient-to-b from-white/20 to-transparent" />
         </div>
 
         {isLoading ? (
           <div className="mr-[-2px] h-[72vh] w-[75%]">
-            <Skeleton className="h-full rounded-[16px]" />
+            <Skeleton className="h-full " />
           </div>
         ) : currentMuseum ? (
           <div className="relative mr-[-2px] h-[72vh] w-[75%] overflow-visible">
@@ -277,7 +277,7 @@ export default function GalleryClient() {
                   className="group relative h-full w-full overflow-visible [transform-style:preserve-3d]"
                 >
                   <div className="pointer-events-none absolute -top-[40%] left-1/2 z-20 h-[58%] w-[122%] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0)_70%)]" />
-                  <div className="relative h-full w-full overflow-hidden rounded-[16px] border border-white/10 bg-black/45 shadow-[0_16px_44px_rgba(0,0,0,0.62)]">
+                  <div className="relative h-full w-full overflow-hidden border border-white/16 bg-black/45 shadow-[0_20px_56px_rgba(0,0,0,0.7)]">
                     {currentMuseum.coverImageUrl ? (
                       <img
                         src={currentMuseum.coverImageUrl}
@@ -288,19 +288,19 @@ export default function GalleryClient() {
                       <div className="h-full w-full bg-[linear-gradient(145deg,#1a1f2b_0%,#30435c_100%)]" />
                     )}
                     <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(0,0,0,0.86)_10%,rgba(0,0,0,0.26)_56%,rgba(0,0,0,0.06)_100%)]" />
-                      <div className="absolute right-5 top-5 rounded-full border border-white/14 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-white">
+                      <div className="absolute right-5 top-5 border border-white/16 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-white">
                         {currentMuseum.isFeatured ? "Featured" : "Museum"}
                       </div>
-                    <div className="absolute right-0 bottom-0 left-0 p-6 text-left md:p-8">
-                      <h2 className="font-[var(--font-display)] text-4xl italic text-white md:text-5xl">
+                    <div className="absolute right-0 bottom-0 left-0 p-7 text-left md:p-9">
+                      <h2 className="font-[var(--font-display)] text-5xl italic text-white md:text-6xl">
                         {currentMuseum.name}
                       </h2>
-                      <p className="mt-2 text-sm text-white/70">{currentMuseum.ownerName}</p>
-                      <p className="mt-2 line-clamp-2 text-xs text-white/62 md:text-sm">
+                      <p className="mt-3 text-sm uppercase tracking-[0.14em] text-white/70">{currentMuseum.ownerName}</p>
+                      <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-white/62 md:text-sm">
                         {currentMuseum.description || "큐레이션된 뮤지엄입니다. 입장 후 작품을 감상해보세요."}
                       </p>
                       <div className="mt-5 flex items-center gap-3">
-                        <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/12 px-4 py-2 text-[11px] uppercase tracking-[0.14em] text-white">
+                        <span className="inline-flex items-center gap-2 border border-white/20 bg-white/12 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-white">
                           <span className="material-symbols-outlined text-[16px]">museum</span>
                           Enter Gallery
                         </span>
@@ -310,14 +310,14 @@ export default function GalleryClient() {
                       </div>
                     </div>
                   </div>
-                  <div className="pointer-events-none absolute right-[11%] -bottom-[6%] h-[9%] w-[50%] rounded-full bg-black/58 blur-[12px]" />
-                  <div className="pointer-events-none absolute right-[13%] -bottom-[9%] h-[11%] w-[44%] rounded-full bg-white/10 blur-[20px]" />
+                  <div className="pointer-events-none absolute right-[11%] -bottom-[6%] h-[9%] w-[50%] bg-black/58 blur-[12px]" />
+                  <div className="pointer-events-none absolute right-[13%] -bottom-[9%] h-[11%] w-[44%] bg-white/10 blur-[20px]" />
                   {currentMuseum.coverImageUrl && (
                     <img
                       src={currentMuseum.coverImageUrl}
                       alt=""
                       aria-hidden
-                      className="pointer-events-none absolute left-0 -bottom-[102%] h-full w-full scale-y-[-1] rounded-[16px] object-cover opacity-[0.27] [mask-image:linear-gradient(transparent_42%,rgba(0,0,0,0.92))] blur-[1.6px]"
+                      className="pointer-events-none absolute left-0 -bottom-[102%] h-full w-full scale-y-[-1] object-cover opacity-[0.27] [mask-image:linear-gradient(transparent_42%,rgba(0,0,0,0.92))] blur-[1.6px]"
                     />
                   )}
                 </motion.button>
@@ -325,7 +325,7 @@ export default function GalleryClient() {
             </div>
           </div>
         ) : (
-          <div className="mr-[-2px] flex h-[72vh] w-[75%] items-center justify-center rounded-[16px] border border-white/10 bg-white/[0.03] text-sm text-slate-400">
+          <div className="mr-[-2px] flex h-[72vh] w-[75%] items-center justify-center border border-white/16 bg-white/[0.03] text-sm text-slate-400">
             아직 공개된 전시관이 없습니다.
           </div>
         )}
@@ -333,19 +333,19 @@ export default function GalleryClient() {
 
       {stageMuseums.length > 0 ? (
         <div className="pointer-events-none absolute bottom-40 left-10 z-30 flex flex-col items-center gap-3 opacity-40">
-          <div className="h-2 w-2 rounded-full bg-white" />
-          <div className="relative h-14 w-1 overflow-hidden rounded-full bg-white/20">
+          <div className="h-2 w-2 bg-white" />
+          <div className="relative h-14 w-1 overflow-hidden bg-white/20">
             <div
-              className="absolute top-0 left-0 w-full rounded-full bg-white/60 transition-[height] duration-300 ease-out"
+              className="absolute top-0 left-0 w-full bg-white/60 transition-[height] duration-300 ease-out"
               style={{ height: `${progressPercent}%` }}
             />
           </div>
-          <div className="h-2 w-2 rounded-full bg-white" />
+          <div className="h-2 w-2 bg-white" />
         </div>
       ) : null}
 
       {!isLoading && error ? (
-        <div className="absolute right-6 bottom-36 z-30 rounded-full border border-rose-300/35 bg-rose-300/14 px-3 py-1.5 text-xs text-rose-100">
+        <div className="absolute right-6 bottom-36 z-30 border border-rose-300/35 bg-rose-300/14 px-4 py-2 text-xs text-rose-100">
           {error}
         </div>
       ) : null}

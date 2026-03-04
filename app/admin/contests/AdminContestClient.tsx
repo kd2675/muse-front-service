@@ -231,7 +231,7 @@ export default function AdminContestClient() {
         title="Contest Admin"
         description="콘테스트 생성/수정/결과 확정을 한 화면에서 관리합니다."
       >
-        <section className="rounded-[28px] border border-[color:var(--line)] bg-[rgba(34,34,40,0.72)] p-8 shadow-[var(--shadow)]">
+        <section className=" border border-[color:var(--line)] bg-[rgba(34,34,40,0.72)] p-8 shadow-[var(--shadow)]">
           <p className="text-sm text-[color:var(--muted)]">
             관리자 권한이 필요합니다.
           </p>
@@ -247,8 +247,8 @@ export default function AdminContestClient() {
       description="출품·심사·전시 흐름을 기준으로 콘테스트를 운영합니다."
     >
       <Reveal index={0}>
-      <section className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-        <aside className="rounded-[28px] border border-[color:var(--line)] bg-[rgba(34,34,40,0.72)] p-6 shadow-[var(--shadow)]">
+      <section className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr]">
+        <aside className="border border-[color:var(--line)] bg-[rgba(22,22,28,0.8)] p-7 shadow-[var(--shadow)]">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">
@@ -271,9 +271,9 @@ export default function AdminContestClient() {
 
           {isLoading ? (
             <div className="mt-6 grid gap-3">
-              <Skeleton className="h-20 rounded-[18px]" />
-              <Skeleton className="h-20 rounded-[18px]" />
-              <Skeleton className="h-20 rounded-[18px]" />
+              <Skeleton className="h-20 " />
+              <Skeleton className="h-20 " />
+              <Skeleton className="h-20 " />
             </div>
           ) : (
             <div className="mt-6 grid gap-3">
@@ -284,7 +284,7 @@ export default function AdminContestClient() {
                   <motion.button
                     key={contest.id}
                     {...staggeredFadeUpMotion(index + 1, reduceMotion)}
-                    className={`rounded-[18px] border px-4 py-3 text-left transition ${
+                    className={`border px-4 py-4 text-left transition ${
                       isSelected
                         ? `${tone.cardClass} ring-2 ring-[#2563eb]/35`
                         : tone.cardClass
@@ -302,13 +302,13 @@ export default function AdminContestClient() {
                     <p className="mt-1 font-medium">{contest.theme}</p>
                     <p className="mt-1 text-xs text-[color:var(--muted)]">{contest.period}</p>
                     <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-[color:var(--muted)]">
-                      <span className={`rounded-full border px-2 py-1 ${tone.badgeClass}`}>
+                      <span className={` border px-2 py-1 ${tone.badgeClass}`}>
                         {getContestPhaseLabel(contest.phase)}
                       </span>
-                      <span className="rounded-full border border-[color:var(--line)] px-2 py-1">
+                      <span className=" border border-[color:var(--line)] px-2 py-1">
                         참가비 {formatNumber(contest.entryFee)}원
                       </span>
-                      <span className="rounded-full border border-[color:var(--line)] px-2 py-1">
+                      <span className=" border border-[color:var(--line)] px-2 py-1">
                         참여 {formatNumber(contest.participationCount)}
                       </span>
                     </div>
@@ -316,7 +316,7 @@ export default function AdminContestClient() {
                 );
               })}
               {!isLoading && sortedContests.length === 0 && (
-                <p className="rounded-[18px] border border-[color:var(--line)] bg-[rgba(18,18,24,0.82)] px-4 py-3 text-sm text-[color:var(--muted)]">
+                <p className=" border border-[color:var(--line)] bg-[rgba(18,18,24,0.82)] px-4 py-3 text-sm text-[color:var(--muted)]">
                   등록된 콘테스트가 없습니다.
                 </p>
               )}
@@ -353,12 +353,12 @@ export default function AdminContestClient() {
           )}
 
           {finalizeResult && (
-            <div className="mt-6 rounded-[18px] border border-[color:var(--line)] bg-[rgba(18,18,24,0.82)] p-4">
+            <div className="mt-6 border border-[color:var(--line)] bg-[rgba(18,18,24,0.86)] p-5">
               <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">
                 Finalized #{finalizeResult.contestId}
               </p>
               {finalizeResult.winners.length === 0 ? (
-                <p className="mt-3 rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-3 py-2 text-sm text-[color:var(--muted)]">
+                <p className="mt-3 border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-3 py-2 text-sm text-[color:var(--muted)]">
                   확정 완료: 대상 출품작이 없어 수상자 없이 종료 처리되었습니다.
                 </p>
               ) : (
@@ -366,7 +366,7 @@ export default function AdminContestClient() {
                   {finalizeResult.winners.map((winner) => (
                     <li
                       key={winner.entryId}
-                      className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-3 py-2"
+                      className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-3 py-2"
                     >
                       <p className="font-medium">
                         {winner.rank}등 · {winner.artistName}
@@ -382,11 +382,11 @@ export default function AdminContestClient() {
           )}
         </aside>
 
-        <div className="rounded-[28px] border border-[color:var(--line)] bg-[rgba(34,34,40,0.72)] p-8 shadow-[var(--shadow)]">
+        <div className="border border-[color:var(--line)] bg-[rgba(22,22,28,0.8)] p-8 shadow-[var(--shadow)] md:p-10">
           <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">
             {mode === "create" ? "Create" : "Update"}
           </p>
-          <h1 className="mt-2 font-[var(--font-display)] text-3xl">
+          <h1 className="mt-2 border-b border-[color:var(--line)] pb-4 font-[var(--font-display)] text-4xl italic">
             콘테스트 관리
           </h1>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -402,7 +402,7 @@ export default function AdminContestClient() {
           </div>
 
           <form
-            className="mt-6 grid gap-4"
+            className="mt-7 grid gap-5"
             onSubmit={(event) => {
               event.preventDefault();
               const validationMessage = validateForm(form);
@@ -416,7 +416,7 @@ export default function AdminContestClient() {
             <label className="grid gap-2 text-sm">
               <span>테마</span>
               <input
-                className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3"
+                className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3"
                 value={form.theme}
                 onChange={(event) => setForm((prev) => ({ ...prev, theme: event.target.value }))}
                 placeholder="예: 빛의 결"
@@ -426,7 +426,7 @@ export default function AdminContestClient() {
             <label className="grid gap-2 text-sm">
               <span>설명</span>
               <textarea
-                className="min-h-24 rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3"
+                className="min-h-24 border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3"
                 value={form.description}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, description: event.target.value }))
@@ -441,7 +441,7 @@ export default function AdminContestClient() {
                 <input
                   type="number"
                   min={1}
-                  className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3"
+                  className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3"
                   value={form.entryFee}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, entryFee: event.target.value }))
@@ -453,7 +453,7 @@ export default function AdminContestClient() {
                 <input
                   type="number"
                   min={0}
-                  className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3"
+                  className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3"
                   value={form.prizePool}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, prizePool: event.target.value }))
@@ -467,7 +467,7 @@ export default function AdminContestClient() {
                 <span>출품 시작</span>
                 <input
                   type="datetime-local"
-                  className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3"
+                  className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3"
                   value={form.submissionStartAt}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, submissionStartAt: event.target.value }))
@@ -478,7 +478,7 @@ export default function AdminContestClient() {
                 <span>출품 종료</span>
                 <input
                   type="datetime-local"
-                  className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3"
+                  className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3"
                   value={form.submissionEndAt}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, submissionEndAt: event.target.value }))
@@ -489,7 +489,7 @@ export default function AdminContestClient() {
                 <span>전시 시작</span>
                 <input
                   type="datetime-local"
-                  className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3"
+                  className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3"
                   value={form.votingStartAt}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, votingStartAt: event.target.value }))
@@ -500,7 +500,7 @@ export default function AdminContestClient() {
                 <span>전시 종료</span>
                 <input
                   type="datetime-local"
-                  className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3"
+                  className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3"
                   value={form.votingEndAt}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, votingEndAt: event.target.value }))
@@ -512,7 +512,7 @@ export default function AdminContestClient() {
             <label className="grid gap-2 text-sm">
               <span>규칙(줄바꿈으로 구분)</span>
               <textarea
-                className="min-h-32 rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3"
+                className="min-h-32 border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3"
                 value={form.rulesText}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, rulesText: event.target.value }))

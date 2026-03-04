@@ -27,7 +27,7 @@ export default function Toast() {
       {isToastOpen && toastMessage && (
         <motion.div
           {...toastMotion(reduceMotion)}
-          className="fixed bottom-6 right-6 z-50 rounded-2xl border border-[color:var(--line)] bg-white/90 px-4 py-3 text-xs text-[color:var(--canvas-ink)] shadow-[var(--shadow)] backdrop-blur"
+          className="fixed bottom-6 right-6 z-50  border border-[color:var(--line)] bg-white/90 px-4 py-3 text-xs text-[color:var(--canvas-ink)] shadow-[var(--shadow)] backdrop-blur"
         >
           {toastMessage}
         </motion.div>

@@ -23,7 +23,7 @@ export function SkeletonText({
       {Array.from({ length: lines }).map((_, index) => (
         <Skeleton
           key={index}
-          className={`h-3 ${index === lines - 1 ? "w-3/5" : "w-full"} rounded-full`}
+          className={`h-3 ${index === lines - 1 ? "w-3/5" : "w-full"} `}
         />
       ))}
     </div>

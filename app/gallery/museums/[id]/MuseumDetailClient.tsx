@@ -928,7 +928,7 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
 
       <header className="pointer-events-none absolute top-0 left-0 z-[25] w-full">
         <motion.div
-          className="pointer-events-auto mx-auto w-full max-w-6xl px-6 pt-8 md:px-8"
+          className="pointer-events-auto mx-auto w-full max-w-[1120px] px-6 pt-10 md:px-8"
           {...staggeredFadeUpMotion(0, reduceMotion)}
         >
           <OverviewStyleHeader title="The Gallery" />
@@ -964,7 +964,7 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                 toggleFxPanelExpanded();
               }}
             >
-              <div className="rounded-r-[12px] border border-white/10 bg-black/58 px-2 py-3 backdrop-blur-md">
+              <div className="border border-white/16 bg-black/58 px-2 py-3 backdrop-blur-md">
                 <p className="text-[10px] uppercase tracking-[0.18em] text-white/56">Exhibit FX</p>
                 <div className="mt-2 grid w-[172px] grid-cols-1 gap-1.5">
                   {EXHIBIT_EFFECT_OPTIONS.map((option) => (
@@ -974,8 +974,8 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                       onClick={() => setEffectMode(option.value)}
                       className={
                         effectMode === option.value
-                          ? "w-full rounded-md border border-[#c0a062]/48 bg-[#c0a062]/20 px-1 py-1.5 text-[9px] leading-tight uppercase tracking-[0.1em] text-[#f8e6be]"
-                          : "w-full rounded-md border border-white/16 bg-white/8 px-1 py-1.5 text-[9px] leading-tight uppercase tracking-[0.1em] text-white/72 transition hover:bg-white/14"
+                          ? "w-full border border-[#c0a062]/48 bg-[#c0a062]/20 px-1 py-1.5 text-[9px] leading-tight uppercase tracking-[0.1em] text-[#f8e6be]"
+                          : "w-full border border-white/20 bg-white/8 px-1 py-1.5 text-[9px] leading-tight uppercase tracking-[0.1em] text-white/72 transition hover:bg-white/14"
                     }
                   >
                       {option.label}
@@ -984,7 +984,7 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                   <button
                     type="button"
                     onClick={shuffleEffects}
-                    className="mt-0.5 rounded-md border border-white/18 bg-white/8 py-1.5 text-[9px] uppercase tracking-[0.14em] text-white/78 transition hover:bg-white/16"
+                    className="mt-0.5 border border-white/20 bg-white/8 py-1.5 text-[9px] uppercase tracking-[0.14em] text-white/78 transition hover:bg-white/16"
                     aria-label="연출 랜덤 셔플"
                   >
                     랜덤 셔플
@@ -997,7 +997,7 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                   event.stopPropagation();
                   toggleFxPanelExpanded();
                 }}
-                className="absolute right-2 top-2 rounded-[8px] border border-white/14 bg-black/66 px-1.5 py-1.5 text-[9px] uppercase tracking-[0.2em] text-white/66 backdrop-blur-md transition hover:bg-white/16"
+                className="absolute right-2 top-2 border border-white/18 bg-black/66 px-1.5 py-1.5 text-[9px] uppercase tracking-[0.2em] text-white/66 backdrop-blur-md transition hover:bg-white/16"
                 aria-label={isFxPanelExpanded ? "FX 패널 닫기" : "FX 패널 열기"}
               >
                 FX
@@ -1006,7 +1006,7 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
           </div>
 
           <div
-            className="pointer-events-none absolute top-[-20%] left-1/2 z-0 h-[122%] w-[210%] -translate-x-1/2 rounded-[50%] shadow-[inset_0_0_260px_rgba(0,0,0,0.9),inset_0_0_0_1px_rgba(210,210,210,0.08)]"
+            className="pointer-events-none absolute top-[-20%] left-1/2 z-0 h-[122%] w-[210%] -translate-x-1/2  shadow-[inset_0_0_260px_rgba(0,0,0,0.9),inset_0_0_0_1px_rgba(210,210,210,0.08)]"
             style={{
               backgroundImage:
                 "radial-gradient(ellipse at center, rgba(122,122,122,0.42) 0%, rgba(82,82,82,0.58) 40%, rgba(36,36,36,0.82) 72%, rgba(8,8,8,0.98) 100%), url(https://www.transparenttextures.com/patterns/dark-concrete.png)",
@@ -1020,13 +1020,13 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
           <div className="pointer-events-none absolute top-[18%] left-1/2 z-[4] h-[42%] w-[112%] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgba(232,232,232,0.14)_0%,rgba(255,255,255,0)_74%)] opacity-[0.58] md:top-[12%] md:h-[48%] md:w-[102%]" />
           <div className="pointer-events-none absolute bottom-[16%] left-1/2 z-[5] h-40 w-[86vw] max-w-5xl -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.72)_0%,rgba(0,0,0,0.34)_40%,rgba(0,0,0,0)_80%)] blur-[10px] md:h-44 md:w-[62vw]" />
 
-          <div className="relative z-20 mx-auto flex h-full w-full max-w-6xl items-center justify-end px-6 pb-28 pt-16 [perspective:820px] md:px-8">
+          <div className="relative z-20 mx-auto flex h-full w-full max-w-[1120px] items-center justify-end px-6 pb-28 pt-16 [perspective:820px] md:px-8">
             {isLoading ? (
-              <div className="mr-[-2px] h-[72vh] w-[75%] rounded-none bg-white/8" />
+              <div className="mr-[-2px] h-[72vh] w-[75%] max-w-[860px] bg-white/8" />
             ) : artworks.length > 0 ? (
-              <div className="relative mr-[-2px] h-[72vh] w-[75%] overflow-visible [transform-style:preserve-3d]">
-                <div className="pointer-events-none absolute inset-y-[8%] left-[2%] z-[12] w-[18%] rounded-none bg-[linear-gradient(90deg,rgba(255,255,255,0.08),rgba(255,255,255,0.0))] opacity-40 [transform:perspective(1200px)_rotateY(34deg)] md:hidden" />
-                <div className="pointer-events-none absolute inset-y-[8%] right-[2%] z-[12] w-[18%] rounded-none bg-[linear-gradient(270deg,rgba(255,255,255,0.08),rgba(255,255,255,0.0))] opacity-40 [transform:perspective(1200px)_rotateY(-34deg)] md:hidden" />
+              <div className="relative mr-[-2px] h-[72vh] w-[75%] max-w-[860px] overflow-visible [transform-style:preserve-3d]">
+                <div className="pointer-events-none absolute inset-y-[8%] left-[2%] z-[12] w-[18%]  bg-[linear-gradient(90deg,rgba(255,255,255,0.08),rgba(255,255,255,0.0))] opacity-40 [transform:perspective(1200px)_rotateY(34deg)] md:hidden" />
+                <div className="pointer-events-none absolute inset-y-[8%] right-[2%] z-[12] w-[18%]  bg-[linear-gradient(270deg,rgba(255,255,255,0.08),rgba(255,255,255,0.0))] opacity-40 [transform:perspective(1200px)_rotateY(-34deg)] md:hidden" />
                 <Swiper
                   className="museum-cyl-swiper !overflow-visible"
                   modules={[EffectCoverflow, Mousewheel, Keyboard]}
@@ -1074,7 +1074,7 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                         <button
                           type="button"
                           onClick={openLightbox}
-                          className="artwork-shell relative mx-auto overflow-visible rounded-none [transform-style:preserve-3d]"
+                          className="artwork-shell relative mx-auto overflow-visible  [transform-style:preserve-3d]"
                           style={{
                             aspectRatio: artworkAspectRatioCss,
                             width: `min(100%, calc(72vh * ${artworkAspectRatioCss}))`,
@@ -1087,7 +1087,7 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                                 style={{ background: effect.aura, opacity: effect.auraOpacity }}
                               />
                               <div className="pointer-events-none absolute left-[7%] right-[7%] -top-[6%] z-[6] h-[18%] [background:linear-gradient(180deg,rgba(255,226,188,0.34)_0%,rgba(255,255,255,0)_100%)] opacity-30" />
-                              <div className="relative z-10 h-full w-full overflow-hidden rounded-none bg-black shadow-[0_0_0_1px_rgba(255,220,176,0.14),0_18px_48px_-14px_rgba(0,0,0,0.92)]">
+                              <div className="relative z-10 h-full w-full overflow-hidden  bg-black shadow-[0_0_0_1px_rgba(255,220,176,0.14),0_18px_48px_-14px_rgba(0,0,0,0.92)]">
                                 <img alt={artwork.title} src={artwork.imageUrl} className="h-full w-full object-contain" />
                                 <div
                                   className="pointer-events-none absolute inset-0 border-transparent [border-style:solid]"
@@ -1118,11 +1118,11 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                             <>
                               <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[140%] w-[140%] -translate-x-1/2 -translate-y-1/2">
                                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(200,220,255,0.15)_0%,rgba(100,150,255,0.05)_40%,transparent_70%)] blur-[40px] opacity-80 mix-blend-screen" />
-                                <div className="absolute -inset-[2px] rounded-[10px] bg-[linear-gradient(to_bottom,rgba(255,255,255,0.6),rgba(255,255,255,0.1),rgba(255,255,255,0))] blur-[8px] opacity-50" />
+                                <div className="absolute -inset-[2px]  bg-[linear-gradient(to_bottom,rgba(255,255,255,0.6),rgba(255,255,255,0.1),rgba(255,255,255,0))] blur-[8px] opacity-50" />
                               </div>
-                              <div className="relative z-10 h-full w-full overflow-hidden rounded-[8px] bg-black shadow-[0_40px_100px_-20px_rgba(0,0,0,1),0_0_0_1px_rgba(255,255,255,0.08),inset_0_0_40px_rgba(0,0,0,0.5)]">
+                              <div className="relative z-10 h-full w-full overflow-hidden  bg-black shadow-[0_40px_100px_-20px_rgba(0,0,0,1),0_0_0_1px_rgba(255,255,255,0.08),inset_0_0_40px_rgba(0,0,0,0.5)]">
                                 <div
-                                  className="pointer-events-none absolute inset-0 z-[50] rounded-[8px]"
+                                  className="pointer-events-none absolute inset-0 z-[50] "
                                   style={{
                                     boxShadow:
                                       "inset 0 1px 0 0 rgba(255,255,255,0.4), inset 1px 0 0 0 rgba(255,255,255,0.2), inset -1px 0 0 0 rgba(255,255,255,0.2), inset 0 -1px 0 0 rgba(255,255,255,0.1), inset 10px 0 25px -5px rgba(0,0,0,0.8), inset -10px 0 25px -5px rgba(0,0,0,0.8)",
@@ -1130,8 +1130,8 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                                       "linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.01) 25%, rgba(255,255,255,0) 50%, rgba(255,255,255,0.02) 100%)",
                                   }}
                                 />
-                                <div className="pointer-events-none absolute inset-[8px] z-[52] rounded-[4px] border border-white/5 shadow-[inset_0_0_30px_rgba(255,255,255,0.02)]" />
-                                <div className="pointer-events-none absolute left-0 right-0 top-0 z-[51] h-[70%] rounded-t-[8px] bg-[linear-gradient(160deg,rgba(255,255,255,0.15)_0%,rgba(255,255,255,0.02)_40%,transparent_100%)] opacity-90 mix-blend-overlay" />
+                                <div className="pointer-events-none absolute inset-[8px] z-[52]  border border-white/5 shadow-[inset_0_0_30px_rgba(255,255,255,0.02)]" />
+                                <div className="pointer-events-none absolute left-0 right-0 top-0 z-[51] h-[70%]  bg-[linear-gradient(160deg,rgba(255,255,255,0.15)_0%,rgba(255,255,255,0.02)_40%,transparent_100%)] opacity-90 mix-blend-overlay" />
                                 <div className="relative h-full w-full bg-[#080808]">
                                   <img
                                     alt={artwork.title}
@@ -1148,10 +1148,10 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                                 <div className="absolute left-[-50%] top-[20%] h-[60px] w-[200%] -rotate-[15deg] blur-[20px] mix-blend-color-dodge [background:linear-gradient(90deg,transparent,rgba(255,0,0,0.2),rgba(255,165,0,0.2),rgba(255,255,0,0.2),rgba(0,128,0,0.2),rgba(0,0,255,0.2),rgba(75,0,130,0.2),rgba(238,130,238,0.2),transparent)] opacity-60" />
                                 <div className="absolute bottom-[30%] right-[-50%] h-[60px] w-[200%] rotate-[15deg] blur-[20px] mix-blend-color-dodge [background:linear-gradient(90deg,transparent,rgba(255,0,0,0.2),rgba(255,165,0,0.2),rgba(255,255,0,0.2),rgba(0,128,0,0.2),rgba(0,0,255,0.2),rgba(75,0,130,0.2),rgba(238,130,238,0.2),transparent)] opacity-60" />
                               </div>
-                              <div className="pointer-events-none absolute -inset-[2px] -z-[5] rounded-[14px] blur-[20px] opacity-50 [background:conic-gradient(from_0deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000)]" />
-                              <div className="relative z-10 h-full w-full overflow-hidden rounded-[12px] bg-black shadow-[0_25px_50px_-12px_rgba(0,0,0,1),0_0_0_1px_rgba(255,255,255,0.1)]">
+                              <div className="pointer-events-none absolute -inset-[2px] -z-[5]  blur-[20px] opacity-50 [background:conic-gradient(from_0deg,#ff0000,#ffff00,#00ff00,#00ffff,#0000ff,#ff00ff,#ff0000)]" />
+                              <div className="relative z-10 h-full w-full overflow-hidden  bg-black shadow-[0_25px_50px_-12px_rgba(0,0,0,1),0_0_0_1px_rgba(255,255,255,0.1)]">
                                 <div
-                                  className="pointer-events-none absolute inset-0 z-[50] rounded-[12px]"
+                                  className="pointer-events-none absolute inset-0 z-[50] "
                                   style={{
                                     boxShadow:
                                       "inset 0 0 0 2px rgba(255,255,255,0.05), inset 0 1px 0 0 rgba(255,255,255,0.5), inset 0 -1px 0 0 rgba(255,255,255,0.15), inset 10px 0 20px -10px rgba(0,0,0,0.5), inset -10px 0 20px -10px rgba(0,0,0,0.5)",
@@ -1159,8 +1159,8 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                                       "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0) 60%, rgba(255,255,255,0.05) 100%)",
                                   }}
                                 />
-                                <div className="pointer-events-none absolute inset-[4px] z-[52] rounded-[8px] border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]" />
-                                <div className="pointer-events-none absolute left-0 right-0 top-0 z-[51] h-[40%] rounded-t-[12px] bg-[linear-gradient(180deg,rgba(255,255,255,0.15)_0%,transparent_100%)] opacity-60 mix-blend-screen" />
+                                <div className="pointer-events-none absolute inset-[4px] z-[52]  border border-white/10 shadow-[0_0_15px_rgba(255,255,255,0.05)]" />
+                                <div className="pointer-events-none absolute left-0 right-0 top-0 z-[51] h-[40%]  bg-[linear-gradient(180deg,rgba(255,255,255,0.15)_0%,transparent_100%)] opacity-60 mix-blend-screen" />
                                 <div className="relative h-full w-full bg-[#080808]">
                                   <img
                                     alt={artwork.title}
@@ -1174,11 +1174,11 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                           ) : null}
                           {isRefractedReality ? (
                             <>
-                              <div className="pointer-events-none absolute -inset-[20px] -z-10 rounded-[20px] bg-[conic-gradient(from_180deg_at_50%_50%,#ff0000,#ff8000,#ffff00,#00ff00,#0000ff,#4b0082,#ee82ee,#ff0000)] blur-[35px] opacity-40 mix-blend-screen" />
+                              <div className="pointer-events-none absolute -inset-[20px] -z-10  bg-[conic-gradient(from_180deg_at_50%_50%,#ff0000,#ff8000,#ffff00,#00ff00,#0000ff,#4b0082,#ee82ee,#ff0000)] blur-[35px] opacity-40 mix-blend-screen" />
                               <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[120%] w-[120%] -translate-x-1/2 -translate-y-1/2 blur-[40px] opacity-80 mix-blend-screen [background:conic-gradient(from_0deg_at_50%_50%,transparent_0deg,rgba(255,0,0,0.15)_20deg,rgba(0,0,255,0.15)_40deg,transparent_60deg,transparent_300deg,rgba(0,255,0,0.1)_320deg,rgba(255,0,255,0.1)_340deg,transparent_360deg)]" />
-                              <div className="relative z-10 h-full w-full overflow-hidden rounded-[6px] border border-white/10 bg-[#1a1a1a] backdrop-blur-md shadow-[0_0_0_1px_rgba(255,255,255,0.15),0_30px_60px_-15px_rgba(0,0,0,0.9),0_0_100px_rgba(255,255,255,0.05),inset_0_0_0_4px_rgba(255,255,255,0.05),inset_0_2px_0_0_rgba(255,255,255,0.4),inset_0_-1px_0_0_rgba(255,255,255,0.1)]">
+                              <div className="relative z-10 h-full w-full overflow-hidden  border border-white/10 bg-[#1a1a1a] backdrop-blur-md shadow-[0_0_0_1px_rgba(255,255,255,0.15),0_30px_60px_-15px_rgba(0,0,0,0.9),0_0_100px_rgba(255,255,255,0.05),inset_0_0_0_4px_rgba(255,255,255,0.05),inset_0_2px_0_0_rgba(255,255,255,0.4),inset_0_-1px_0_0_rgba(255,255,255,0.1)]">
                                 <div
-                                  className="pointer-events-none absolute inset-0 z-[50] rounded-[6px]"
+                                  className="pointer-events-none absolute inset-0 z-[50] "
                                   style={{
                                     background:
                                       "linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.01) 30%, transparent 60%, rgba(255,255,255,0.05) 100%)",
@@ -1187,10 +1187,10 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                                 />
                                 <div className="pointer-events-none absolute bottom-0 left-0 z-[30] h-1/2 w-full bg-gradient-to-t from-fuchsia-500/10 to-transparent mix-blend-color-dodge" />
                                 <div className="pointer-events-none absolute inset-0 z-[30] bg-gradient-to-tr from-transparent via-transparent to-sky-500/10 mix-blend-overlay" />
-                                <div className="pointer-events-none absolute inset-0 z-[55] rounded-[6px] bg-[linear-gradient(115deg,rgba(255,255,255,0.4)_0%,transparent_15%,transparent_85%,rgba(255,255,255,0.1)_100%)] shadow-[inset_0_0_20px_rgba(255,255,255,0.1)] mix-blend-overlay" />
-                                <div className="pointer-events-none absolute -inset-[1px] z-[60] rounded-[7px] border border-white/25 opacity-60" />
+                                <div className="pointer-events-none absolute inset-0 z-[55]  bg-[linear-gradient(115deg,rgba(255,255,255,0.4)_0%,transparent_15%,transparent_85%,rgba(255,255,255,0.1)_100%)] shadow-[inset_0_0_20px_rgba(255,255,255,0.1)] mix-blend-overlay" />
+                                <div className="pointer-events-none absolute -inset-[1px] z-[60]  border border-white/25 opacity-60" />
                                 <div className="pointer-events-none absolute -left-1/2 top-[-50%] z-[56] h-[200%] w-[200%] rotate-[30deg] bg-[linear-gradient(to_right,transparent_45%,rgba(255,255,255,0.1)_50%,transparent_55%)] opacity-30 mix-blend-screen" />
-                                <div className="relative h-full w-full overflow-hidden rounded-[4px] border border-white/5 bg-[#080808]">
+                                <div className="relative h-full w-full overflow-hidden  border border-white/5 bg-[#080808]">
                                   <div className="pointer-events-none absolute inset-0 z-40 bg-gradient-to-br from-white/5 to-transparent opacity-40 mix-blend-soft-light" />
                                   <img
                                     alt={artwork.title}
@@ -1216,7 +1216,7 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                 </Swiper>
               </div>
             ) : (
-              <div className="mr-[-2px] h-[72vh] w-[75%] rounded-none bg-white/10 px-6 py-10 text-center text-sm text-slate-200/86">
+              <div className="mr-[-2px] h-[72vh] w-[75%] max-w-[860px] bg-white/10 px-6 py-10 text-center text-sm text-slate-200/86">
                 전시할 작품이 없습니다.
               </div>
             )}
@@ -1225,10 +1225,10 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
 
         {artworks.length > 0 && currentArtwork ? (
           <div className="pointer-events-none absolute inset-x-0 z-30 [bottom:calc(env(safe-area-inset-bottom)+66px)]">
-            <div className="mx-auto flex w-full max-w-6xl justify-end px-6 md:px-8">
+            <div className="mx-auto flex w-full max-w-[1120px] justify-end px-6 md:px-8">
               <div className="pointer-events-auto w-[75%]">
                 <div
-                  className={`relative overflow-hidden rounded-t-[16px] border border-b-0 transition-transform ease-out touch-none ${
+                  className={`relative overflow-hidden  border border-b-0 transition-transform ease-out touch-none ${
                     sheetDragTranslate == null ? "duration-300" : "duration-0"
                   }`}
                   style={sheetStyle}
@@ -1244,10 +1244,10 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                         event.stopPropagation();
                         toggleDescriptionExpanded();
                       }}
-                      className="mx-auto block rounded-full p-1"
+                      className="mx-auto block  p-1"
                       aria-label={isDescriptionExpanded ? "설명 접기" : "설명 펼치기"}
                     >
-                      <span className="block h-1.5 w-14 rounded-full bg-white/35" />
+                      <span className="block h-1.5 w-14  bg-white/35" />
                     </button>
                   </div>
 
@@ -1288,7 +1288,7 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
         ) : null}
 
         {!isLoading && error ? (
-          <div className="absolute right-6 z-30 rounded-full bg-rose-300/18 px-3 py-1.5 text-xs text-rose-100 [bottom:calc(env(safe-area-inset-bottom)+138px)] md:bottom-36">
+          <div className="absolute right-6 z-30 border border-rose-300/35 bg-rose-300/18 px-3 py-1.5 text-xs text-rose-100 [bottom:calc(env(safe-area-inset-bottom)+138px)] md:bottom-36">
             {error}
           </div>
         ) : null}
@@ -1302,14 +1302,14 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
           >
             <motion.div
               {...popInMotion(reduceMotion)}
-              className="mx-auto flex h-full w-full max-w-7xl flex-col"
+              className="mx-auto flex h-full w-full max-w-[1200px] flex-col border border-white/16 bg-[rgba(7,7,10,0.5)] p-4 md:p-6"
             >
               <div className="mb-4 flex items-center justify-between gap-3 text-slate-100">
                 <p className="text-xs uppercase tracking-[0.28em] text-slate-300">Immersive View</p>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    className="rounded-full border border-white/22 bg-white/8 px-3 py-2 text-xs text-slate-100 transition hover:bg-white/16 disabled:opacity-45"
+                    className=" border border-white/22 bg-white/8 px-3 py-2 text-xs text-slate-100 transition hover:bg-white/16 disabled:opacity-45"
                     onClick={() => zoomLightboxTo(lightboxZoom - LIGHTBOX_ZOOM_STEP)}
                     disabled={lightboxZoom <= LIGHTBOX_MIN_ZOOM + LIGHTBOX_ZOOM_EPSILON}
                     aria-label="축소"
@@ -1318,7 +1318,7 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                   </button>
                   <button
                     type="button"
-                    className="rounded-full border border-white/22 bg-white/8 px-3 py-2 text-xs text-slate-100 transition hover:bg-white/16"
+                    className=" border border-white/22 bg-white/8 px-3 py-2 text-xs text-slate-100 transition hover:bg-white/16"
                     onClick={resetLightboxView}
                     aria-label="줌 초기화"
                   >
@@ -1326,7 +1326,7 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                   </button>
                   <button
                     type="button"
-                    className="rounded-full border border-white/22 bg-white/8 px-3 py-2 text-xs text-slate-100 transition hover:bg-white/16 disabled:opacity-45"
+                    className=" border border-white/22 bg-white/8 px-3 py-2 text-xs text-slate-100 transition hover:bg-white/16 disabled:opacity-45"
                     onClick={() => zoomLightboxTo(lightboxZoom + LIGHTBOX_ZOOM_STEP)}
                     disabled={lightboxZoom >= LIGHTBOX_MAX_ZOOM - LIGHTBOX_ZOOM_EPSILON}
                     aria-label="확대"
@@ -1335,14 +1335,14 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                   </button>
                   <button
                     type="button"
-                    className="rounded-full border border-white/22 bg-white/8 px-3 py-2 text-xs text-slate-100 transition hover:bg-white/16"
+                    className=" border border-white/22 bg-white/8 px-3 py-2 text-xs text-slate-100 transition hover:bg-white/16"
                     onClick={() => setLightboxRotationQuarterTurns((prev) => prev + 1)}
                     aria-label="90도 회전"
                   >
                     90°
                   </button>
                   <button
-                    className="rounded-full bg-white/16 px-4 py-2 text-sm text-slate-100 transition hover:bg-white/24"
+                    className="border border-white/20 bg-white/16 px-4 py-2 text-sm text-slate-100 transition hover:bg-white/24"
                     onClick={closeLightbox}
                   >
                     닫기
@@ -1352,7 +1352,7 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
 
               <div
                 ref={lightboxViewportRef}
-                className={`relative flex-1 overflow-hidden rounded-none bg-black/72 touch-none ${
+                  className={`relative flex-1 overflow-hidden border border-white/16 bg-black/72 touch-none ${
                   lightboxZoom > LIGHTBOX_MIN_ZOOM + LIGHTBOX_ZOOM_EPSILON
                     ? isLightboxPanning
                       ? "cursor-grabbing"
@@ -1395,7 +1395,7 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                   <p className="text-sm font-semibold">{currentArtwork.title}</p>
                   <p className="text-xs opacity-90">{museum?.ownerName}</p>
                 </div>
-                <span className="rounded-full bg-white/14 px-3 py-1 text-xs">
+                <span className="border border-white/18 bg-white/14 px-3 py-1 text-xs">
                   {artworks.length === 0 ? "0/0" : `${safeActiveIndex + 1}/${artworks.length}`}
                 </span>
               </div>

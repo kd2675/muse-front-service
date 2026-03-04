@@ -149,13 +149,13 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
           <button
             type="button"
             onClick={goBackToDetail}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/14 text-slate-400 transition hover:border-white/28 hover:text-white"
+            className="flex h-10 w-10 items-center justify-center  border border-white/14 text-slate-400 transition hover:border-white/28 hover:text-white"
             aria-label="상세로 돌아가기"
           >
             <span className="material-symbols-outlined text-[20px]">arrow_back</span>
           </button>
 
-          <div className="rounded-sm border border-[#c0a062]/45 bg-[#c0a062]/18 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-[#f8e6be]">
+          <div className=" border border-[#c0a062]/45 bg-[#c0a062]/18 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-[#f8e6be]">
             Exhibition Focus
           </div>
 
@@ -163,13 +163,13 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
 
         {(contestLoading || entriesLoading) && (
           <section className="space-y-6">
-            <div className="rounded-[28px] border border-white/10 bg-white/6 p-8">
-              <Skeleton className="h-8 w-2/5 rounded-[14px]" />
+            <div className=" border border-white/10 bg-white/6 p-8">
+              <Skeleton className="h-8 w-2/5 " />
               <SkeletonText className="mt-4 max-w-xl" lines={2} />
             </div>
-            <div className="rounded-[24px] border border-white/10 bg-white/6 p-5">
-              <Skeleton className="h-[34rem] w-full rounded-[16px]" />
-              <Skeleton className="mt-4 h-5 w-1/3 rounded-full" />
+            <div className=" border border-white/10 bg-white/6 p-5">
+              <Skeleton className="h-[34rem] w-full " />
+              <Skeleton className="mt-4 h-5 w-1/3 " />
             </div>
           </section>
         )}
@@ -177,14 +177,14 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
         {!contestLoading && !entriesLoading && (
           <>
             {!contest && (
-              <section className="rounded-[20px] border border-rose-300/35 bg-rose-300/10 px-5 py-4 text-sm text-rose-100">
+              <section className=" border border-rose-300/35 bg-rose-300/10 px-5 py-4 text-sm text-rose-100">
                 콘테스트 정보를 불러오지 못했습니다. {contestError ?? ""}
               </section>
             )}
 
             {contest && !isVoting && (
               <motion.section
-                className="rounded-[30px] border border-white/10 bg-[rgba(18,18,18,0.74)] p-7 shadow-[0_24px_56px_rgba(0,0,0,0.34)] backdrop-blur-md md:p-9"
+                className=" border border-white/10 bg-[rgba(18,18,18,0.74)] p-7 shadow-[0_24px_56px_rgba(0,0,0,0.34)] backdrop-blur-md md:p-9"
                 {...staggeredFadeUpMotion(1, reduceMotion)}
               >
                 <p className="text-[10px] uppercase tracking-[0.3em] text-[#c0a062]">Curated Exhibition</p>
@@ -195,13 +195,13 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
                 <div className="mt-7 flex flex-wrap gap-3">
                   <Link
                     href={`/contest/${id}?tab=contest`}
-                    className="rounded-full border border-white/20 bg-white/6 px-5 py-3 text-sm text-slate-200 transition hover:bg-white/12"
+                    className=" border border-white/20 bg-white/6 px-5 py-3 text-sm text-slate-200 transition hover:bg-white/12"
                   >
                     상세로 돌아가기
                   </Link>
                   <Link
                     href="/contest?tab=contest"
-                    className="rounded-full border border-white/16 px-5 py-3 text-sm text-slate-300 transition hover:border-white/28 hover:text-white"
+                    className=" border border-white/16 px-5 py-3 text-sm text-slate-300 transition hover:border-white/28 hover:text-white"
                   >
                     콘테스트 목록
                   </Link>
@@ -212,11 +212,11 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
             {contest && isVoting && (
               <>
                 <motion.section
-                  className="rounded-[30px] border border-white/10 bg-[rgba(18,18,18,0.74)] p-7 shadow-[0_24px_56px_rgba(0,0,0,0.34)] backdrop-blur-md md:p-9"
+                  className=" border border-white/10 bg-[rgba(18,18,18,0.74)] p-7 shadow-[0_24px_56px_rgba(0,0,0,0.34)] backdrop-blur-md md:p-9"
                   {...staggeredFadeUpMotion(1, reduceMotion)}
                 >
                   <p
-                    className={`inline-flex rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.3em] ${
+                    className={`inline-flex  border px-3 py-1 text-[10px] uppercase tracking-[0.3em] ${
                       getContestPhaseTone("VOTING").chipClass
                     }`}
                   >
@@ -229,23 +229,23 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
                     한 작품에 집중해 감상하고, 좌우 이동으로 다음 작품을 비교할 수 있습니다.
                   </p>
                   <div className="mt-6 flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-full border border-white/18 bg-white/[0.03] px-3 py-1.5 text-slate-300">
+                    <span className=" border border-white/18 bg-white/[0.03] px-3 py-1.5 text-slate-300">
                       Work {entries.length === 0 ? "0/0" : `${safeCurrentIndex + 1}/${entries.length}`}
                     </span>
-                    <span className="rounded-full border border-white/18 bg-white/[0.03] px-3 py-1.5 text-slate-300">
+                    <span className=" border border-white/18 bg-white/[0.03] px-3 py-1.5 text-slate-300">
                       전시 기간 {formatSchedule(contest.votingStartAt)} - {formatSchedule(contest.votingEndAt)}
                     </span>
                   </div>
                 </motion.section>
 
                 {entriesError && (
-                  <section className="mt-6 rounded-[18px] border border-rose-300/35 bg-rose-300/10 px-5 py-3 text-xs text-rose-100">
+                  <section className="mt-6  border border-rose-300/35 bg-rose-300/10 px-5 py-3 text-xs text-rose-100">
                     작품 목록을 불러오지 못했습니다. {entriesError}
                   </section>
                 )}
 
                 {entries.length === 0 ? (
-                  <section className="mt-8 rounded-[20px] border border-white/12 bg-white/[0.03] px-6 py-5 text-sm text-slate-300">
+                  <section className="mt-8  border border-white/12 bg-white/[0.03] px-6 py-5 text-sm text-slate-300">
                     전시 중인 작품이 아직 없습니다.
                   </section>
                 ) : (
@@ -254,14 +254,14 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
                       <motion.article
                         key={currentEntry.entryId}
                         {...staggeredFadeUpMotion(2, reduceMotion)}
-                        className="rounded-[24px] border border-white/12 bg-[rgba(20,20,22,0.92)] p-5 shadow-[0_20px_40px_rgba(0,0,0,0.28)]"
+                        className=" border border-white/12 bg-[rgba(20,20,22,0.92)] p-5 shadow-[0_20px_40px_rgba(0,0,0,0.28)]"
                       >
                         <button
                           type="button"
                           onClick={() => setIsLightboxOpen(true)}
-                          className="group block w-full rounded-[16px] border border-white/12 bg-black/20 p-2 text-left"
+                          className="group block w-full  border border-white/12 bg-black/20 p-2 text-left"
                         >
-                          <div className="overflow-hidden rounded-[12px]">
+                          <div className="overflow-hidden ">
                             {currentEntry.imageUrl ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img
@@ -287,14 +287,14 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
                           <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
-                              className="rounded-full border border-white/18 bg-white/[0.03] px-4 py-2.5 text-sm text-slate-200 transition hover:bg-white/10"
+                              className=" border border-white/18 bg-white/[0.03] px-4 py-2.5 text-sm text-slate-200 transition hover:bg-white/10"
                               onClick={goPrev}
                             >
                               이전 작품
                             </button>
                             <button
                               type="button"
-                              className="rounded-full border border-white/18 bg-white/[0.03] px-4 py-2.5 text-sm text-slate-200 transition hover:bg-white/10"
+                              className=" border border-white/18 bg-white/[0.03] px-4 py-2.5 text-sm text-slate-200 transition hover:bg-white/10"
                               onClick={goNext}
                             >
                               다음 작품
@@ -306,7 +306,7 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
                           {canVote ? (
                             <button
                               type="button"
-                              className="w-full rounded-full border border-[#c0a062]/40 bg-[#c0a062]/14 px-4 py-3 text-sm text-[#f3dba5] transition hover:bg-[#c0a062]/22 disabled:opacity-60"
+                              className="w-full  border border-[#c0a062]/40 bg-[#c0a062]/14 px-4 py-3 text-sm text-[#f3dba5] transition hover:bg-[#c0a062]/22 disabled:opacity-60"
                               onClick={() => voteMutation.mutate(currentEntry.entryId)}
                               disabled={Boolean(pendingVoteEntryId)}
                             >
@@ -316,14 +316,14 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
                             <div className="grid gap-2">
                               <button
                                 type="button"
-                                className="w-full rounded-full border border-white/18 bg-white/[0.03] px-4 py-3 text-sm text-slate-300"
+                                className="w-full  border border-white/18 bg-white/[0.03] px-4 py-3 text-sm text-slate-300"
                                 onClick={requestLoginForVote}
                               >
                                 로그인 후 선택 가능
                               </button>
                               <Link
                                 href="/login"
-                                className="w-full rounded-full border border-white/18 px-4 py-2 text-center text-xs text-slate-400 transition hover:border-white/30 hover:text-slate-200"
+                                className="w-full  border border-white/18 px-4 py-2 text-center text-xs text-slate-400 transition hover:border-white/30 hover:text-slate-200"
                               >
                                 로그인하러 가기
                               </Link>
@@ -354,14 +354,14 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
                 <p className="text-xs uppercase tracking-[0.28em] text-slate-300">Full Screen View</p>
                 <button
                   type="button"
-                  className="rounded-full border border-white/20 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10"
+                  className=" border border-white/20 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10"
                   onClick={() => setIsLightboxOpen(false)}
                 >
                   닫기
                 </button>
               </div>
 
-              <div className="relative flex-1 overflow-hidden rounded-[22px] border border-white/16 bg-black/40">
+              <div className="relative flex-1 overflow-hidden  border border-white/16 bg-black/40">
                 {currentEntry.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={currentEntry.imageUrl} alt={currentEntry.title ?? "contest entry"} className="h-full w-full object-contain" />
@@ -375,7 +375,7 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
                   <p className="text-sm font-semibold">{currentEntry.title ?? "Untitled"}</p>
                   <p className="text-xs text-slate-400">{currentEntry.artistName}</p>
                 </div>
-                <span className="rounded-full border border-white/20 px-3 py-1 text-xs text-slate-300">
+                <span className=" border border-white/20 px-3 py-1 text-xs text-slate-300">
                   {entries.length === 0 ? "0/0" : `${safeCurrentIndex + 1}/${entries.length}`}
                 </span>
               </div>

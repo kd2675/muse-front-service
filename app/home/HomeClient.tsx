@@ -163,11 +163,11 @@ export default function HomeClient() {
             >
               <p className="text-xs uppercase tracking-[0.3em] text-slate-100/62">{HOME_LABEL}</p>
               {!isHydrated ? (
-                <div className="h-9 w-24 rounded-full border border-slate-100/20 bg-slate-100/10" />
+                <div className="h-9 w-24  border border-slate-100/20 bg-slate-100/10" />
               ) : authStatus === "in" ? (
                 <div className="flex items-center gap-2">
                   {userLabel ? (
-                    <span className="hidden rounded-full border border-slate-100/18 bg-slate-100/10 px-3 py-1 text-xs text-slate-100/82 md:inline-flex">
+                    <span className="hidden  border border-slate-100/18 bg-slate-100/10 px-3 py-1 text-xs text-slate-100/82 md:inline-flex">
                       {userLabel}
                     </span>
                   ) : null}
@@ -175,7 +175,7 @@ export default function HomeClient() {
                     type="button"
                     onClick={handleSignOut}
                     disabled={isSigningOut}
-                    className="rounded-full border border-slate-100/24 bg-[rgba(8,8,12,0.4)] px-4 py-2 text-xs text-slate-100/85 transition hover:border-slate-100/40 hover:text-slate-100 disabled:opacity-60"
+                    className=" border border-slate-100/24 bg-[rgba(8,8,12,0.4)] px-4 py-2 text-xs text-slate-100/85 transition hover:border-slate-100/40 hover:text-slate-100 disabled:opacity-60"
                   >
                     {isSigningOut ? "Signing out..." : "Sign out"}
                   </button>
@@ -184,7 +184,7 @@ export default function HomeClient() {
                 <button
                   type="button"
                   onClick={() => router.push("/login")}
-                  className="rounded-full border border-slate-100/24 bg-[rgba(8,8,12,0.4)] px-4 py-2 text-xs text-slate-100/85 transition hover:border-slate-100/40 hover:text-slate-100"
+                  className=" border border-slate-100/24 bg-[rgba(8,8,12,0.4)] px-4 py-2 text-xs text-slate-100/85 transition hover:border-slate-100/40 hover:text-slate-100"
                 >
                   Sign in
                 </button>
@@ -220,7 +220,7 @@ export default function HomeClient() {
                 className="group flex flex-col items-center gap-3 text-slate-100 transition hover:opacity-85"
                 style={{ touchAction: "none" }}
               >
-                <span className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-100/20 bg-[rgba(8,8,12,0.4)] text-2xl backdrop-blur-md">
+                <span className="flex h-12 w-12 items-center justify-center  border border-slate-100/20 bg-[rgba(8,8,12,0.4)] text-2xl backdrop-blur-md">
                   <span className="material-symbols-outlined text-[28px]">keyboard_double_arrow_up</span>
                 </span>
                 <span className="text-sm uppercase tracking-[0.2em]">Step Inside</span>

@@ -3,11 +3,14 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
+import { getUserFromToken, isAdminRole } from "../lib/auth";
+import { onAuthChanged } from "../lib/authEvents";
 import { canAccessPath } from "../lib/routeGuard";
 import { useAppDispatch } from "../store/hooks";
 import { setPendingPath, showToast } from "../store/uiSlice";
 
 type NavTab = "home" | "overview" | "contest" | "gallery" | "profile";
+type NavItemKey = NavTab | "admin";
 
 type CinematicBottomNavProps = {
   activeTab: NavTab;
@@ -15,7 +18,7 @@ type CinematicBottomNavProps = {
 };
 
 type NavItem = {
-  key: NavTab;
+  key: NavItemKey;
   label: string;
   icon: string;
   path: string;
@@ -67,6 +70,19 @@ export default function CinematicBottomNav({
   const prefersReducedMotion = useReducedMotion();
   const reduceMotion = Boolean(prefersReducedMotion);
   const [isDocked, setIsDocked] = useState(() => persistedDockedState);
+  const [isAdminUser, setIsAdminUser] = useState(false);
+
+  useEffect(() => {
+    const updateRole = () => {
+      const role = getUserFromToken()?.role;
+      setIsAdminUser(isAdminRole(role));
+    };
+    updateRole();
+    const unsubscribe = onAuthChanged(updateRole);
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     persistedDockedState = isDocked;
@@ -122,14 +138,28 @@ export default function CinematicBottomNav({
     router.push(`${path}?tab=${tab}`);
   };
 
+  const navItems: NavItem[] = isAdminUser
+    ? [
+        ...items,
+        {
+          key: "admin",
+          label: "Admin",
+          icon: "admin_panel_settings",
+          path: "/admin/contests",
+          tab: "contest",
+        },
+      ]
+    : items;
+
   const renderButtons = () =>
-    items.map((item) => {
-      const isActive = item.key === activeTab;
+    navItems.map((item) => {
+      const isAdminPath = pathname.startsWith("/admin");
+      const isActive = isAdminPath ? item.key === "admin" : item.key === activeTab;
       return (
         <button
           key={item.key}
           type="button"
-          className={`flex h-10 w-10 touch-manipulation items-center justify-center rounded-full transition ${
+          className={`flex h-10 w-10 touch-manipulation items-center justify-center  transition ${
             isActive ? "text-slate-100" : "text-slate-100/40 hover:text-slate-100"
           }`}
           onClick={() => navigateWithGuard(item.path, item.tab)}
@@ -141,13 +171,13 @@ export default function CinematicBottomNav({
     });
 
   const InlineMenu = (
-    <nav className="flex w-full items-center justify-center gap-3 rounded-full border border-slate-100/10 bg-[rgba(8,8,12,0.4)] px-4 py-3 backdrop-blur-md">
+    <nav className="flex w-full items-center justify-center gap-3  border border-slate-100/10 bg-[rgba(8,8,12,0.4)] px-4 py-3 backdrop-blur-md">
       {renderButtons()}
     </nav>
   );
 
   const FloatingMenu = (
-    <nav className="flex w-[clamp(280px,33vw,460px)] max-w-[calc(100vw-2.5rem)] items-center justify-center gap-3 rounded-full border border-slate-100/10 bg-[rgba(8,8,12,0.4)] px-4 py-3 backdrop-blur-md">
+    <nav className="flex w-[clamp(280px,33vw,460px)] max-w-[calc(100vw-2.5rem)] items-center justify-center gap-3  border border-slate-100/10 bg-[rgba(8,8,12,0.4)] px-4 py-3 backdrop-blur-md">
       {renderButtons()}
     </nav>
   );

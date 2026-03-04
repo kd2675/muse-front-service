@@ -326,7 +326,7 @@ export default function AdminContestReviewClient() {
         title="Contest Review Admin"
         description="콘테스트별 출품 심사 큐를 상태 기반으로 관리합니다."
       >
-        <section className="rounded-[28px] border border-[color:var(--line)] bg-[rgba(34,34,40,0.72)] p-8 shadow-[var(--shadow)]">
+        <section className=" border border-[color:var(--line)] bg-[rgba(34,34,40,0.72)] p-8 shadow-[var(--shadow)]">
           <p className="text-sm text-[color:var(--muted)]">관리자 권한이 필요합니다.</p>
         </section>
       </AdminShell>
@@ -340,8 +340,8 @@ export default function AdminContestReviewClient() {
       description="출품 심사 가능 시간대와 상태별 필터를 기준으로 빠르게 운영합니다."
     >
       <Reveal index={0}>
-      <section className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <aside className="rounded-[28px] border border-[color:var(--line)] bg-[rgba(18,18,24,0.82)] p-6 shadow-[var(--shadow)] xl:sticky xl:top-24 xl:max-h-[calc(100vh-8.5rem)] xl:overflow-y-auto">
+      <section className="grid gap-8 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className="border border-[color:var(--line)] bg-[rgba(18,18,24,0.86)] p-7 shadow-[var(--shadow)] xl:sticky xl:top-24 xl:max-h-[calc(100vh-8.5rem)] xl:overflow-y-auto">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">Admin</p>
@@ -358,9 +358,9 @@ export default function AdminContestReviewClient() {
 
           {isLoading ? (
             <div className="mt-6 grid gap-3">
-              <Skeleton className="h-20 rounded-[16px]" />
-              <Skeleton className="h-20 rounded-[16px]" />
-              <Skeleton className="h-20 rounded-[16px]" />
+              <Skeleton className="h-20 " />
+              <Skeleton className="h-20 " />
+              <Skeleton className="h-20 " />
             </div>
           ) : (
             <div className="mt-6 grid gap-3">
@@ -371,7 +371,7 @@ export default function AdminContestReviewClient() {
                   <motion.button
                     key={contest.id}
                     {...staggeredFadeUpMotion(index + 1, reduceMotion)}
-                    className={`rounded-[16px] border px-4 py-3 text-left transition ${
+                    className={`border px-4 py-4 text-left transition ${
                       activeContestId === contest.id
                         ? "border-[color:var(--accent)] bg-[color:var(--chip)]"
                         : tone.cardClass
@@ -384,14 +384,14 @@ export default function AdminContestReviewClient() {
                     <p className="mt-1 font-medium">{contest.theme}</p>
                     <p className="mt-1 text-xs text-[color:var(--muted)]">{contest.period}</p>
                     <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-[color:var(--muted)]">
-                      <span className={`rounded-full border px-2 py-1 ${tone.badgeClass}`}>
+                      <span className={` border px-2 py-1 ${tone.badgeClass}`}>
                         {priority.code} · {priority.label}
                       </span>
-                      <span className="rounded-full border border-[color:var(--line)] px-2 py-1">
+                      <span className=" border border-[color:var(--line)] px-2 py-1">
                         참여 {formatNumber(contest.participationCount)}
                       </span>
                       <span
-                        className={`rounded-full border px-2 py-1 ${
+                        className={` border px-2 py-1 ${
                           isContestReviewWindow(contest)
                             ? "border-[color:var(--accent)] text-[color:var(--accent)]"
                             : "border-[color:var(--line)] text-[color:var(--muted)]"
@@ -404,7 +404,7 @@ export default function AdminContestReviewClient() {
                 );
               })}
               {!isLoading && prioritizedContests.length === 0 && (
-                <p className="rounded-[16px] border border-[color:var(--line)] bg-[rgba(18,18,24,0.84)] px-4 py-3 text-sm text-[color:var(--muted)]">
+                <p className="border border-[color:var(--line)] bg-[rgba(18,18,24,0.88)] px-4 py-3 text-sm text-[color:var(--muted)]">
                   등록된 콘테스트가 없습니다.
                 </p>
               )}
@@ -416,9 +416,11 @@ export default function AdminContestReviewClient() {
           )}
         </aside>
 
-        <section className="min-w-0 rounded-[28px] border border-[color:var(--line)] bg-[rgba(18,18,24,0.82)] p-6 shadow-[var(--shadow)]">
+        <section className="min-w-0 border border-[color:var(--line)] bg-[rgba(18,18,24,0.86)] p-7 shadow-[var(--shadow)] md:p-8">
           <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">Entry Review</p>
-          <h1 className="mt-2 font-[var(--font-display)] text-3xl">출품 심사 전용</h1>
+          <h1 className="mt-2 border-b border-[color:var(--line)] pb-4 font-[var(--font-display)] text-4xl italic">
+            출품 심사 전용
+          </h1>
           <p className="mt-2 text-sm text-[color:var(--muted)]">
             출품 상태를 대기, 승인, 반려 기준으로 분리해서 대량 심사합니다.
           </p>
@@ -426,7 +428,7 @@ export default function AdminContestReviewClient() {
             심사는 출품 종료 후 전시 시작 전(여분 시간대)에만 가능합니다.
           </p>
           {selectedContest && !isSelectedContestReviewable && (
-            <p className="mt-2 rounded-[12px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-3 py-2 text-xs text-[color:var(--accent-2)]">
+            <p className="mt-3 border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-3 py-2 text-xs text-[color:var(--accent-2)]">
               현재 선택한 콘테스트는 심사 가능 시간대가 아닙니다. 목록 조회는 가능하지만 상태 변경은 비활성화됩니다.
             </p>
           )}
@@ -437,11 +439,11 @@ export default function AdminContestReviewClient() {
                 <p>
                   현재 콘테스트: <strong>#{selectedContest.id}</strong> · {selectedContest.theme}
                 </p>
-                <span className="rounded-full border border-[color:var(--line)] px-2 py-0.5 text-xs text-[color:var(--muted)]">
+                <span className=" border border-[color:var(--line)] px-2 py-0.5 text-xs text-[color:var(--muted)]">
                   참여 {formatNumber(selectedContest.participationCount)}
                 </span>
               </div>
-              <div className="rounded-[16px] border border-[color:var(--line)] bg-[rgba(18,18,24,0.86)] p-4">
+              <div className="border border-[color:var(--line)] bg-[rgba(18,18,24,0.9)] p-5">
                 <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--muted)]">Contest Schedule</p>
                 <div className="mt-3 grid gap-2 text-sm text-[color:var(--canvas-ink)]">
                   <p>
@@ -469,9 +471,9 @@ export default function AdminContestReviewClient() {
                         <span>{item.label}</span>
                         <span>{item.value === null ? "-" : `${item.value}%`}</span>
                       </div>
-                      <div className="h-2 rounded-full bg-[color:var(--chip)]">
+                      <div className="h-2 bg-[color:var(--chip)]">
                         <div
-                          className="h-full rounded-full bg-[color:var(--accent)] transition-[width] duration-500"
+                          className="h-full bg-[color:var(--accent)] transition-[width] duration-500"
                           style={{ width: `${item.value ?? 0}%` }}
                         />
                       </div>
@@ -488,10 +490,10 @@ export default function AdminContestReviewClient() {
                 {filterOrder.map((value) => (
                   <button
                     key={`review-filter-${value}`}
-                    className={`rounded-[14px] border px-3 py-3 text-left transition ${
+                    className={`border px-3 py-3 text-left transition ${
                       filter === value
                         ? `${getContestEntryStatusTone(value).chipClass}`
-                        : "border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] hover:border-[color:var(--accent)]"
+                        : "border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] hover:border-[color:var(--accent)]"
                     }`}
                     onClick={() => setFilter(value)}
                   >
@@ -505,9 +507,9 @@ export default function AdminContestReviewClient() {
 
               {entriesLoading ? (
                 <div className="mt-5 grid gap-3">
-                  <Skeleton className="h-16 rounded-[14px]" />
-                  <Skeleton className="h-16 rounded-[14px]" />
-                  <Skeleton className="h-16 rounded-[14px]" />
+                  <Skeleton className="h-16 " />
+                  <Skeleton className="h-16 " />
+                  <Skeleton className="h-16 " />
                 </div>
               ) : (
                 <div className="mt-5 grid max-h-[calc(100vh-22rem)] gap-3 overflow-y-auto pr-1">
@@ -515,7 +517,7 @@ export default function AdminContestReviewClient() {
                     <motion.article
                       key={entry.entryId}
                       {...staggeredFadeUpMotion(index + 8, reduceMotion)}
-                      className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] p-3"
+                      className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] p-4"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="flex min-w-0 flex-wrap items-start gap-3 sm:flex-nowrap">
@@ -524,10 +526,10 @@ export default function AdminContestReviewClient() {
                             <img
                               src={normalizeImageUrl(entry.imageUrl) ?? ""}
                               alt={entry.title ?? "contest entry"}
-                              className="h-24 w-36 rounded-[10px] border border-[color:var(--line)] object-cover sm:h-28 sm:w-44"
+                              className="h-24 w-36 border border-[color:var(--line)] object-cover sm:h-28 sm:w-44"
                             />
                           ) : (
-                            <div className="flex h-24 w-36 items-center justify-center rounded-[10px] border border-dashed border-[color:var(--line)] bg-[color:var(--chip)] text-xs text-[color:var(--muted)] sm:h-28 sm:w-44">
+                            <div className="flex h-24 w-36 items-center justify-center border border-dashed border-[color:var(--line)] bg-[color:var(--chip)] text-xs text-[color:var(--muted)] sm:h-28 sm:w-44">
                               이미지 없음
                             </div>
                           )}
@@ -557,7 +559,7 @@ export default function AdminContestReviewClient() {
                           </div>
                         </div>
                         <span
-                          className={`rounded-full border px-2 py-1 text-xs ${
+                          className={`border px-2 py-1 text-xs ${
                             getContestEntryStatusTone(entry.status).chipClass
                           }`}
                         >
@@ -597,7 +599,7 @@ export default function AdminContestReviewClient() {
                   ))}
 
                   {filteredEntries.length === 0 && (
-                    <div className="rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3 text-sm text-[color:var(--muted)]">
+                    <div className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3 text-sm text-[color:var(--muted)]">
                       {getContestEntryStatusLabel(filter)} 상태 출품이 없습니다.
                     </div>
                   )}
@@ -605,7 +607,7 @@ export default function AdminContestReviewClient() {
               )}
             </>
           ) : (
-            <div className="mt-5 rounded-[14px] border border-[color:var(--line)] bg-[rgba(12,12,18,0.78)] px-4 py-3 text-sm text-[color:var(--muted)]">
+            <div className="mt-5 border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3 text-sm text-[color:var(--muted)]">
               등록된 콘테스트가 없습니다.
             </div>
           )}
@@ -618,7 +620,7 @@ export default function AdminContestReviewClient() {
       </Reveal>
       {previewImageUrl && (
         <section className="fixed inset-0 z-[120] bg-[rgba(9,16,24,0.82)] p-4 md:p-8">
-          <div className="mx-auto flex h-full w-full max-w-6xl flex-col rounded-[22px] border border-white/20 bg-[rgba(7,11,18,0.94)] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+          <div className="mx-auto flex h-full w-full max-w-[1120px] flex-col border border-white/20 bg-[rgba(7,11,18,0.94)] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.45)] md:p-6">
             <div className="flex items-center justify-between gap-3 border-b border-white/15 pb-3">
               <h2 className="truncate text-sm font-semibold text-white">{previewImageTitle}</h2>
               <div className="flex items-center gap-2">
@@ -640,7 +642,7 @@ export default function AdminContestReviewClient() {
               <img
                 src={previewImageUrl}
                 alt={previewImageTitle}
-                className="max-h-full w-auto max-w-full rounded-[16px] object-contain"
+                className="max-h-full w-auto max-w-full object-contain"
               />
             </div>
           </div>

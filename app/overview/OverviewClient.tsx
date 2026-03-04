@@ -147,32 +147,32 @@ export default function OverviewClient() {
     <div className="relative min-h-screen overflow-x-hidden bg-[#121212] text-slate-100">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_10%,rgba(84,90,111,0.24),transparent_34%),radial-gradient(circle_at_86%_20%,rgba(73,108,115,0.18),transparent_40%),radial-gradient(circle_at_52%_84%,rgba(120,86,64,0.14),transparent_42%)]" />
 
-      <main className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col px-6 pb-28 pt-6 md:px-8">
+      <main className="relative mx-auto flex min-h-screen w-full max-w-5xl flex-col px-6 pb-36 pt-10 md:px-8">
         {isLoading ? (
           <div className="flex min-h-screen flex-col gap-8 pt-4">
-            <div className="h-8 w-40 rounded-full bg-white/10" />
-            <div className="h-80 rounded-[24px] bg-white/6" />
-            <div className="h-72 rounded-[24px] bg-white/6" />
+            <div className="h-8 w-40  bg-white/10" />
+            <div className="h-80  bg-white/6" />
+            <div className="h-72  bg-white/6" />
           </div>
         ) : payload ? (
-          <div className="space-y-10">
+          <div className="space-y-14">
             <motion.header
               className="flex w-full items-center justify-between"
               {...staggeredFadeUpMotion(0, reduceMotion)}
             >
               <div className="flex flex-col">
-                <p className="text-[10px] uppercase tracking-[0.4em] text-slate-500">Overview Hub</p>
-                <h1 className="mt-1 font-[var(--font-display)] text-2xl italic text-slate-200">
+                <p className="text-[10px] uppercase tracking-[0.42em] text-slate-500">Overview Hub</p>
+                <h1 className="mt-2 font-[var(--font-display)] text-3xl italic text-slate-100">
                   Curated Dashboard
                 </h1>
               </div>
 
               {!isHydrated ? (
-                <div className="h-9 w-24 rounded-full bg-white/8" />
+                <div className="h-9 w-24  bg-white/8" />
               ) : authStatus === "in" ? (
                 <div className="flex items-center gap-2">
                   {userLabel ? (
-                    <span className="hidden rounded-full bg-white/6 px-3 py-1 text-xs text-slate-200/85 md:inline-flex">
+                    <span className="hidden  bg-white/6 px-3 py-1 text-xs text-slate-200/85 md:inline-flex">
                       {userLabel}
                     </span>
                   ) : null}
@@ -180,7 +180,7 @@ export default function OverviewClient() {
                     type="button"
                     onClick={handleSignOut}
                     disabled={isSigningOut}
-                    className="rounded-full bg-white/8 px-4 py-2 text-xs text-slate-200/88 transition hover:bg-white/14 disabled:opacity-60"
+                    className="border border-white/14 bg-white/8 px-4 py-2 text-xs uppercase tracking-[0.14em] text-slate-200/88 transition hover:bg-white/14 disabled:opacity-60"
                   >
                     {isSigningOut ? "Signing out..." : "Sign out"}
                   </button>
@@ -189,7 +189,7 @@ export default function OverviewClient() {
                 <button
                   type="button"
                   onClick={() => router.push("/login")}
-                  className="rounded-full bg-white/8 px-4 py-2 text-xs text-slate-200/88 transition hover:bg-white/14"
+                  className="border border-white/14 bg-white/8 px-4 py-2 text-xs uppercase tracking-[0.14em] text-slate-200/88 transition hover:bg-white/14"
                 >
                   Sign in
                 </button>
@@ -197,21 +197,21 @@ export default function OverviewClient() {
             </motion.header>
 
             <motion.section {...staggeredFadeUpMotion(1, reduceMotion)}>
-              <div className="mb-5 flex items-center justify-between border-b border-white/10 pb-4">
-                <h2 className="text-xs uppercase tracking-[0.2em] text-slate-400">Contest Spotlight</h2>
+              <div className="mb-6 flex items-center justify-between border-b border-white/16 pb-5">
+                <h2 className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Contest Spotlight</h2>
                 <button
                   type="button"
                   onClick={() => navigateWithGuard("/contest", "contest")}
-                  className="text-[10px] uppercase tracking-[0.18em] text-slate-500 transition hover:text-slate-300"
+                  className="text-[10px] uppercase tracking-[0.22em] text-slate-500 transition hover:text-slate-300"
                 >
                   Explore
                 </button>
               </div>
 
               {latestSubmissionContest ? (
-                <div className="rounded-[20px] border border-white/12 bg-[rgba(255,255,255,0.03)] p-6">
+                <div className="border border-white/16 bg-[rgba(255,255,255,0.025)] px-7 py-8 md:px-8">
                   <div className="mb-4 flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_9px_rgba(52,211,153,0.65)]" />
+                    <span className="h-1.5 w-1.5  bg-emerald-400 shadow-[0_0_9px_rgba(52,211,153,0.65)]" />
                     <span className="text-[10px] uppercase tracking-[0.2em] text-emerald-200/95">
                       출품 진행중
                     </span>
@@ -222,74 +222,74 @@ export default function OverviewClient() {
                     onClick={() => router.push(contestDetailRoute(latestSubmissionContest.id))}
                     className="w-full text-left"
                   >
-                    <h3 className="font-[var(--font-display)] text-4xl leading-[1.08] text-white italic">
+                    <h3 className="font-[var(--font-display)] text-5xl leading-[1.04] text-white italic">
                       {latestSubmissionContest.theme}
                     </h3>
-                    <p className="mt-3 max-w-3xl text-sm leading-relaxed text-slate-300">
+                    <p className="mt-4 max-w-3xl text-sm leading-relaxed text-slate-300/90">
                       {getSubmissionLeadCopy(latestSubmissionContest)}
                     </p>
                   </button>
 
-                  <div className="mt-6 grid grid-cols-2 gap-6 border-t border-white/8 pt-4">
+                  <div className="mt-8 grid grid-cols-2 gap-6 border-t border-white/14 pt-5">
                     <div>
-                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Prize Pool</p>
-                      <p className="mt-1 font-[var(--font-display)] text-lg text-slate-200">
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Prize Pool</p>
+                      <p className="mt-1.5 font-[var(--font-display)] text-xl text-slate-200">
                         {formatNumber(latestSubmissionContest.prizePool)}원
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Entry Deadline</p>
-                      <p className="mt-1 font-[var(--font-display)] text-lg text-slate-200">
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Entry Deadline</p>
+                      <p className="mt-1.5 font-[var(--font-display)] text-xl text-slate-200">
                         {getContestDeadlineLabel(latestSubmissionContest)}
                       </p>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="rounded-[20px] border border-white/12 bg-white/[0.03] px-5 py-8 text-sm text-slate-300/80">
+                <div className="border border-white/14 bg-white/[0.025] px-6 py-9 text-sm text-slate-300/80">
                   현재 출품 진행중인 콘테스트가 없습니다.
                 </div>
               )}
 
               <div className="mt-6">
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="text-xs uppercase tracking-[0.18em] text-[#f8e6be]">전시중</p>
+                <div className="mb-3 flex items-center justify-between border-b border-white/12 pb-3">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-[#f8e6be]">전시중</p>
                   <span className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Swipe</span>
                 </div>
                 {exhibitingContests.length > 0 ? (
                   <div className="w-full overflow-hidden">
                     <Swiper className="w-full" spaceBetween={14} slidesPerView="auto">
-                    {exhibitingContests.map((contest) => (
-                      <SwiperSlide key={contest.id} className="!h-auto !w-[86%] sm:!w-[52%] lg:!w-[36%]">
-                        <button
-                          type="button"
-                          onClick={() => router.push(contestDetailRoute(contest.id))}
-                          className="flex h-44 w-full flex-col justify-between rounded-[18px] border border-white/12 bg-white/[0.04] p-5 text-left transition hover:border-white/20 hover:bg-white/[0.07]"
-                        >
-                          <div>
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="rounded-full border border-[#c0a062]/45 bg-[#c0a062]/16 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-[#f8e6be]">
-                                전시
-                              </span>
-                              <span className="text-[10px] text-slate-400">
-                                {contest.daysLeft <= 0 ? "Live now" : `${contest.daysLeft}d left`}
-                              </span>
+                      {exhibitingContests.map((contest) => (
+                        <SwiperSlide key={contest.id} className="!h-auto !w-[86%] sm:!w-[52%] lg:!w-[36%]">
+                          <button
+                            type="button"
+                            onClick={() => router.push(contestDetailRoute(contest.id))}
+                            className="flex h-44 w-full flex-col justify-between border border-white/14 bg-white/[0.03] px-5 py-5 text-left transition hover:border-white/24 hover:bg-white/[0.06]"
+                          >
+                            <div>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="border border-[#c0a062]/45 bg-[#c0a062]/16 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-[#f8e6be]">
+                                  전시
+                                </span>
+                                <span className="text-[10px] text-slate-400">
+                                  {contest.daysLeft <= 0 ? "Live now" : `${contest.daysLeft}d left`}
+                                </span>
+                              </div>
+                              <h4 className="mt-3 line-clamp-2 font-[var(--font-display)] text-xl italic text-slate-100">
+                                {contest.theme}
+                              </h4>
+                              <p className="mt-2 text-xs text-slate-400">{contest.period}</p>
                             </div>
-                            <h4 className="mt-3 line-clamp-2 font-[var(--font-display)] text-xl italic text-slate-100">
-                              {contest.theme}
-                            </h4>
-                            <p className="mt-2 text-xs text-slate-400">{contest.period}</p>
-                          </div>
-                          <p className="text-[10px] uppercase tracking-[0.14em] text-slate-500">
-                            Prize Pool · {formatNumber(contest.prizePool)}원
-                          </p>
-                        </button>
-                      </SwiperSlide>
-                    ))}
+                            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                              Prize Pool · {formatNumber(contest.prizePool)}원
+                            </p>
+                          </button>
+                        </SwiperSlide>
+                      ))}
                     </Swiper>
                   </div>
                 ) : (
-                  <div className="rounded-[18px] border border-white/10 bg-white/[0.03] px-4 py-6 text-sm text-slate-300/75">
+                  <div className="border border-white/14 bg-white/[0.025] px-5 py-7 text-sm text-slate-300/75">
                     현재 전시중인 콘테스트가 없습니다.
                   </div>
                 )}
@@ -297,12 +297,12 @@ export default function OverviewClient() {
             </motion.section>
 
             <motion.section {...staggeredFadeUpMotion(2, reduceMotion)}>
-              <div className="mb-5 flex items-center justify-between border-b border-white/10 pb-4">
-                <h2 className="text-xs uppercase tracking-[0.2em] text-slate-400">Gallery Planner</h2>
+              <div className="mb-6 flex items-center justify-between border-b border-white/16 pb-5">
+                <h2 className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Gallery Planner</h2>
                 <button
                   type="button"
                   onClick={() => navigateWithGuard("/gallery", "gallery")}
-                  className="text-[10px] uppercase tracking-[0.18em] text-slate-500 transition hover:text-slate-300"
+                  className="text-[10px] uppercase tracking-[0.22em] text-slate-500 transition hover:text-slate-300"
                 >
                   View Schedule
                 </button>
@@ -312,7 +312,7 @@ export default function OverviewClient() {
                 <button
                   type="button"
                   onClick={() => router.push(museumDetailRoute(gallerySpotlight.museumId))}
-                  className="group relative block h-60 w-full overflow-hidden rounded-[20px] border border-white/12 text-left"
+                  className="group relative block h-64 w-full overflow-hidden border border-white/16 text-left"
                 >
                   <div
                     className="absolute inset-0 transition duration-700 group-hover:scale-[1.03]"
@@ -329,27 +329,27 @@ export default function OverviewClient() {
                     }
                   />
                   <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(10,10,14,0.84)_0%,rgba(10,10,14,0.34)_48%,rgba(10,10,14,0.16)_100%)]" />
-                  <div className="absolute inset-0 flex flex-col justify-between p-5">
+                  <div className="absolute inset-0 flex flex-col justify-between p-6">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="rounded-md border border-white/16 bg-black/40 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/90">
+                      <span className="border border-white/16 bg-black/40 px-2.5 py-1 text-[10px] uppercase tracking-[0.2em] text-white/90">
                         추천 전시관
                       </span>
-                      <span className="rounded-md border border-white/14 bg-black/40 px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-white/85">
+                      <span className="border border-white/14 bg-black/40 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-white/85">
                         작품 {formatNumber(gallerySpotlight.artworkCount)}점
                       </span>
                     </div>
                     <div>
-                      <h3 className="font-[var(--font-display)] text-3xl italic text-white">
+                      <h3 className="font-[var(--font-display)] text-4xl italic text-white">
                         {gallerySpotlight.name}
                       </h3>
-                      <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-300">
+                      <p className="mt-2 text-xs uppercase tracking-[0.18em] text-slate-300">
                         Curator · {gallerySpotlight.ownerName}
                       </p>
                     </div>
                   </div>
                 </button>
               ) : (
-                <div className="rounded-[20px] border border-white/12 bg-white/[0.03] px-5 py-8 text-sm text-slate-300/80">
+                <div className="border border-white/14 bg-white/[0.025] px-6 py-9 text-sm text-slate-300/80">
                   노출 중인 전시관이 없습니다.
                 </div>
               )}

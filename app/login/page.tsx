@@ -64,17 +64,17 @@ function LoginPageContent() {
         <div className="mt-16 flex min-h-[60vh] items-center justify-center">
           <motion.div
             {...staggeredFadeUpMotion(0, reduceMotion)}
-            className="w-full max-w-md rounded-[28px] border border-[color:var(--line)] bg-white/70 p-10 shadow-[var(--shadow)]"
+            className="w-full max-w-md  border border-[color:var(--line)] bg-white/70 p-10 shadow-[var(--shadow)]"
           >
             <div className="mb-6 flex items-center justify-between text-xs text-[color:var(--muted)]">
               <button
-                className="rounded-full border border-[color:var(--line)] px-3 py-1 transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                className=" border border-[color:var(--line)] px-3 py-1 transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
                 onClick={() => navigateBack(router, "/?tab=home")}
               >
                 뒤로가기
               </button>
               <button
-                className="rounded-full border border-[color:var(--line)] px-3 py-1 transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                className=" border border-[color:var(--line)] px-3 py-1 transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
                 onClick={() => router.push("/")}
               >
                 홈으로
@@ -101,16 +101,16 @@ function LoginPageContent() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 dark:bg-gray-900">
-      <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-8 shadow-lg dark:bg-gray-800 md:p-10">
+      <div className="w-full max-w-md space-y-8  bg-white p-8 shadow-lg dark:bg-gray-800 md:p-10">
         <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
           <button
-            className="rounded-full border border-gray-300 px-3 py-1 transition hover:border-[#03C75A] hover:text-[#03C75A] dark:border-gray-600"
+            className=" border border-gray-300 px-3 py-1 transition hover:border-[#03C75A] hover:text-[#03C75A] dark:border-gray-600"
             onClick={() => navigateBack(router, "/?tab=home")}
           >
             뒤로가기
           </button>
           <button
-            className="rounded-full border border-gray-300 px-3 py-1 transition hover:border-[#03C75A] hover:text-[#03C75A] dark:border-gray-600"
+            className=" border border-gray-300 px-3 py-1 transition hover:border-[#03C75A] hover:text-[#03C75A] dark:border-gray-600"
             onClick={() => router.push("/")}
           >
             홈으로
@@ -140,7 +140,7 @@ function LoginPageContent() {
         <motion.div className="space-y-4" {...staggeredFadeUpMotion(3, reduceMotion)}>
           <button
             onClick={handleNaverLogin}
-            className="group relative flex w-full items-center justify-center gap-3 rounded-lg border border-transparent bg-[#03C75A] py-3 px-4 text-lg font-semibold text-white transition-all duration-300 ease-in-out hover:bg-[#03C75A]/90 focus:outline-none focus:ring-2 focus:ring-[#03C75A] focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+            className="group relative flex w-full items-center justify-center gap-3  border border-transparent bg-[#03C75A] py-3 px-4 text-lg font-semibold text-white transition-all duration-300 ease-in-out hover:bg-[#03C75A]/90 focus:outline-none focus:ring-2 focus:ring-[#03C75A] focus:ring-offset-2 dark:focus:ring-offset-gray-800"
           >
             <Image
               src="/naver_logo.svg"
