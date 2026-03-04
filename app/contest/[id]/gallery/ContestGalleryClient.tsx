@@ -82,14 +82,18 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
       return;
     }
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsLightboxOpen(false);
+        return;
+      }
+      if (isLightboxOpen) {
+        return;
+      }
       if (event.key === "ArrowLeft") {
         goPrev();
       }
       if (event.key === "ArrowRight") {
         goNext();
-      }
-      if (event.key === "Escape") {
-        setIsLightboxOpen(false);
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -155,12 +159,6 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
             Exhibition Focus
           </div>
 
-          <Link
-            href={`/contest/${id}?tab=contest`}
-            className="inline-flex h-10 items-center rounded-full border border-white/14 px-4 text-xs text-slate-300 transition hover:border-white/26 hover:text-white"
-          >
-            상세 보기
-          </Link>
         </motion.div>
 
         {(contestLoading || entriesLoading) && (
@@ -333,27 +331,6 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
                           )}
                         </div>
 
-                        <div className="mt-6 overflow-x-auto pb-2">
-                          <div className="flex min-w-max gap-2">
-                            {entries.map((entry, index) => {
-                              const active = entry.entryId === currentEntry.entryId;
-                              return (
-                                <button
-                                  key={entry.entryId}
-                                  type="button"
-                                  onClick={() => setSelectedEntryId(entry.entryId)}
-                                  className={`rounded-full border px-3 py-1.5 text-xs transition ${
-                                    active
-                                      ? "border-[#c0a062]/45 bg-[#c0a062]/18 text-[#f8e6be]"
-                                      : "border-white/18 bg-white/[0.03] text-slate-300 hover:bg-white/10"
-                                  }`}
-                                >
-                                  {String(index + 1).padStart(2, "0")}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
                       </motion.article>
                     )}
                   </section>
@@ -391,21 +368,6 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
                 ) : (
                   <div className="h-full w-full bg-[linear-gradient(160deg,rgba(32,32,34,0.9),rgba(24,24,26,0.92))]" />
                 )}
-
-                <button
-                  type="button"
-                  className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full border border-white/24 bg-black/50 px-3 py-2 text-sm text-slate-100 transition hover:bg-black/70"
-                  onClick={goPrev}
-                >
-                  이전
-                </button>
-                <button
-                  type="button"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full border border-white/24 bg-black/50 px-3 py-2 text-sm text-slate-100 transition hover:bg-black/70"
-                  onClick={goNext}
-                >
-                  다음
-                </button>
               </div>
 
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-slate-200">

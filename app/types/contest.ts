@@ -76,7 +76,7 @@ export type ContestPublicEntry = {
   submittedAt: string;
 };
 
-export type ContestEntryPageMode = "RANDOM" | "SUBMITTED_ASC";
+export type ContestEntryPageMode = "SUBMITTED_ASC";
 
 export type ContestPublicEntryPage = {
   items: ContestPublicEntry[];

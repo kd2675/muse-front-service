@@ -40,10 +40,14 @@ const MAX_UPLOAD_SIZE_BYTES = 100 * 1024 * 1024;
 const ENTRY_PAGE_SIZE = 10;
 const DETAIL_VIEW_STATE_STORAGE_PREFIX = "muse:contest:detail:view-state:";
 const DETAIL_VIEW_STATE_MAX_AGE_MS = 1000 * 60 * 60 * 6;
+const AI_DISCLOSURE_NOTICE = {
+  title: "AI 활용 고지 안내",
+  summary:
+    "「인공지능 발전과 신뢰 기반 조성 등에 관한 기본법」 및 시행령(2026.01.22 시행) 취지에 따라, 생성형 AI를 활용한 결과물은 AI 활용 사실을 이용자가 명확히 인지할 수 있도록 표시·고지가 필요합니다.",
+  guide: "AI를 사용한 경우 작품 설명에 사용 도구와 활용 범위를 함께 적어주세요.",
+};
 
 type ContestDetailViewState = {
-  isRandomMode: boolean;
-  randomSeed: number;
   page: number;
   scrollY: number;
   updatedAt: number;
@@ -210,8 +214,6 @@ function readContestDetailViewState(id: number): ContestDetailViewState | null {
     }
     const parsed = JSON.parse(raw) as Partial<ContestDetailViewState>;
     if (
-      typeof parsed.isRandomMode !== "boolean" ||
-      typeof parsed.randomSeed !== "number" ||
       typeof parsed.page !== "number" ||
       typeof parsed.scrollY !== "number" ||
       typeof parsed.updatedAt !== "number"
@@ -222,8 +224,6 @@ function readContestDetailViewState(id: number): ContestDetailViewState | null {
       return null;
     }
     return {
-      isRandomMode: parsed.isRandomMode,
-      randomSeed: parsed.randomSeed,
       page: parsed.page,
       scrollY: parsed.scrollY,
       updatedAt: parsed.updatedAt,
@@ -258,8 +258,6 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
   >("closed");
   const [paymentMethod, setPaymentMethod] = useState("card");
   const [pendingVoteEntryId, setPendingVoteEntryId] = useState<string | null>(null);
-  const [isRandomMode, setIsRandomMode] = useState(() => readContestDetailViewState(id)?.isRandomMode ?? true);
-  const [randomSeed, setRandomSeed] = useState(() => readContestDetailViewState(id)?.randomSeed ?? Date.now());
   const [page, setPage] = useState(() => readContestDetailViewState(id)?.page ?? 1);
   const restoredScrollRef = useRef(false);
 
@@ -293,21 +291,6 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
     enabled: hasToken,
   });
 
-  const randomEntriesQuery = useQuery({
-    queryKey: ["contest", id, "entries", "random", ENTRY_PAGE_SIZE, randomSeed],
-    queryFn: () =>
-      getContestEntriesPage(id, {
-        mode: "RANDOM",
-        size: ENTRY_PAGE_SIZE,
-      }),
-    enabled: isRandomMode,
-    placeholderData: (previousData) => previousData,
-    staleTime: 1000 * 60 * 10,
-    gcTime: 1000 * 60 * 30,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-  });
-
   const pagedEntriesQuery = useQuery({
     queryKey: ["contest", id, "entries", "submitted", page, ENTRY_PAGE_SIZE],
     queryFn: () =>
@@ -316,7 +299,6 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
         page,
         size: ENTRY_PAGE_SIZE,
       }),
-    enabled: !isRandomMode,
     placeholderData: (previousData) => previousData,
     staleTime: 1000 * 60 * 10,
     gcTime: 1000 * 60 * 30,
@@ -324,14 +306,14 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
     refetchOnWindowFocus: false,
   });
 
-  const activeEntriesData = isRandomMode ? randomEntriesQuery.data : pagedEntriesQuery.data;
+  const activeEntriesData = pagedEntriesQuery.data;
   const entries = useMemo(() => activeEntriesData?.data.items ?? [], [activeEntriesData?.data.items]);
   const entriesError = activeEntriesData?.error;
-  const entriesLoading = isRandomMode ? randomEntriesQuery.isLoading : pagedEntriesQuery.isLoading;
+  const entriesLoading = pagedEntriesQuery.isLoading;
   const totalEntryCount = activeEntriesData?.data.totalElements ?? 0;
   const showEntrySkeleton = entriesLoading && entries.length === 0 && totalEntryCount === 0;
-  const totalPages = isRandomMode ? 1 : Math.max(activeEntriesData?.data.totalPages ?? 1, 1);
-  const currentPage = isRandomMode ? 1 : Math.min(Math.max(page, 1), totalPages);
+  const totalPages = Math.max(activeEntriesData?.data.totalPages ?? 1, 1);
+  const currentPage = Math.min(Math.max(page, 1), totalPages);
   const paginationTokens = useMemo(
     () => buildPaginationTokens(totalPages, currentPage),
     [currentPage, totalPages],
@@ -422,13 +404,11 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
       return;
     }
     writeContestDetailViewState(id, {
-      isRandomMode,
-      randomSeed,
       page,
       scrollY: window.scrollY,
       updatedAt: Date.now(),
     });
-  }, [id, isRandomMode, page, randomSeed]);
+  }, [id, page]);
 
   useEffect(() => {
     if (contestLoading || entriesLoading || restoredScrollRef.current) {
@@ -446,7 +426,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
       return;
     }
     persistDetailViewState();
-  }, [isRandomMode, page, persistDetailViewState, randomSeed]);
+  }, [page, persistDetailViewState]);
 
   useEffect(() => {
     return () => {
@@ -803,6 +783,16 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                   </span>
                 </div>
 
+                <div className="mt-4 rounded-[14px] border border-amber-300/35 bg-amber-300/10 px-4 py-3">
+                  <p className="text-xs font-semibold tracking-[0.08em] text-amber-100">
+                    {AI_DISCLOSURE_NOTICE.title}
+                  </p>
+                  <p className="mt-2 text-xs leading-relaxed text-amber-50/90">
+                    {AI_DISCLOSURE_NOTICE.summary}
+                  </p>
+                  <p className="mt-2 text-xs text-amber-100">{AI_DISCLOSURE_NOTICE.guide}</p>
+                </div>
+
                 {!hasToken && (
                   <div className="mt-4 rounded-[14px] border border-white/14 bg-white/8 px-4 py-3 text-xs text-slate-300">
                     로그인 후 결제 및 출품이 가능합니다.
@@ -1064,41 +1054,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                   {...staggeredFadeUpMotion(6, reduceMotion)}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Display Mode</p>
-                      <div className="mt-2 inline-flex rounded-full border border-white/16 bg-black/25 p-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsRandomMode(true);
-                            setRandomSeed(Date.now());
-                          }}
-                          className={`inline-flex items-center gap-1 rounded-full px-4 py-1.5 text-xs transition ${
-                            isRandomMode
-                              ? "border border-[#c0a062]/45 bg-[#c0a062]/18 text-[#f8e6be]"
-                              : "text-slate-300 hover:bg-white/10"
-                          }`}
-                        >
-                          <span className="material-symbols-outlined text-[16px]">shuffle</span>
-                          랜덤
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsRandomMode(false);
-                            setPage(1);
-                          }}
-                          className={`inline-flex items-center gap-1 rounded-full px-4 py-1.5 text-xs transition ${
-                            !isRandomMode
-                              ? "border border-[#c0a062]/45 bg-[#c0a062]/18 text-[#f8e6be]"
-                              : "text-slate-300 hover:bg-white/10"
-                          }`}
-                        >
-                          <span className="material-symbols-outlined text-[16px]">schedule</span>
-                          제출순
-                        </button>
-                      </div>
-                    </div>
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">정렬 방식: 제출순</p>
 
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       <span className="rounded-full border border-white/16 bg-white/[0.03] px-3 py-1.5 text-slate-300">
@@ -1111,36 +1067,15 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                   </div>
 
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3">
-                    {isRandomMode ? (
-                      <p className="text-xs text-slate-400">
-                        랜덤 모드가 활성화되어 있습니다. 현재 무작위 {ENTRY_PAGE_SIZE}개 작품만 노출됩니다.
-                      </p>
-                    ) : (
-                      <p className="text-xs text-slate-400">
-                        제출 시각 오름차순 정렬입니다. 가장 먼저 제출한 작품이 1번으로 표시됩니다.
-                      </p>
-                    )}
-
-                    {isRandomMode ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRandomSeed(Date.now());
-                          scrollTo("contest-artworks");
-                        }}
-                        aria-label="랜덤 작품 다시 불러오기"
-                        className="flex h-9 w-9 items-center justify-center rounded-full border border-[#c0a062]/40 bg-[#c0a062]/14 text-[#f3dba5] transition hover:bg-[#c0a062]/22"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">shuffle</span>
-                      </button>
-                    ) : (
-                      <span className="text-xs text-slate-500">Page {currentPage} / {totalPages}</span>
-                    )}
+                    <p className="text-xs text-slate-400">
+                      제출 시각 오름차순 정렬입니다. 가장 먼저 제출한 작품이 1번으로 표시됩니다.
+                    </p>
+                    <span className="text-xs text-slate-500">Page {currentPage} / {totalPages}</span>
                   </div>
                 </motion.div>
               )}
 
-              {totalEntryCount > 0 && !isRandomMode && (
+              {totalEntryCount > 0 && (
                 <motion.div {...staggeredFadeUpMotion(7, reduceMotion)}>
                   {renderSubmissionPagination("top")}
                 </motion.div>
@@ -1169,9 +1104,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                   const focusGalleryHref = `/contest/${id}/gallery?tab=contest&entryId=${entry.entryId}`;
                   const currentRank = rankMap.get(entry.entryId);
                   const voteCount = voteCountMap.get(entry.entryId) ?? 0;
-                  const displayOrder = isRandomMode
-                    ? index + 1
-                    : (currentPage - 1) * ENTRY_PAGE_SIZE + index + 1;
+                  const displayOrder = (currentPage - 1) * ENTRY_PAGE_SIZE + index + 1;
 
                   return (
                     <motion.article
@@ -1217,7 +1150,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                               <img
                                 src={entry.imageUrl}
                                 alt={entry.title ?? "contest entry"}
-                                className="aspect-[4/5] w-full object-cover opacity-90 transition duration-700 group-hover:scale-[1.03] group-hover:opacity-100"
+                                className="h-[56vh] min-h-[360px] max-h-[620px] w-full object-cover opacity-90 transition duration-700 group-hover:scale-[1.03] group-hover:opacity-100"
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-transparent to-transparent opacity-65" />
                               <div className="absolute right-4 bottom-4 flex items-center gap-1 rounded-full border border-white/12 bg-black/45 px-3 py-1 text-[10px] text-white">
@@ -1231,7 +1164,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                               )}
                             </>
                           ) : (
-                            <div className="flex aspect-[4/5] w-full items-center justify-center border border-white/10 bg-[linear-gradient(160deg,rgba(32,32,34,0.9),rgba(24,24,26,0.92))] text-sm text-slate-500">
+                            <div className="flex h-[56vh] min-h-[360px] max-h-[620px] w-full items-center justify-center border border-white/10 bg-[linear-gradient(160deg,rgba(32,32,34,0.9),rgba(24,24,26,0.92))] text-sm text-slate-500">
                               이미지 없음
                             </div>
                           )}
@@ -1239,10 +1172,10 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                       )}
 
                       <div className="space-y-2">
-                        <h3 className="text-2xl text-slate-100">
+                        <h3 className="truncate text-2xl text-slate-100">
                           {hideArtworkByPhase ? entry.artistName : entry.title ?? "Untitled"}
                         </h3>
-                        <p className="text-xs uppercase tracking-[0.18em] text-[#c0a062]">
+                        <p className="truncate text-xs uppercase tracking-[0.18em] text-[#c0a062]">
                           {hideArtworkByPhase ? getContestEntryStatusLabel(entry.status) : `by ${entry.artistName}`}
                         </p>
                         <p className="text-sm leading-relaxed text-slate-400">
@@ -1286,23 +1219,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                 })
               )}
 
-              {totalEntryCount > 0 && isRandomMode && (
-                <div className="flex justify-center pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRandomSeed(Date.now());
-                      scrollTo("contest-artworks");
-                    }}
-                    aria-label="랜덤 작품 다시 불러오기"
-                    className="flex h-10 w-10 items-center justify-center rounded-full border border-[#c0a062]/40 bg-[#c0a062]/14 text-[#f3dba5] transition hover:bg-[#c0a062]/22"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">shuffle</span>
-                  </button>
-                </div>
-              )}
-
-              {totalEntryCount > 0 && !isRandomMode && (
+              {totalEntryCount > 0 && (
                 renderSubmissionPagination("bottom")
               )}
             </section>
