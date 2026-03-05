@@ -6,7 +6,6 @@ import { useAppDispatch } from "../store/hooks";
 import { setPendingPath, showToast } from "../store/uiSlice";
 import { canAccessPath } from "../lib/routeGuard";
 import { onAuthChanged, onAuthExpired } from "../lib/authEvents";
-import { refreshAccessToken } from "../lib/auth";
 import type { AuthExpireReason } from "../lib/auth";
 
 export default function AuthWatcher() {
@@ -36,12 +35,9 @@ export default function AuthWatcher() {
   }, [dispatch, pathname, router, searchParams]);
 
   useEffect(() => {
-    let cancelled = false;
-    let isRefreshing = false;
-
-    const verifyAndRecoverAccess = async () => {
+    const verifyAccess = () => {
       const guard = canAccessPath(pathname);
-      if (guard.allowed || cancelled) {
+      if (guard.allowed) {
         return;
       }
 
@@ -56,26 +52,16 @@ export default function AuthWatcher() {
         return;
       }
 
-      if (isRefreshing) {
-        return;
-      }
-      isRefreshing = true;
-      const newToken = await refreshAccessToken();
-      isRefreshing = false;
-      if (newToken || cancelled) {
-        return;
-      }
       dispatch(showToast("로그인이 필요한 기능입니다."));
       router.push("/login");
     };
 
-    void verifyAndRecoverAccess();
+    verifyAccess();
     const unsubscribeAuthChanged = onAuthChanged(() => {
-      void verifyAndRecoverAccess();
+      verifyAccess();
     });
 
     return () => {
-      cancelled = true;
       unsubscribeAuthChanged();
     };
   }, [dispatch, pathname, router, searchParams]);

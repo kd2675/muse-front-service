@@ -6,6 +6,7 @@ import {
   getAccessToken,
   getUserFromToken,
   isTokenExpired,
+  notifyAuthExpired,
   scheduleTokenExpiry,
 } from "../lib/auth";
 import { onAuthChanged } from "../lib/authEvents";
@@ -38,17 +39,15 @@ export default function useAuthSession() {
 
   const [authSnapshot, setAuthSnapshot] = useState<AuthSnapshot>(readAuthSnapshot);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   const { status: authStatus, label: userLabel, exp: tokenExp } = authSnapshot;
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
       setIsHydrated(true);
+      setAuthSnapshot(readAuthSnapshot());
+      setIsReady(true);
     });
-
-    const initial = readAuthSnapshot();
-    if (initial.status === "out" && getAccessToken()) {
-      clearAccessToken();
-    }
 
     const unsubscribe = onAuthChanged(() => {
       setAuthSnapshot(readAuthSnapshot());
@@ -66,12 +65,14 @@ export default function useAuthSession() {
     }
     if (isTokenExpired(tokenExp)) {
       clearAccessToken();
+      notifyAuthExpired("expired");
       return;
     }
     return scheduleTokenExpiry(() => {
       clearAccessToken();
+      notifyAuthExpired("expired");
     }, tokenExp);
   }, [tokenExp]);
 
-  return { isHydrated, authStatus, userLabel };
+  return { isHydrated, authStatus: isReady ? authStatus : "unknown", userLabel };
 }

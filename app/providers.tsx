@@ -8,6 +8,7 @@ import { Suspense, useState } from "react";
 import { store } from "./store/store";
 import Toast from "./components/Toast";
 import AuthWatcher from "./components/AuthWatcher";
+import AuthBootstrap from "./components/AuthBootstrap";
 import ScrollHistoryManager from "./components/ScrollHistoryManager";
 
 type ProvidersProps = {
@@ -34,6 +35,9 @@ export default function Providers({ children }: ProvidersProps) {
           {children}
           <Suspense fallback={null}>
             <ScrollHistoryManager />
+          </Suspense>
+          <Suspense fallback={null}>
+            <AuthBootstrap />
           </Suspense>
           <Toast />
           <Suspense fallback={null}>

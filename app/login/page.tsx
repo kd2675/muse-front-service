@@ -4,7 +4,7 @@ import { Suspense, useEffect } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { setAccessToken } from "../lib/auth";
+import { getAccessToken, setAccessToken } from "../lib/auth";
 import { navigateBack } from "../lib/navigation";
 import { initializeProfile } from "../lib/profile";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
@@ -52,10 +52,25 @@ function LoginPageContent() {
         active = false;
       };
     }
+
+    if (getAccessToken()) {
+      if (pendingPath) {
+        dispatch(setPendingPath(undefined));
+        router.push(pendingPath);
+      } else {
+        router.push("/");
+      }
+    }
+
+    return undefined;
   }, [dispatch, pendingPath, router, token]);
 
   const handleNaverLogin = () => {
-    window.location.href = `${AUTH_BASE_URL}/oauth2/authorize/naver`;
+    window.location.href = `${AUTH_BASE_URL}/oauth2/authorize/naver-muse`;
+  };
+
+  const handleKakaoLogin = () => {
+    window.location.href = `${AUTH_BASE_URL}/oauth2/authorize/kakao-muse`;
   };
 
   if (isProcessing) {
@@ -150,6 +165,12 @@ function LoginPageContent() {
               className="transition-transform duration-300 group-hover:scale-110"
             />
             <span>Login with Naver</span>
+          </button>
+          <button
+            onClick={handleKakaoLogin}
+            className="group relative flex w-full items-center justify-center gap-3 border border-transparent bg-[#FEE500] py-3 px-4 text-lg font-semibold text-[#191919] transition-all duration-300 ease-in-out hover:bg-[#FEE500]/90 focus:outline-none focus:ring-2 focus:ring-[#FEE500] focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+          >
+            <span>Login with Kakao</span>
           </button>
         </motion.div>
 

@@ -1,9 +1,7 @@
-import { postJson } from "./api";
+import { API_BASE, postJson } from "./api";
 import type { ResponseEnvelope } from "../types/response";
 import type { LoginResponse } from "../types/auth";
 import { emitAuthChanged, emitAuthExpired } from "./authEvents";
-
-const ACCESS_TOKEN_KEY = "accessToken";
 
 export type AuthUser = {
   id?: string;
@@ -41,26 +39,20 @@ export function isAdminRole(role?: string | null): boolean {
   return hasAnyRole(role, ["ADMIN"]);
 }
 
+let accessTokenMemory: string | null = null;
+let refreshInFlight: Promise<string | null> | null = null;
+
 export function getAccessToken(): string | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-  return window.localStorage.getItem(ACCESS_TOKEN_KEY);
+  return accessTokenMemory;
 }
 
 export function setAccessToken(token: string) {
-  if (typeof window === "undefined") {
-    return;
-  }
-  window.localStorage.setItem(ACCESS_TOKEN_KEY, token);
+  accessTokenMemory = token;
   emitAuthChanged();
 }
 
 export function clearAccessToken() {
-  if (typeof window === "undefined") {
-    return;
-  }
-  window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+  accessTokenMemory = null;
   emitAuthChanged();
 }
 
@@ -152,7 +144,7 @@ export async function logout() {
   });
 }
 
-export async function refreshAccessToken(): Promise<string | null> {
+async function requestRefreshAccessToken(): Promise<string | null> {
   const { data } = await postJson<ResponseEnvelope<LoginResponse>>(
     "/auth/refresh",
     {},
@@ -165,4 +157,83 @@ export async function refreshAccessToken(): Promise<string | null> {
 
   setAccessToken(data.data.accessToken);
   return data.data.accessToken;
+}
+
+function resolveAccessTokenFromPayload(payload: unknown): string | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const envelope = payload as { data?: { accessToken?: string } };
+  const token = envelope.data?.accessToken;
+  return typeof token === "string" ? token : null;
+}
+
+async function requestRefreshAccessTokenSilently(): Promise<string | null> {
+  try {
+    const response = await fetch(`${API_BASE}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+
+    if (response.status === 401) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(`Refresh failed with status ${response.status}`);
+    }
+
+    const text = await response.text();
+    let payload: unknown = null;
+    if (text) {
+      payload = JSON.parse(text);
+    }
+
+    const accessToken = resolveAccessTokenFromPayload(payload);
+    if (!accessToken) {
+      return null;
+    }
+
+    setAccessToken(accessToken);
+    return accessToken;
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.debug("[auth] bootstrap refresh failed", error);
+    }
+    return null;
+  }
+}
+
+export async function refreshAccessToken(): Promise<string | null> {
+  if (refreshInFlight) {
+    return refreshInFlight;
+  }
+
+  refreshInFlight = requestRefreshAccessToken().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
+export async function refreshAccessTokenOnBootstrap(): Promise<string | null> {
+  if (refreshInFlight) {
+    return refreshInFlight;
+  }
+
+  refreshInFlight = requestRefreshAccessTokenSilently().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
+export async function ensureAccessToken(): Promise<string | null> {
+  if (accessTokenMemory) {
+    return accessTokenMemory;
+  }
+  return refreshAccessToken();
 }
