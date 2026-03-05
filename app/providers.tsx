@@ -7,6 +7,7 @@ import { Provider } from "react-redux";
 import { Suspense, useState } from "react";
 import { store } from "./store/store";
 import Toast from "./components/Toast";
+import AuthBootstrap from "./components/AuthBootstrap";
 import AuthWatcher from "./components/AuthWatcher";
 import ScrollHistoryManager from "./components/ScrollHistoryManager";
 
@@ -36,6 +37,7 @@ export default function Providers({ children }: ProvidersProps) {
             <ScrollHistoryManager />
           </Suspense>
           <Toast />
+          <AuthBootstrap />
           <Suspense fallback={null}>
             <AuthWatcher />
           </Suspense>

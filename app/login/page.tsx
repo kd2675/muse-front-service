@@ -4,7 +4,14 @@ import { Suspense, useEffect } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { setAccessToken } from "../lib/auth";
+import {
+  beginOAuthLogin,
+  clearAccessToken,
+  getAccessToken,
+  getUserFromToken,
+  isTokenExpired,
+  refreshAccessToken,
+} from "../lib/auth";
 import { navigateBack } from "../lib/navigation";
 import { initializeProfile } from "../lib/profile";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
@@ -12,31 +19,38 @@ import { setPendingPath, showToast } from "../store/uiSlice";
 import PageShell from "../components/PageShell";
 import { staggeredFadeUpMotion } from "../lib/motion";
 
-const AUTH_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
-
 function LoginPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const dispatch = useAppDispatch();
   const pendingPath = useAppSelector((state) => state.ui.pendingPath);
-  const token = searchParams.get("token");
-  const isProcessing = Boolean(token);
+  const oauth = searchParams.get("oauth") === "1";
+  const oauthError = searchParams.get("oauthError") === "1";
+  const isProcessing = oauth;
   const prefersReducedMotion = useReducedMotion();
   const reduceMotion = Boolean(prefersReducedMotion);
 
   useEffect(() => {
-    if (token) {
-      setAccessToken(token);
-      let active = true;
-      (async () => {
+    if (!oauthError) {
+      return;
+    }
+    dispatch(showToast("소셜 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요."));
+  }, [dispatch, oauthError]);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      if (oauth) {
+        const refreshed = await refreshAccessToken();
+        if (!refreshed) {
+          clearAccessToken();
+          dispatch(showToast("세션 복원에 실패했습니다."));
+          return;
+        }
+
         const result = await initializeProfile();
         if (result.error) {
-          dispatch(
-            showToast(
-              `프로필 생성에 실패했습니다. (${result.error})`,
-            ),
-          );
+          dispatch(showToast(`프로필 생성에 실패했습니다. (${result.error})`));
         }
         if (!active) {
           return;
@@ -47,15 +61,41 @@ function LoginPageContent() {
         } else {
           router.push("/");
         }
-      })();
-      return () => {
-        active = false;
-      };
-    }
-  }, [dispatch, pendingPath, router, token]);
+        return;
+      }
 
-  const handleNaverLogin = () => {
-    window.location.href = `${AUTH_BASE_URL}/oauth2/authorize/naver`;
+      let activeToken = getAccessToken();
+      if (!activeToken) {
+        activeToken = await refreshAccessToken();
+      }
+      if (!active || !activeToken) {
+        return;
+      }
+
+      const user = getUserFromToken(activeToken);
+      if (user?.exp && isTokenExpired(user.exp)) {
+        const refreshedToken = await refreshAccessToken();
+        if (!active || !refreshedToken) {
+          clearAccessToken();
+          return;
+        }
+      }
+
+      if (pendingPath) {
+        dispatch(setPendingPath(undefined));
+        router.push(pendingPath);
+        return;
+      }
+      router.push("/");
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [dispatch, oauth, pendingPath, router]);
+
+  const handleNaverLogin = async () => {
+    await beginOAuthLogin("naver");
   };
 
   if (isProcessing) {
@@ -64,17 +104,17 @@ function LoginPageContent() {
         <div className="mt-16 flex min-h-[60vh] items-center justify-center">
           <motion.div
             {...staggeredFadeUpMotion(0, reduceMotion)}
-            className="w-full max-w-md  border border-[color:var(--line)] bg-white/70 p-10 shadow-[var(--shadow)]"
+            className="w-full max-w-md border border-[color:var(--line)] bg-white/70 p-10 shadow-[var(--shadow)]"
           >
             <div className="mb-6 flex items-center justify-between text-xs text-[color:var(--muted)]">
               <button
-                className=" border border-[color:var(--line)] px-3 py-1 transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                className="border border-[color:var(--line)] px-3 py-1 transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
                 onClick={() => navigateBack(router, "/?tab=home")}
               >
                 뒤로가기
               </button>
               <button
-                className=" border border-[color:var(--line)] px-3 py-1 transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
+                className="border border-[color:var(--line)] px-3 py-1 transition hover:border-[color:var(--accent)] hover:text-[color:var(--accent)]"
                 onClick={() => router.push("/")}
               >
                 홈으로
@@ -86,9 +126,7 @@ function LoginPageContent() {
             <h1 className="mt-3 font-[var(--font-display)] text-2xl">
               로그인 처리 중입니다.
             </h1>
-            <p className="mt-2 text-sm text-[color:var(--muted)]">
-              잠시만 기다려주세요.
-            </p>
+            <p className="mt-2 text-sm text-[color:var(--muted)]">잠시만 기다려주세요.</p>
             <div className="mt-6 flex items-center gap-3 text-xs text-[color:var(--muted)]">
               <div className="spinner" />
               <span>인증 정보를 확인하는 중입니다.</span>
@@ -101,16 +139,16 @@ function LoginPageContent() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 dark:bg-gray-900">
-      <div className="w-full max-w-md space-y-8  bg-white p-8 shadow-lg dark:bg-gray-800 md:p-10">
+      <div className="w-full max-w-md space-y-8 bg-white p-8 shadow-lg dark:bg-gray-800 md:p-10">
         <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
           <button
-            className=" border border-gray-300 px-3 py-1 transition hover:border-[#03C75A] hover:text-[#03C75A] dark:border-gray-600"
+            className="border border-gray-300 px-3 py-1 transition hover:border-[#03C75A] hover:text-[#03C75A] dark:border-gray-600"
             onClick={() => navigateBack(router, "/?tab=home")}
           >
             뒤로가기
           </button>
           <button
-            className=" border border-gray-300 px-3 py-1 transition hover:border-[#03C75A] hover:text-[#03C75A] dark:border-gray-600"
+            className="border border-gray-300 px-3 py-1 transition hover:border-[#03C75A] hover:text-[#03C75A] dark:border-gray-600"
             onClick={() => router.push("/")}
           >
             홈으로
@@ -140,7 +178,7 @@ function LoginPageContent() {
         <motion.div className="space-y-4" {...staggeredFadeUpMotion(3, reduceMotion)}>
           <button
             onClick={handleNaverLogin}
-            className="group relative flex w-full items-center justify-center gap-3  border border-transparent bg-[#03C75A] py-3 px-4 text-lg font-semibold text-white transition-all duration-300 ease-in-out hover:bg-[#03C75A]/90 focus:outline-none focus:ring-2 focus:ring-[#03C75A] focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+            className="group relative flex w-full items-center justify-center gap-3 border border-transparent bg-[#03C75A] py-3 px-4 text-lg font-semibold text-white transition-all duration-300 ease-in-out hover:bg-[#03C75A]/90 focus:outline-none focus:ring-2 focus:ring-[#03C75A] focus:ring-offset-2 dark:focus:ring-offset-gray-800"
           >
             <Image
               src="/naver_logo.svg"

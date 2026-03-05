@@ -83,6 +83,7 @@ function normalizeImageUrlsDeep<T>(payload: T): T {
 const apiClient = axios.create({
   baseURL: API_BASE,
   timeout: 8000,
+  withCredentials: true,
 });
 
 apiClient.interceptors.request.use((config) => {

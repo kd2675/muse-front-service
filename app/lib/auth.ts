@@ -3,7 +3,11 @@ import type { ResponseEnvelope } from "../types/response";
 import type { LoginResponse } from "../types/auth";
 import { emitAuthChanged, emitAuthExpired } from "./authEvents";
 
-const ACCESS_TOKEN_KEY = "accessToken";
+const TOKEN_EXPIRY_LEEWAY_SECONDS = 300;
+let accessTokenMemory: string | null = null;
+
+const DEFAULT_AUTH_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
 export type AuthUser = {
   id?: string;
@@ -45,14 +49,14 @@ export function getAccessToken(): string | null {
   if (typeof window === "undefined") {
     return null;
   }
-  return window.localStorage.getItem(ACCESS_TOKEN_KEY);
+  return accessTokenMemory;
 }
 
 export function setAccessToken(token: string) {
   if (typeof window === "undefined") {
     return;
   }
-  window.localStorage.setItem(ACCESS_TOKEN_KEY, token);
+  accessTokenMemory = token;
   emitAuthChanged();
 }
 
@@ -60,12 +64,15 @@ export function clearAccessToken() {
   if (typeof window === "undefined") {
     return;
   }
-  window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+  accessTokenMemory = null;
   emitAuthChanged();
 }
 
+export function clearAuthTokens() {
+  clearAccessToken();
+}
+
 export type AuthExpireReason = "expired" | "refresh_failed";
-const TOKEN_EXPIRY_LEEWAY_SECONDS = 300;
 
 export function notifyAuthExpired(reason: AuthExpireReason = "expired") {
   emitAuthExpired(reason);
@@ -73,20 +80,20 @@ export function notifyAuthExpired(reason: AuthExpireReason = "expired") {
 
 function decodeBase64Url(value: string): string | null {
   try {
-    const padded = value.replace(/-/g, "+").replace(/_/g, "/");
-    const decoded = atob(padded);
-    return decoded;
+    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    return atob(padded);
   } catch {
     return null;
   }
 }
 
-export function getUserFromToken(): AuthUser | null {
-  const token = getAccessToken();
-  if (!token) {
+export function getUserFromToken(token?: string | null): AuthUser | null {
+  const rawToken = token ?? getAccessToken();
+  if (!rawToken) {
     return null;
   }
-  const parts = token.split(".");
+  const parts = rawToken.split(".");
   if (parts.length < 2) {
     return null;
   }
@@ -96,8 +103,17 @@ export function getUserFromToken(): AuthUser | null {
   }
   try {
     const data = JSON.parse(payload) as Record<string, unknown>;
+    const userId =
+      typeof data.userId === "number"
+        ? String(data.userId)
+        : typeof data.userId === "string"
+          ? data.userId
+          : typeof data.sub === "string"
+            ? data.sub
+            : undefined;
+
     return {
-      id: typeof data.sub === "string" ? data.sub : undefined,
+      id: userId,
       name:
         typeof data.name === "string"
           ? data.name
@@ -138,18 +154,23 @@ export function scheduleTokenExpiry(
   return () => window.clearTimeout(timeoutId);
 }
 
-export async function logout() {
-  const token = getAccessToken();
-  if (!token) {
+export async function beginOAuthLogin(provider = "naver"): Promise<void> {
+  if (typeof window === "undefined") {
     return;
   }
+  const normalizedProvider = provider?.trim() || "naver";
+  window.location.href = `${DEFAULT_AUTH_BASE_URL}/auth/bff/login/muse-front-service?provider=${encodeURIComponent(normalizedProvider)}`;
+}
 
-  await postJson("/auth/logout", {}, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    withCredentials: true,
-  });
+export async function logout() {
+  const token = getAccessToken();
+  const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
+
+  try {
+    await postJson("/auth/logout", {}, { headers, withCredentials: true });
+  } finally {
+    clearAuthTokens();
+  }
 }
 
 export async function refreshAccessToken(): Promise<string | null> {
