@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { clearAccessToken, logout } from "../lib/auth";
 import useAuthSession from "../hooks/useAuthSession";
+import useLogoutAction from "../hooks/useLogoutAction";
 
 type OverviewStyleHeaderProps = {
   title: string;
@@ -21,18 +20,10 @@ export default function OverviewStyleHeader({
 }: OverviewStyleHeaderProps) {
   const router = useRouter();
   const { isHydrated, authStatus } = useAuthSession();
-  const [isSigningOut, setIsSigningOut] = useState(false);
+  const { isSigningOut, signOut } = useLogoutAction();
 
   const handleSignOut = async () => {
-    setIsSigningOut(true);
-    try {
-      await logout();
-    } catch {
-      // Clear client token even when logout API fails.
-    } finally {
-      clearAccessToken();
-      setIsSigningOut(false);
-    }
+    await signOut();
   };
 
   return (

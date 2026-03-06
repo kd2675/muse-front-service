@@ -9,7 +9,10 @@ import CinematicBottomNav from "../components/CinematicBottomNav";
 import OverviewStyleHeader from "../components/OverviewStyleHeader";
 import { Skeleton } from "../components/Skeleton";
 import { getPublicMuseums } from "../lib/museum";
-import { galleryMuseumDetailRoute } from "../lib/router";
+import { APP_ROUTES, galleryMuseumDetailRoute } from "../lib/router";
+import { canAccessPath } from "../lib/routeGuard";
+import { useAppDispatch } from "../store/hooks";
+import { setPendingPath, showToast } from "../store/uiSlice";
 
 const WHEEL_THRESHOLD = 120;
 const MOVE_LOCK_MS = 360;
@@ -50,6 +53,7 @@ const centerCardVariants = {
 };
 
 export default function GalleryClient() {
+  const dispatch = useAppDispatch();
   const router = useRouter();
   const prefersReducedMotion = useReducedMotion();
   const reduceMotion = Boolean(prefersReducedMotion);
@@ -208,6 +212,24 @@ export default function GalleryClient() {
     router.push(galleryMuseumDetailRoute(museumId, { focus: true }));
   };
 
+  const handleMoveToMyMuseum = () => {
+    const targetPath = "/gallery/my";
+    const guard = canAccessPath(targetPath);
+    if (!guard.allowed) {
+      dispatch(setPendingPath(`${targetPath}?tab=gallery`));
+      if (guard.reason === "ROLE") {
+        dispatch(showToast("권한이 없습니다."));
+        router.push(APP_ROUTES.galleryLobby);
+        return;
+      }
+      dispatch(showToast("로그인이 필요한 기능입니다."));
+      router.push("/login");
+      return;
+    }
+
+    router.push(APP_ROUTES.galleryMyMuseums);
+  };
+
   const totalMuseums = stageMuseums.length;
   const currentMuseum = totalMuseums > 0 ? stageMuseums[safeIndex] : null;
   const progressPercent = totalMuseums > 0
@@ -247,6 +269,16 @@ export default function GalleryClient() {
       <header className="pointer-events-none absolute top-0 left-0 z-40 w-full">
         <div className="pointer-events-auto mx-auto w-full max-w-[1120px] px-6 pt-10 md:px-8">
           <OverviewStyleHeader title="The Gallery" />
+          <div className="mt-3 flex justify-end">
+            <button
+              type="button"
+              onClick={handleMoveToMyMuseum}
+              className="inline-flex items-center gap-2 border border-white/28 bg-white/12 px-4 py-2 text-xs uppercase tracking-[0.14em] text-white transition hover:border-white/50 hover:bg-white/18"
+            >
+              <span className="material-symbols-outlined text-[18px]">gallery_thumbnail</span>
+              내 뮤지엄 가기
+            </button>
+          </div>
         </div>
       </header>
 

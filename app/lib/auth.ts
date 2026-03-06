@@ -1,4 +1,4 @@
-import { API_BASE, postJson } from "./api";
+import { postJson } from "./api";
 import type { ResponseEnvelope } from "../types/response";
 import type { LoginResponse } from "../types/auth";
 import { emitAuthChanged, emitAuthExpired } from "./authEvents";
@@ -41,6 +41,8 @@ export function isAdminRole(role?: string | null): boolean {
 
 let accessTokenMemory: string | null = null;
 let refreshInFlight: Promise<string | null> | null = null;
+let bootstrapRefreshDone = false;
+let bootstrapRefreshInFlight: Promise<string | null> | null = null;
 
 export function getAccessToken(): string | null {
   return accessTokenMemory;
@@ -159,56 +161,6 @@ async function requestRefreshAccessToken(): Promise<string | null> {
   return data.data.accessToken;
 }
 
-function resolveAccessTokenFromPayload(payload: unknown): string | null {
-  if (!payload || typeof payload !== "object") {
-    return null;
-  }
-
-  const envelope = payload as { data?: { accessToken?: string } };
-  const token = envelope.data?.accessToken;
-  return typeof token === "string" ? token : null;
-}
-
-async function requestRefreshAccessTokenSilently(): Promise<string | null> {
-  try {
-    const response = await fetch(`${API_BASE}/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({}),
-    });
-
-    if (response.status === 401) {
-      return null;
-    }
-
-    if (!response.ok) {
-      throw new Error(`Refresh failed with status ${response.status}`);
-    }
-
-    const text = await response.text();
-    let payload: unknown = null;
-    if (text) {
-      payload = JSON.parse(text);
-    }
-
-    const accessToken = resolveAccessTokenFromPayload(payload);
-    if (!accessToken) {
-      return null;
-    }
-
-    setAccessToken(accessToken);
-    return accessToken;
-  } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.debug("[auth] bootstrap refresh failed", error);
-    }
-    return null;
-  }
-}
-
 export async function refreshAccessToken(): Promise<string | null> {
   if (refreshInFlight) {
     return refreshInFlight;
@@ -220,20 +172,27 @@ export async function refreshAccessToken(): Promise<string | null> {
   return refreshInFlight;
 }
 
-export async function refreshAccessTokenOnBootstrap(): Promise<string | null> {
-  if (refreshInFlight) {
-    return refreshInFlight;
+export async function bootstrapAccessToken(): Promise<string | null> {
+  if (accessTokenMemory) {
+    return accessTokenMemory;
+  }
+  if (bootstrapRefreshDone) {
+    return null;
+  }
+  if (bootstrapRefreshInFlight) {
+    return bootstrapRefreshInFlight;
   }
 
-  refreshInFlight = requestRefreshAccessTokenSilently().finally(() => {
-    refreshInFlight = null;
+  bootstrapRefreshInFlight = refreshAccessToken().finally(() => {
+    bootstrapRefreshDone = true;
+    bootstrapRefreshInFlight = null;
   });
-  return refreshInFlight;
+  return bootstrapRefreshInFlight;
 }
 
 export async function ensureAccessToken(): Promise<string | null> {
   if (accessTokenMemory) {
     return accessTokenMemory;
   }
-  return refreshAccessToken();
+  return bootstrapAccessToken();
 }

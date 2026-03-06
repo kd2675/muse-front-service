@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { getAccessToken, refreshAccessTokenOnBootstrap } from "../lib/auth";
+import { bootstrapAccessToken, getAccessToken } from "../lib/auth";
 
 let bootstrapDone = false;
 
@@ -22,7 +22,7 @@ export default function AuthBootstrap() {
       return;
     }
 
-    void refreshAccessTokenOnBootstrap();
+    void bootstrapAccessToken();
   }, [pathname]);
 
   return null;

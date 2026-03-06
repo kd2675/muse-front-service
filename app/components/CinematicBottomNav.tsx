@@ -138,18 +138,20 @@ export default function CinematicBottomNav({
     router.push(`${path}?tab=${tab}`);
   };
 
-  const navItems: NavItem[] = isAdminUser
-    ? [
-        ...items,
-        {
-          key: "admin",
-          label: "Admin",
-          icon: "admin_panel_settings",
-          path: "/admin/contests",
-          tab: "contest",
-        },
-      ]
-    : items;
+  const navItems: NavItem[] = [
+    ...items,
+    ...(isAdminUser
+      ? [
+          {
+            key: "admin",
+            label: "Admin",
+            icon: "admin_panel_settings",
+            path: "/admin/contests",
+            tab: "contest",
+          } as const,
+        ]
+      : []),
+  ];
 
   const renderButtons = () =>
     navItems.map((item) => {

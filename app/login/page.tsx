@@ -4,7 +4,7 @@ import { Suspense, useEffect } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { getAccessToken, setAccessToken } from "../lib/auth";
+import { bootstrapAccessToken, getAccessToken, setAccessToken } from "../lib/auth";
 import { navigateBack } from "../lib/navigation";
 import { initializeProfile } from "../lib/profile";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
@@ -53,16 +53,25 @@ function LoginPageContent() {
       };
     }
 
-    if (getAccessToken()) {
+    let cancelled = false;
+    void (async () => {
+      const existingToken = getAccessToken();
+      const restoredToken = existingToken ?? (await bootstrapAccessToken());
+      if (cancelled || !restoredToken) {
+        return;
+      }
+
       if (pendingPath) {
         dispatch(setPendingPath(undefined));
         router.push(pendingPath);
       } else {
         router.push("/");
       }
-    }
+    })();
 
-    return undefined;
+    return () => {
+      cancelled = true;
+    };
   }, [dispatch, pendingPath, router, token]);
 
   const handleNaverLogin = () => {
