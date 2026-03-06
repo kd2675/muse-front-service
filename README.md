@@ -1,36 +1,78 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# muse-front-service
 
-## Getting Started
+Muse 사용자용 Next.js 앱입니다. Contest, Gallery, Overview, Profile, 관리자 화면까지 포함한 가장 큰 프론트엔드 앱입니다.
 
-First, run the development server:
+## 역할
+
+- 공개 홈/overview/contest/gallery UI 제공
+- 로그인 및 OAuth 진입
+- 개인 갤러리(My Museum) 관리
+- 콘테스트 상세, 참가, 투표, 랭킹 UI
+- 관리자용 contest/gallery 운영 화면 제공
+- `image-back-server` 이미지 URL 사용
+
+## 주요 라우트
+
+- `/`
+- `/login`
+- `/overview`
+- `/contest`
+- `/contest/[id]`
+- `/contest/[id]/gallery`
+- `/gallery`
+- `/gallery/my`
+- `/gallery/museums/[id]`
+- `/profile`
+- `/admin/contests`
+- `/admin/contests/review`
+- `/admin/gallery`
+
+## 실행
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run local
+npm run build
+npm run start
+npm run lint
 ```
 
-Open [http://localhost:3001](http://localhost:3001) with your browser to see the result.
+## 포트
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- 개발 서버: `3000`
+- 프로덕션 시작: `3000`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 환경 변수
 
-## Learn More
+```bash
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+NEXT_PUBLIC_IMAGE_BASE_URL=http://localhost:8081
+NEXT_PUBLIC_API_LOG_LEVEL=info
+```
 
-To learn more about Next.js, take a look at the following resources:
+`npm run dev`는 `.env.dev`, `npm run local`은 `.env.local`을 사용합니다.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 기술 스택
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Next.js 16.1.6
+- React 19.2.3
+- TypeScript 5
+- Tailwind CSS 4
+- React Query
+- Redux Toolkit
+- Motion
+- Swiper
 
-## Deploy on Vercel
+## 연결 서비스
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- Gateway: `cloud-back-server`
+- Muse API: `muse-back-service`
+- 이미지 서버: `image-back-server`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 인증 메모
+
+- 로그인 페이지는 Gateway 기준 OAuth 경로를 사용합니다.
+- 확인된 provider ID:
+  - `naver-muse`
+  - `kakao-muse`
