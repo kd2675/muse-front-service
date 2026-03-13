@@ -234,7 +234,7 @@ export default function MyMuseumClient() {
       const uploaded = await uploadImage(artworkFile, {
         onProgress: (percent) => setUploadProgress(percent),
       });
-      if (!uploaded.imageUrl) {
+      if (!uploaded.imageUrl || !uploaded.fileName) {
         setUploadStage("idle");
         return { data: null, error: uploaded.error ?? "이미지 업로드에 실패했습니다." };
       }
@@ -243,8 +243,7 @@ export default function MyMuseumClient() {
       const result = await createMyMuseumArtwork(activeSelectedMuseumId, {
         title: artworkForm.title.trim(),
         description: artworkForm.description.trim() || undefined,
-        fileName: artworkFile.name,
-        imageUrl: uploaded.imageUrl,
+        fileName: uploaded.fileName,
       });
       setUploadStage("idle");
       return result;

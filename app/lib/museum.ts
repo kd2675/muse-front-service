@@ -120,7 +120,6 @@ export async function createMyMuseumArtwork(
     title: string;
     description?: string;
     fileName: string;
-    imageUrl: string;
   },
 ): Promise<NullableApiResult<MyMuseumArtwork>> {
   const { data, error, backendMapped, backendMessage } =

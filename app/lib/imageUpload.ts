@@ -11,36 +11,14 @@ const imageClient = axios.create({
 export type ImageUploadErrorKind = "HTTP" | "NETWORK" | "TIMEOUT" | "UNKNOWN";
 
 export type ImageUploadResult = {
+  fileName?: string;
   imageUrl?: string;
+  thumbnailUrl?: string;
   path?: string;
   error?: string;
   status?: number;
   errorKind?: ImageUploadErrorKind;
 };
-
-const SUCCESS_PREFIX = "File uploaded successfully:";
-
-function normalizeBaseUrl(baseUrl: string) {
-  return baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
-}
-
-function stripLeadingSlash(value: string) {
-  return value.startsWith("/") ? value.slice(1) : value;
-}
-
-function extractPath(responseBody?: string): string | undefined {
-  if (!responseBody) {
-    return undefined;
-  }
-  const trimmed = responseBody.trim();
-  if (!trimmed) {
-    return undefined;
-  }
-  if (trimmed.startsWith(SUCCESS_PREFIX)) {
-    return stripLeadingSlash(trimmed.slice(SUCCESS_PREFIX.length).trim());
-  }
-  return stripLeadingSlash(trimmed);
-}
 
 export async function uploadImage(
   file: File,
@@ -50,7 +28,12 @@ export async function uploadImage(
   formData.append("file", file);
 
   try {
-    const response = await imageClient.post<string>("/upload", formData, {
+    const response = await imageClient.post<{
+      fileName?: string;
+      imageUrl?: string;
+      thumbnailUrl?: string;
+      temporary?: boolean;
+    }>("/upload/temp", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -65,18 +48,18 @@ export async function uploadImage(
         options.onProgress(percent);
       },
     });
-    const path = extractPath(response.data);
-    if (!path) {
+    if (!response.data?.fileName || !response.data?.imageUrl) {
       return {
         error: "Image upload response invalid",
         status: response.status,
         errorKind: "HTTP",
       };
     }
-    const base = normalizeBaseUrl(IMAGE_BASE);
     return {
-      path,
-      imageUrl: `${base}/images/${path}`,
+      fileName: response.data.fileName,
+      path: response.data.fileName,
+      imageUrl: response.data.imageUrl,
+      thumbnailUrl: response.data.thumbnailUrl,
       status: response.status,
     };
   } catch (error) {

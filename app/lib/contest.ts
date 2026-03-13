@@ -119,7 +119,6 @@ export async function submitContestEntry(
     title?: string;
     description?: string;
     fileName: string;
-    imageUrl: string;
     fileSizeBytes: number;
     imageWidthPx: number;
     imageHeightPx: number;

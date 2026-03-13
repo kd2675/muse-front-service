@@ -506,7 +506,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
       const uploadResult = await uploadImage(file, {
         onProgress: (percent) => setUploadProgress(percent),
       });
-      if (!uploadResult.imageUrl) {
+      if (!uploadResult.imageUrl || !uploadResult.fileName) {
         throw new Error(resolveUploadError(uploadResult));
       }
       setUploadedImageUrl(uploadResult.imageUrl);
@@ -514,8 +514,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
       return submitContestEntry(id, {
         title,
         description,
-        fileName: file.name,
-        imageUrl: uploadResult.imageUrl,
+        fileName: uploadResult.fileName,
         fileSizeBytes: fileMeta.sizeBytes,
         imageWidthPx: fileMeta.width,
         imageHeightPx: fileMeta.height,
