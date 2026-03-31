@@ -16,6 +16,7 @@
     "axios": "1.13.5",
     "motion": "^12.34.3",
     "next": "16.1.6",
+    "playwright": "^1.58.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-redux": "^9.2.0",
