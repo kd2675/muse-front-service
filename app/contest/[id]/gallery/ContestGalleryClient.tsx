@@ -13,7 +13,7 @@ import { getContestDetail, getContestEntries, voteContestEntry } from "../../../
 import { overlayFadeMotion, popInMotion, staggeredFadeUpMotion } from "../../../lib/motion";
 import { navigateBack } from "../../../lib/navigation";
 import { getContestPhaseLabel, getContestPhaseTone } from "../../../lib/statusTheme";
-import { useBodyScrollLock } from "../../../lib/useBodyScrollLock";
+import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
 import { useAppDispatch } from "../../../store/hooks";
 import { setPendingPath, showToast } from "../../../store/uiSlice";
 

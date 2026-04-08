@@ -13,7 +13,7 @@ import {
   purchaseEntryCredit,
 } from "../lib/contest";
 import { getAccessToken } from "../lib/auth";
-import { useBodyScrollLock } from "../lib/useBodyScrollLock";
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import {
   overlayFadeMotion,
   popInMotion,

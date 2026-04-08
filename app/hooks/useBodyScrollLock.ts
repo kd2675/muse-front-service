@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { lockBodyScroll, unlockBodyScroll } from "./scrollLock";
+import { lockBodyScroll, unlockBodyScroll } from "../lib/scrollLock";
 
 export function useBodyScrollLock(locked: boolean) {
   useEffect(() => {

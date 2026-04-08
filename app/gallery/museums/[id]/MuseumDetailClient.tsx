@@ -12,7 +12,7 @@ import CinematicBottomNav from "../../../components/CinematicBottomNav";
 import OverviewStyleHeader from "../../../components/OverviewStyleHeader";
 import { overlayFadeMotion, popInMotion, staggeredFadeUpMotion } from "../../../lib/motion";
 import { getPublicMuseumDetail } from "../../../lib/museum";
-import { useBodyScrollLock } from "../../../lib/useBodyScrollLock";
+import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
 import "swiper/css/effect-coverflow";
 
 type MuseumDetailClientProps = {
