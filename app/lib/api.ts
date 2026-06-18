@@ -9,6 +9,8 @@ import type { ResponseEnvelope } from "../types/response";
 
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+export const MUSE_CLIENT_ID =
+  process.env.NEXT_PUBLIC_CLIENT_ID ?? "muse-front-service";
 const IMAGE_BASE =
   process.env.NEXT_PUBLIC_IMAGE_BASE_URL ?? "http://localhost:8081";
 const IMAGE_URL_KEY_PATTERN = /imageUrl$/i;

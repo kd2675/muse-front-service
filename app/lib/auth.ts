@@ -1,4 +1,4 @@
-import { postJson } from "./api";
+import { MUSE_CLIENT_ID, postJson } from "./api";
 import type { ResponseEnvelope } from "../types/response";
 import type { LoginResponse } from "../types/auth";
 import { emitAuthChanged, emitAuthExpired } from "./authEvents";
@@ -43,6 +43,15 @@ let accessTokenMemory: string | null = null;
 let refreshInFlight: Promise<string | null> | null = null;
 let bootstrapRefreshDone = false;
 let bootstrapRefreshInFlight: Promise<string | null> | null = null;
+
+function withClientId(
+  headers: Record<string, string> = {},
+): Record<string, string> {
+  return {
+    "X-Client-Id": MUSE_CLIENT_ID,
+    ...headers,
+  };
+}
 
 export function getAccessToken(): string | null {
   return accessTokenMemory;
@@ -140,7 +149,7 @@ export async function logout() {
 
   await postJson("/auth/logout", {}, {
     headers: {
-      Authorization: `Bearer ${token}`,
+      ...withClientId({ Authorization: `Bearer ${token}` }),
     },
     withCredentials: true,
   });
@@ -150,7 +159,10 @@ async function requestRefreshAccessToken(): Promise<string | null> {
   const { data } = await postJson<ResponseEnvelope<LoginResponse>>(
     "/auth/refresh",
     {},
-    { withCredentials: true },
+    {
+      headers: withClientId(),
+      withCredentials: true,
+    },
   );
 
   if (!data?.data?.accessToken) {

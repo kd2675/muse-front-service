@@ -45,3 +45,8 @@ next-env.d.ts
 AGENTS*
 /.sisyphus/
 GEMINI*
+
+# Local agent/tool artifacts
+.codex/
+.claude/
+artifacts/
