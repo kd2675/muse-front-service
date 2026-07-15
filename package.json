@@ -7,7 +7,8 @@
     "local": "node scripts/run-next-with-env.mjs .env.local dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "lint": "eslint"
+    "lint": "eslint",
+    "verify:auth": "node --no-warnings --experimental-strip-types scripts/verify-auth-flow.mjs"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.9.0",

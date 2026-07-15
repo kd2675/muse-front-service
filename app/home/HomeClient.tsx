@@ -4,10 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, useReducedMotion, type PanInfo } from "motion/react";
 import { useRouter } from "next/navigation";
-import {
-  clearAccessToken,
-  logout,
-} from "../lib/auth";
+import { logout } from "../lib/auth";
 import CinematicBottomNav from "../components/CinematicBottomNav";
 import { getHomeData } from "../lib/home";
 import { staggeredFadeUpMotion } from "../lib/motion";
@@ -88,11 +85,9 @@ export default function HomeClient() {
     setIsSigningOut(true);
     try {
       await logout();
-      clearAccessToken();
       dispatch(showToast("로그아웃 되었습니다."));
       router.push(APP_ROUTES.home);
     } catch {
-      clearAccessToken();
       dispatch(showToast("로그아웃 처리 중 오류가 발생했습니다."));
     } finally {
       setIsSigningOut(false);

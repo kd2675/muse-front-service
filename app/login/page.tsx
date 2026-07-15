@@ -1,14 +1,14 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { bootstrapAccessToken, getAccessToken, setAccessToken } from "../lib/auth";
+import { bootstrapAccessToken, getAccessToken } from "../lib/auth";
+import { consumeOAuthNextPath, rememberOAuthNextPath, sanitizeAuthNextPath } from "../lib/authRouting";
 import { navigateBack } from "../lib/navigation";
-import { initializeProfile } from "../lib/profile";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { setPendingPath, showToast } from "../store/uiSlice";
+import { setPendingPath } from "../store/uiSlice";
 import PageShell from "../components/PageShell";
 import { staggeredFadeUpMotion } from "../lib/motion";
 
@@ -20,69 +20,60 @@ function LoginPageContent() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const pendingPath = useAppSelector((state) => state.ui.pendingPath);
-  const token = searchParams.get("token");
-  const isProcessing = Boolean(token);
+  const [isRestoring, setIsRestoring] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const prefersReducedMotion = useReducedMotion();
   const reduceMotion = Boolean(prefersReducedMotion);
 
   useEffect(() => {
-    if (token) {
-      setAccessToken(token);
-      let active = true;
-      (async () => {
-        const result = await initializeProfile();
-        if (result.error) {
-          dispatch(
-            showToast(
-              `프로필 생성에 실패했습니다. (${result.error})`,
-            ),
-          );
-        }
-        if (!active) {
-          return;
-        }
-        if (pendingPath) {
-          dispatch(setPendingPath(undefined));
-          router.push(pendingPath);
-        } else {
-          router.push("/");
-        }
-      })();
-      return () => {
-        active = false;
-      };
-    }
-
     let cancelled = false;
     void (async () => {
-      const existingToken = getAccessToken();
-      const restoredToken = existingToken ?? (await bootstrapAccessToken());
-      if (cancelled || !restoredToken) {
+      const oauthError = searchParams.get("error");
+      const loginError = searchParams.get("loginError");
+      if (oauthError || loginError) {
+        const message = resolveLoginError(loginError);
+        setError(message ?? "소셜 로그인에 실패했습니다. 다시 시도해 주세요.");
+        setIsRestoring(false);
         return;
       }
 
+      const existingToken = getAccessToken();
+      const restoredToken = existingToken ?? (await bootstrapAccessToken());
+      if (cancelled) {
+        return;
+      }
+      if (!restoredToken) {
+        setIsRestoring(false);
+        return;
+      }
+
+      const nextPath = consumeOAuthNextPath(pendingPath);
       if (pendingPath) {
         dispatch(setPendingPath(undefined));
-        router.push(pendingPath);
-      } else {
-        router.push("/");
       }
+      router.replace(nextPath);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [dispatch, pendingPath, router, token]);
+  }, [dispatch, pendingPath, router, searchParams]);
 
   const handleNaverLogin = () => {
-    window.location.href = `${AUTH_BASE_URL}/oauth2/authorize/naver-muse`;
+    if (pendingPath) {
+      rememberOAuthNextPath(sanitizeAuthNextPath(pendingPath));
+    }
+    window.location.replace(`${AUTH_BASE_URL}/oauth2/authorize/naver-muse`);
   };
 
   const handleKakaoLogin = () => {
-    window.location.href = `${AUTH_BASE_URL}/oauth2/authorize/kakao-muse`;
+    if (pendingPath) {
+      rememberOAuthNextPath(sanitizeAuthNextPath(pendingPath));
+    }
+    window.location.replace(`${AUTH_BASE_URL}/oauth2/authorize/kakao-muse`);
   };
 
-  if (isProcessing) {
+  if (isRestoring) {
     return (
       <PageShell>
         <div className="mt-16 flex min-h-[60vh] items-center justify-center">
@@ -183,6 +174,12 @@ function LoginPageContent() {
           </button>
         </motion.div>
 
+        {error ? (
+          <p className="border border-red-200 bg-red-50 px-3 py-2 text-center text-sm text-red-700" role="alert">
+            {error}
+          </p>
+        ) : null}
+
         <motion.p
           className="text-center text-xs text-gray-500 dark:text-gray-400"
           {...staggeredFadeUpMotion(4, reduceMotion)}
@@ -192,6 +189,21 @@ function LoginPageContent() {
       </div>
     </div>
   );
+}
+
+function resolveLoginError(loginError: string | null): string | null {
+  switch (loginError) {
+    case "unsupported_role":
+      return "Muse는 USER 또는 ADMIN 계정만 로그인할 수 있습니다.";
+    case "profile_initialize_failed":
+      return "프로필을 준비하지 못했습니다. 다시 로그인해 주세요.";
+    case "session_restore_failed":
+      return "소셜 로그인 세션을 확인할 수 없습니다. 다시 시도해 주세요.";
+    case "processing_failed":
+      return "로그인 정보를 처리하는 중 문제가 발생했습니다. 다시 시도해 주세요.";
+    default:
+      return null;
+  }
 }
 
 export default function LoginPage() {

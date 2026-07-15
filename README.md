@@ -15,6 +15,7 @@ Muse 사용자용 Next.js 앱입니다. Contest, Gallery, Overview, Profile, 관
 
 - `/`
 - `/login`
+- `/auth/callback`
 - `/overview`
 - `/contest`
 - `/contest/[id]`
@@ -73,6 +74,7 @@ NEXT_PUBLIC_API_LOG_LEVEL=info
 ## 인증 메모
 
 - 로그인 페이지는 Gateway 기준 OAuth 경로를 사용합니다.
+- OAuth 성공은 `/auth/callback`에서 HttpOnly refresh cookie로 처리하며 URL에 access token을 전달하지 않습니다.
 - 확인된 provider ID:
   - `naver-muse`
   - `kakao-muse`

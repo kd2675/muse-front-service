@@ -13,7 +13,7 @@ export default function AuthBootstrap() {
     if (bootstrapDone) {
       return;
     }
-    if (pathname === "/login") {
+    if (pathname === "/login" || pathname === "/auth/callback") {
       return;
     }
 

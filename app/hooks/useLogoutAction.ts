@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { clearAccessToken, logout } from "../lib/auth";
+import { logout } from "../lib/auth";
 
 type LogoutCallbacks = {
   onSuccess?: () => void;
@@ -26,7 +26,6 @@ export default function useLogoutAction() {
       callbacks.onError?.();
       return false;
     } finally {
-      clearAccessToken();
       setIsSigningOut(false);
       callbacks.onSettled?.();
     }

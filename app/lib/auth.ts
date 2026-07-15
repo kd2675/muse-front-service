@@ -43,6 +43,8 @@ let accessTokenMemory: string | null = null;
 let refreshInFlight: Promise<string | null> | null = null;
 let bootstrapRefreshDone = false;
 let bootstrapRefreshInFlight: Promise<string | null> | null = null;
+let authGeneration = 0;
+let explicitlySignedOut = false;
 
 function withClientId(
   headers: Record<string, string> = {},
@@ -59,11 +61,17 @@ export function getAccessToken(): string | null {
 
 export function setAccessToken(token: string) {
   accessTokenMemory = token;
+  explicitlySignedOut = false;
+  bootstrapRefreshDone = false;
+  authGeneration += 1;
   emitAuthChanged();
 }
 
 export function clearAccessToken() {
   accessTokenMemory = null;
+  bootstrapRefreshDone = false;
+  bootstrapRefreshInFlight = null;
+  authGeneration += 1;
   emitAuthChanged();
 }
 
@@ -76,16 +84,17 @@ export function notifyAuthExpired(reason: AuthExpireReason = "expired") {
 
 function decodeBase64Url(value: string): string | null {
   try {
-    const padded = value.replace(/-/g, "+").replace(/_/g, "/");
-    const decoded = atob(padded);
-    return decoded;
+    const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   } catch {
     return null;
   }
 }
 
-export function getUserFromToken(): AuthUser | null {
-  const token = getAccessToken();
+export function getUserFromToken(token = getAccessToken()): AuthUser | null {
   if (!token) {
     return null;
   }
@@ -142,20 +151,23 @@ export function scheduleTokenExpiry(
 }
 
 export async function logout() {
-  const token = getAccessToken();
-  if (!token) {
-    return;
+  explicitlySignedOut = true;
+  authGeneration += 1;
+  try {
+    await postJson("/auth/logout", {}, {
+      headers: withClientId(),
+      withCredentials: true,
+    });
+  } finally {
+    accessTokenMemory = null;
+    bootstrapRefreshDone = true;
+    bootstrapRefreshInFlight = null;
+    emitAuthChanged();
   }
-
-  await postJson("/auth/logout", {}, {
-    headers: {
-      ...withClientId({ Authorization: `Bearer ${token}` }),
-    },
-    withCredentials: true,
-  });
 }
 
 async function requestRefreshAccessToken(): Promise<string | null> {
+  const requestGeneration = authGeneration;
   const { data } = await postJson<ResponseEnvelope<LoginResponse>>(
     "/auth/refresh",
     {},
@@ -168,12 +180,18 @@ async function requestRefreshAccessToken(): Promise<string | null> {
   if (!data?.data?.accessToken) {
     return null;
   }
+  if (requestGeneration !== authGeneration || explicitlySignedOut) {
+    return null;
+  }
 
   setAccessToken(data.data.accessToken);
   return data.data.accessToken;
 }
 
 export async function refreshAccessToken(): Promise<string | null> {
+  if (explicitlySignedOut) {
+    return null;
+  }
   if (refreshInFlight) {
     return refreshInFlight;
   }
@@ -187,6 +205,9 @@ export async function refreshAccessToken(): Promise<string | null> {
 export async function bootstrapAccessToken(): Promise<string | null> {
   if (accessTokenMemory) {
     return accessTokenMemory;
+  }
+  if (explicitlySignedOut) {
+    return null;
   }
   if (bootstrapRefreshDone) {
     return null;

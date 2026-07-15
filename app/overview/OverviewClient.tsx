@@ -6,7 +6,7 @@ import { motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { Swiper, SwiperSlide } from "swiper/react";
 import CinematicBottomNav from "../components/CinematicBottomNav";
-import { clearAccessToken, logout } from "../lib/auth";
+import { logout } from "../lib/auth";
 import { staggeredFadeUpMotion } from "../lib/motion";
 import { getOverviewData } from "../lib/overview";
 import { canAccessPath } from "../lib/routeGuard";
@@ -132,11 +132,9 @@ export default function OverviewClient() {
     setIsSigningOut(true);
     try {
       await logout();
-      clearAccessToken();
       dispatch(showToast("로그아웃 되었습니다."));
       router.push(APP_ROUTES.homeOverview);
     } catch {
-      clearAccessToken();
       dispatch(showToast("로그아웃 처리 중 오류가 발생했습니다."));
     } finally {
       setIsSigningOut(false);
