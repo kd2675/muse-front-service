@@ -7,7 +7,7 @@ import { setPendingPath, showToast } from "../store/uiSlice";
 import { canAccessPath } from "../lib/routeGuard";
 import { onAuthChanged, onAuthExpired } from "../lib/authEvents";
 import { bootstrapAccessToken, type AuthExpireReason } from "../lib/auth";
-import { currentBrowserPath, rememberOAuthNextPath } from "../lib/authRouting";
+import { buildLoginPath, currentBrowserPath, rememberOAuthNextPath } from "../lib/authRouting";
 
 export default function AuthWatcher() {
   const dispatch = useAppDispatch();
@@ -25,7 +25,7 @@ export default function AuthWatcher() {
         const redirectPath = currentBrowserPath();
         dispatch(setPendingPath(redirectPath));
         rememberOAuthNextPath(redirectPath);
-        router.push("/login");
+        router.push(buildLoginPath(redirectPath, true));
       }
     });
     return () => {
@@ -51,7 +51,7 @@ export default function AuthWatcher() {
       }
 
       dispatch(showToast("로그인이 필요한 기능입니다."));
-      router.push("/login");
+      router.push(buildLoginPath(redirectPath));
     };
 
     let cancelled = false;

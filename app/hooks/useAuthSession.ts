@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from "react";
 import {
+  bootstrapAccessToken,
   clearAccessToken,
   getAccessToken,
   getUserFromToken,
+  hasAnyRole,
   isTokenExpired,
   notifyAuthExpired,
+  refreshAccessToken,
   scheduleTokenExpiry,
 } from "../lib/auth";
 import { onAuthChanged } from "../lib/authEvents";
@@ -25,13 +28,13 @@ export default function useAuthSession() {
 
     const token = getAccessToken();
     const user = getUserFromToken();
-    const exp = typeof user?.exp === "number" ? user.exp : null;
-    if (exp && isTokenExpired(exp)) {
+    if (!token || !user || !hasAnyRole(user.role, ["USER", "ADMIN"])) {
       return { status: "out", label: null, exp: null };
     }
+    const exp = typeof user?.exp === "number" ? user.exp : null;
 
     return {
-      status: token ? "in" : "out",
+      status: "in",
       label: user?.name ?? user?.email ?? null,
       exp,
     };
@@ -39,21 +42,26 @@ export default function useAuthSession() {
 
   const [authSnapshot, setAuthSnapshot] = useState<AuthSnapshot>(readAuthSnapshot);
   const [isHydrated, setIsHydrated] = useState(false);
-  const [isReady, setIsReady] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(true);
   const { status: authStatus, label: userLabel, exp: tokenExp } = authSnapshot;
 
   useEffect(() => {
-    const frameId = window.requestAnimationFrame(() => {
-      setIsHydrated(true);
-      setAuthSnapshot(readAuthSnapshot());
-      setIsReady(true);
-    });
+    let cancelled = false;
+    const frameId = window.requestAnimationFrame(() => setIsHydrated(true));
+    void (async () => {
+      await bootstrapAccessToken();
+      if (!cancelled) {
+        setAuthSnapshot(readAuthSnapshot());
+        setIsRestoring(false);
+      }
+    })();
 
     const unsubscribe = onAuthChanged(() => {
       setAuthSnapshot(readAuthSnapshot());
     });
 
     return () => {
+      cancelled = true;
       window.cancelAnimationFrame(frameId);
       unsubscribe();
     };
@@ -64,15 +72,28 @@ export default function useAuthSession() {
       return;
     }
     if (isTokenExpired(tokenExp)) {
-      clearAccessToken();
-      notifyAuthExpired("expired");
-      return;
+      let cancelled = false;
+      void (async () => {
+        const refreshed = await refreshAccessToken();
+        if (!cancelled && !refreshed) {
+          clearAccessToken();
+          notifyAuthExpired("refresh_failed");
+        }
+      })();
+      return () => {
+        cancelled = true;
+      };
     }
     return scheduleTokenExpiry(() => {
-      clearAccessToken();
-      notifyAuthExpired("expired");
+      void (async () => {
+        const refreshed = await refreshAccessToken();
+        if (!refreshed) {
+          clearAccessToken();
+          notifyAuthExpired("refresh_failed");
+        }
+      })();
     }, tokenExp);
   }, [tokenExp]);
 
-  return { isHydrated, authStatus: isReady ? authStatus : "unknown", userLabel };
+  return { isHydrated, authStatus: isRestoring ? "unknown" : authStatus, userLabel };
 }

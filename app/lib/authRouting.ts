@@ -32,6 +32,19 @@ export function currentBrowserPath(): string {
   return sanitizeAuthNextPath(`${window.location.pathname}${window.location.search}`);
 }
 
+export function buildLoginPath(nextPath: string, expired = false): string {
+  const query = new URLSearchParams();
+  const safeNextPath = sanitizeAuthNextPath(nextPath);
+  if (safeNextPath !== "/") {
+    query.set("next", safeNextPath);
+  }
+  if (expired) {
+    query.set("expired", "1");
+  }
+  const queryString = query.toString();
+  return queryString ? `/login?${queryString}` : "/login";
+}
+
 export function rememberOAuthNextPath(nextPath: string): void {
   window.sessionStorage.setItem(OAUTH_NEXT_SESSION_KEY, sanitizeAuthNextPath(nextPath));
 }

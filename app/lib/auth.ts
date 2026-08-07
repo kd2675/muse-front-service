@@ -11,6 +11,13 @@ export type AuthUser = {
   role?: string;
 };
 
+export type AuthActionResult = {
+  ok: boolean;
+  message?: string;
+  token?: string;
+  user?: AuthUser | null;
+};
+
 export function normalizeRole(role?: string | null): string | null {
   if (!role) {
     return null;
@@ -148,6 +155,43 @@ export function scheduleTokenExpiry(
   const delayMs = Math.max((exp - now - leewaySeconds) * 1000, 0);
   const timeoutId = window.setTimeout(onExpire, delayMs);
   return () => window.clearTimeout(timeoutId);
+}
+
+function resolveAuthError(result: {
+  error?: string;
+  backendMapped?: string;
+  backendMessage?: string;
+}, fallback: string): string {
+  return result.backendMapped ?? result.backendMessage ?? result.error ?? fallback;
+}
+
+export async function login(username: string, password: string): Promise<AuthActionResult> {
+  const result = await postJson<ResponseEnvelope<LoginResponse>>(
+    "/auth/login",
+    { username, password },
+    { headers: withClientId(), withCredentials: true },
+  );
+  const accessToken = result.data?.data?.accessToken;
+  if (!accessToken) {
+    return { ok: false, message: resolveAuthError(result, "로그인에 실패했습니다.") };
+  }
+  setAccessToken(accessToken);
+  return {
+    ok: true,
+    token: accessToken,
+    user: getUserFromToken(accessToken),
+  };
+}
+
+export async function signup(username: string, password: string, email: string): Promise<AuthActionResult> {
+  const result = await postJson<ResponseEnvelope<unknown>>(
+    "/api/users",
+    { username, password, email, role: "USER" },
+    { headers: withClientId(), withCredentials: true },
+  );
+  return result.data?.success
+    ? { ok: true, message: result.data.message }
+    : { ok: false, message: resolveAuthError(result, "회원가입에 실패했습니다.") };
 }
 
 export async function logout() {
