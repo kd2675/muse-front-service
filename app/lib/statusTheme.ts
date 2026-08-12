@@ -20,19 +20,19 @@ const contestPhaseTheme: Record<ContestPhase, ContestPhaseTone> = {
   },
   SUBMISSION: {
     label: "출품 진행",
-    chipClass: "border-cyan-300/34 bg-cyan-300/14 text-cyan-100",
-    dotClass: "bg-cyan-300",
-    cardClass: "border-cyan-300/30 bg-cyan-300/12 hover:border-cyan-200/55",
-    badgeClass: "border-cyan-300/40 bg-cyan-300/18 text-cyan-100",
-    progressBarClass: "bg-cyan-300",
+    chipClass: "border-[#c5a875]/45 bg-[#c5a875]/12 text-[#e8d5ae]",
+    dotClass: "bg-[#c5a875]",
+    cardClass: "border-[#c5a875]/30 bg-[#c5a875]/10 hover:border-[#c5a875]/60",
+    badgeClass: "border-[#c5a875]/40 bg-[#c5a875]/14 text-[#e8d5ae]",
+    progressBarClass: "bg-[#c5a875]",
   },
   REVIEW: {
     label: "심사",
-    chipClass: "border-amber-300/34 bg-amber-300/14 text-amber-100",
-    dotClass: "bg-amber-300",
-    cardClass: "border-amber-300/32 bg-amber-300/14 hover:border-amber-200/55",
-    badgeClass: "border-amber-300/42 bg-amber-300/18 text-amber-100",
-    progressBarClass: "bg-amber-300",
+    chipClass: "border-[#b8a68d]/40 bg-[#b8a68d]/12 text-[#ddd2c1]",
+    dotClass: "bg-[#b8a68d]",
+    cardClass: "border-[#b8a68d]/28 bg-[#b8a68d]/10 hover:border-[#b8a68d]/55",
+    badgeClass: "border-[#b8a68d]/38 bg-[#b8a68d]/14 text-[#ddd2c1]",
+    progressBarClass: "bg-[#b8a68d]",
   },
   VOTING: {
     label: "전시",
@@ -80,18 +80,18 @@ type ModerationTone = {
 const moderationTheme: Record<EntryReviewStatus, ModerationTone> = {
   SUBMITTED: {
     label: "대기",
-    chipClass: "border-sky-300/35 bg-sky-300/16 text-sky-100",
-    dotClass: "bg-sky-300",
+    chipClass: "border-[#b8a68d]/40 bg-[#b8a68d]/12 text-[#ddd2c1]",
+    dotClass: "bg-[#b8a68d]",
   },
   APPROVED: {
     label: "승인",
-    chipClass: "border-emerald-300/35 bg-emerald-300/16 text-emerald-100",
-    dotClass: "bg-emerald-300",
+    chipClass: "border-[#9caf91]/40 bg-[#9caf91]/12 text-[#cddac6]",
+    dotClass: "bg-[#9caf91]",
   },
   REJECTED: {
     label: "반려",
-    chipClass: "border-rose-300/35 bg-rose-300/16 text-rose-100",
-    dotClass: "bg-rose-300",
+    chipClass: "border-[#d08d84]/40 bg-[#d08d84]/12 text-[#efc2bc]",
+    dotClass: "bg-[#d08d84]",
   },
 };
 

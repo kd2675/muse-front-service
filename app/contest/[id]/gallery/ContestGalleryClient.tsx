@@ -139,7 +139,7 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
 
       <main className="relative mx-auto w-full max-w-5xl px-6 pb-44 pt-8">
         <motion.div className="mb-4" {...staggeredFadeUpMotion(0, reduceMotion)}>
-          <OverviewStyleHeader title="The Contest" />
+          <OverviewStyleHeader title="공모전 전시" subtitle="Focused viewing" headingAs="p" />
         </motion.div>
 
         <motion.div
@@ -152,7 +152,7 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
             className="flex h-10 w-10 items-center justify-center  border border-white/14 text-slate-400 transition hover:border-white/28 hover:text-white"
             aria-label="상세로 돌아가기"
           >
-            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+            <span aria-hidden="true" className="text-xl">←</span>
           </button>
 
           <div className=" border border-[#c0a062]/45 bg-[#c0a062]/18 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-[#f8e6be]">

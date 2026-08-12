@@ -63,7 +63,6 @@ export async function getMyMuseums(): Promise<ApiResult<MyMuseum[]>> {
 export async function createMyMuseum(payload: {
   name: string;
   description?: string;
-  isPublic?: boolean;
 }): Promise<NullableApiResult<MyMuseum>> {
   const { data, error, backendMapped, backendMessage } =
     await postJson<ResponseEnvelope<MyMuseum>>("/api/muse/v1/me/museums", payload);
@@ -78,7 +77,6 @@ export async function updateMyMuseum(
   payload: {
     name: string;
     description?: string;
-    isPublic?: boolean;
   },
 ): Promise<NullableApiResult<MyMuseum>> {
   const { data, error, backendMapped, backendMessage } =
@@ -145,6 +143,66 @@ export async function deleteMyMuseumArtwork(
     return { error: resolveError({ error, backendMapped, backendMessage }) };
   }
   return {};
+}
+
+export async function updateMuseumCuration(
+  museumId: number,
+  payload: {
+    publishStatus: "DRAFT" | "SCHEDULED" | "PUBLISHED";
+    coverArtworkId?: number | null;
+    openingAt?: string | null;
+    curatorNote?: string;
+    layoutPreset: "SALON" | "LINEAR" | "IMMERSIVE";
+    lightingPreset: "WARM" | "NEUTRAL" | "DRAMATIC";
+  },
+): Promise<NullableApiResult<MyMuseum>> {
+  const { data, error, backendMapped, backendMessage } =
+    await putJson<ResponseEnvelope<MyMuseum>>(
+      `/api/muse/v1/me/museums/${museumId}/curation`,
+      payload,
+    );
+  return data?.data
+    ? { data: data.data }
+    : { data: null, error: resolveError({ error, backendMapped, backendMessage }) };
+}
+
+export async function updateMuseumArtwork(
+  museumId: number,
+  museumArtworkId: number,
+  payload: {
+    title: string;
+    description?: string;
+    sortOrder: number;
+    roomLabel?: string;
+    focalX: number;
+    focalY: number;
+    audioUrl?: string;
+    audioTranscript?: string;
+    lightingPreset: "WARM" | "NEUTRAL" | "DRAMATIC";
+  },
+): Promise<NullableApiResult<MyMuseumArtwork>> {
+  const { data, error, backendMapped, backendMessage } =
+    await putJson<ResponseEnvelope<MyMuseumArtwork>>(
+      `/api/muse/v1/me/museums/${museumId}/artworks/${museumArtworkId}`,
+      payload,
+    );
+  return data?.data
+    ? { data: data.data }
+    : { data: null, error: resolveError({ error, backendMapped, backendMessage }) };
+}
+
+export async function reorderMuseumArtworks(
+  museumId: number,
+  items: Array<{ museumArtworkId: number; sortOrder: number }>,
+): Promise<ApiResult<MyMuseumArtwork[]>> {
+  const { data, error, backendMapped, backendMessage } =
+    await putJson<ResponseEnvelope<MyMuseumArtwork[]>>(
+      `/api/muse/v1/me/museums/${museumId}/artworks/order`,
+      { items },
+    );
+  return data?.data
+    ? { data: data.data }
+    : { data: [], error: resolveError({ error, backendMapped, backendMessage }) };
 }
 
 export async function getAdminMuseums(): Promise<ApiResult<AdminMuseum[]>> {

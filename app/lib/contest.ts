@@ -14,6 +14,8 @@ import type {
   AdminContestEntryReviewStatus,
   ContestEntryPageMode,
   ContestVoteResponse,
+  ContestResult,
+  ContestEntryDraft,
 } from "../types/contest";
 
 export type ContestListResult = {
@@ -69,29 +71,6 @@ export async function getMyEntryCredits(
   const { data, error, backendMapped, backendMessage } =
     await fetchJson<ResponseEnvelope<ContestEntryCreditStatus>>(
       `/api/muse/v1/me/contests/${id}/entry-credits`,
-    );
-
-  if (!data?.data) {
-    return {
-      data: {
-        contestId: id,
-        credits: 0,
-        status: "NONE",
-      },
-      error: backendMapped ?? backendMessage ?? error,
-    };
-  }
-
-  return { data: data.data };
-}
-
-export async function purchaseEntryCredit(
-  id: number,
-): Promise<ContestEntryCreditStatusResult> {
-  const { data, error, backendMapped, backendMessage } =
-    await postJson<ResponseEnvelope<ContestEntryCreditStatus>>(
-      `/api/muse/v1/contests/${id}/entry-credits/purchase`,
-      {},
     );
 
   if (!data?.data) {
@@ -253,6 +232,30 @@ export async function getContestRanking(
   }
 
   return { data: data.data };
+}
+
+export async function getContestResult(id: number) {
+  const { data, error, backendMapped, backendMessage } =
+    await fetchJson<ResponseEnvelope<ContestResult>>(`/api/muse/v1/contests/${id}/results`);
+  return data?.data
+    ? { data: data.data, error: undefined }
+    : { data: null, error: backendMapped ?? backendMessage ?? error };
+}
+
+export async function getContestDraft(id: number) {
+  const { data, error, backendMapped, backendMessage } =
+    await fetchJson<ResponseEnvelope<ContestEntryDraft>>(`/api/muse/v1/me/contests/${id}/draft`);
+  return data?.data
+    ? { data: data.data, error: undefined }
+    : { data: null, error: backendMapped ?? backendMessage ?? error };
+}
+
+export async function saveContestDraft(id: number, payload: { title: string; description: string }) {
+  const { data, error, backendMapped, backendMessage } =
+    await putJson<ResponseEnvelope<ContestEntryDraft>>(`/api/muse/v1/me/contests/${id}/draft`, payload);
+  return data?.data
+    ? { data: data.data, error: undefined }
+    : { data: null, error: backendMapped ?? backendMessage ?? error };
 }
 
 export type AdminContestListResult = {

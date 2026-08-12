@@ -13,7 +13,8 @@ import {
   getContestEntriesPage,
   getContestRanking,
   getMyEntryCredits,
-  purchaseEntryCredit,
+  getContestDraft,
+  saveContestDraft,
   submitContestEntry,
   voteContestEntry,
 } from "../../lib/contest";
@@ -30,6 +31,9 @@ import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 import { useAppDispatch } from "../../store/hooks";
 import { setPendingPath, showToast } from "../../store/uiSlice";
 import type { ContestPhase } from "../../types/contest";
+import { createPaymentOrder } from "../../lib/payment";
+import { loadTossPayments, type TossPaymentWidgets } from "../../lib/tossPayments";
+import type { PaymentOrder } from "../../types/payment";
 
 type ContestDetailClientProps = {
   id: number;
@@ -63,7 +67,7 @@ const phaseKicker: Record<ContestPhase, string> = {
 
 const phaseNote: Record<ContestPhase, string> = {
   UPCOMING: "출품 시작 전 단계입니다. 일정과 규칙을 확인하고 작품을 준비하세요.",
-  SUBMISSION: "해당 콘테스트 출품권 결제 후 작품 등록이 가능합니다.",
+  SUBMISSION: "출품권 결제를 완료한 뒤 작품을 등록할 수 있습니다.",
   REVIEW: "출품 마감 후 심사 단계입니다. 전시 시작 전까지 작품이 비공개로 유지됩니다.",
   VOTING: "전시 공개 단계입니다. 출품작을 감상하고 원하는 작품에 투표할 수 있습니다.",
   ENDED: "콘테스트가 종료되었습니다. 작품 기록과 최종 랭킹을 확인하세요.",
@@ -256,7 +260,11 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
   const [paymentStep, setPaymentStep] = useState<
     "closed" | "payment" | "processing" | "confirm"
   >("closed");
-  const [paymentMethod, setPaymentMethod] = useState("card");
+  const [checkoutOrder, setCheckoutOrder] = useState<PaymentOrder | null>(null);
+  const [paymentReady, setPaymentReady] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const paymentWidgetsRef = useRef<TossPaymentWidgets | null>(null);
+  const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [pendingVoteEntryId, setPendingVoteEntryId] = useState<string | null>(null);
   const [page, setPage] = useState(() => readContestDetailViewState(id)?.page ?? 1);
   const restoredScrollRef = useRef(false);
@@ -290,6 +298,23 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
     queryFn: () => getMyEntryCredits(id),
     enabled: hasToken,
   });
+
+  const draftQuery = useQuery({
+    queryKey: ["contest", id, "draft"],
+    queryFn: () => getContestDraft(id),
+    enabled: hasToken,
+    retry: false,
+  });
+
+  useEffect(() => {
+    const draft = draftQuery.data?.data;
+    if (!draft) return;
+    const timer = window.setTimeout(() => {
+      setTitle((value) => value || draft.title || "");
+      setDescription((value) => value || draft.description || "");
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [draftQuery.data?.data]);
 
   const pagedEntriesQuery = useQuery({
     queryKey: ["contest", id, "entries", "submitted", page, ENTRY_PAGE_SIZE],
@@ -336,6 +361,16 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
   const hideArtworkByPhase = phase === "UPCOMING" || phase === "REVIEW";
   const canSubmit = hasToken && isSubmissionPhase && credits > 0;
   const needsCredit = hasToken && isSubmissionPhase && credits <= 0;
+
+  useEffect(() => {
+    if (!hasToken || !isSubmissionPhase || (!title.trim() && !description.trim())) return;
+    const timer = window.setTimeout(async () => {
+      setDraftStatus("saving");
+      const result = await saveContestDraft(id, { title, description });
+      setDraftStatus(result.error ? "error" : "saved");
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [description, hasToken, id, isSubmissionPhase, title]);
 
   const progressValue = useMemo(() => {
     if (!contest) {
@@ -450,27 +485,44 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
   const isUploading = uploadStage === "uploading" || uploadStage === "saving";
 
   const purchaseMutation = useMutation({
-    mutationFn: () => purchaseEntryCredit(id),
+    mutationFn: () => createPaymentOrder(id),
     onSuccess: (result) => {
-      if (!result.error) {
-        queryClient.invalidateQueries({ queryKey: ["contest", id, "entryCredits"] });
-        setPaymentStep("confirm");
-      } else {
-        setPaymentStep("payment");
+      if (result.error || !result.data) {
+        setPaymentStep("closed");
+        dispatch(showToast(result.error ?? "결제 주문을 만들지 못했습니다."));
+        return;
       }
-      dispatch(
-        showToast(
-          result.error
-            ? `결제 요청은 되었지만 오류가 있습니다. (${result.error})`
-            : "출품권 결제가 완료되었습니다.",
-        ),
-      );
+      setCheckoutOrder(result.data);
+      setPaymentReady(false);
+      setPaymentError(null);
+      setPaymentStep("payment");
     },
     onError: () => {
-      setPaymentStep("payment");
-      dispatch(showToast("출품권 결제에 실패했습니다."));
+      setPaymentStep("closed");
+      dispatch(showToast("결제 주문 생성에 실패했습니다."));
     },
   });
+
+  useEffect(() => {
+    if (paymentStep !== "payment" || !checkoutOrder?.clientKey) return;
+    let cancelled = false;
+    const initialize = async () => {
+      try {
+        const TossPayments = await loadTossPayments();
+        const widgets = TossPayments(checkoutOrder.clientKey as string).widgets({ customerKey: checkoutOrder.customerKey });
+        await widgets.setAmount({ currency: "KRW", value: checkoutOrder.amount });
+        await Promise.all([
+          widgets.renderPaymentMethods({ selector: "#payment-method", variantKey: "DEFAULT" }),
+          widgets.renderAgreement({ selector: "#payment-agreement", variantKey: "AGREEMENT" }),
+        ]);
+        if (!cancelled) { paymentWidgetsRef.current = widgets; setPaymentReady(true); }
+      } catch (error) {
+        if (!cancelled) setPaymentError(error instanceof Error ? error.message : "결제 화면을 열지 못했습니다.");
+      }
+    };
+    initialize();
+    return () => { cancelled = true; paymentWidgetsRef.current = null; };
+  }, [checkoutOrder, paymentStep]);
 
   const voteMutation = useMutation({
     mutationFn: (entryId: string) => voteContestEntry(id, { entryId }),
@@ -554,15 +606,16 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
   const openPayment = () => {
     if (!hasToken) {
       dispatch(setPendingPath(`/contest/${id}?tab=contest`));
-      dispatch(showToast("로그인 후 결제할 수 있습니다."));
+      dispatch(showToast("로그인 후 출품권을 발급할 수 있습니다."));
       router.push("/login");
       return;
     }
     if (!isSubmissionPhase) {
-      dispatch(showToast("출품 진행 중 단계에서만 결제할 수 있습니다."));
+      dispatch(showToast("출품 진행 중 단계에서만 출품권을 발급할 수 있습니다."));
       return;
     }
-    setPaymentStep("payment");
+    setPaymentStep("processing");
+    purchaseMutation.mutate();
   };
 
   const handleVote = (entryId: string) => {
@@ -577,6 +630,24 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
       return;
     }
     voteMutation.mutate(entryId);
+  };
+
+  const handleShareEntry = async (entryId: string, entryTitle?: string | null) => {
+    const shareUrl = `${window.location.origin}/contest/${id}/gallery?tab=contest&entryId=${encodeURIComponent(entryId)}`;
+    const shareTitle = entryTitle || contest?.theme || "MUSE 공모전 작품";
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: shareTitle, url: shareUrl });
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        dispatch(showToast("작품 링크를 복사했습니다."));
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+      dispatch(showToast("작품 링크를 공유하지 못했습니다."));
+    }
   };
 
   const scrollTo = (targetId: string) => {
@@ -633,12 +704,12 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
   );
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#121212] text-slate-100">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_8%,rgba(110,132,162,0.2),transparent_36%),radial-gradient(circle_at_85%_16%,rgba(157,128,82,0.18),transparent_40%),radial-gradient(circle_at_52%_78%,rgba(90,87,84,0.2),transparent_40%)]" />
+    <div className="museum-grain relative min-h-screen overflow-x-hidden bg-[var(--canvas)] text-[var(--canvas-ink)]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_4%,rgba(197,168,117,0.08),transparent_24%)]" />
 
-      <main className="relative mx-auto w-full max-w-[1120px] px-6 pb-44 pt-10">
+      <main id="main-content" className="relative mx-auto w-full max-w-6xl px-5 pb-44 pt-7 md:px-8 md:pt-10">
         <motion.div className="mb-6" {...staggeredFadeUpMotion(0, reduceMotion)}>
-          <OverviewStyleHeader title="The Contest" />
+          <OverviewStyleHeader title="공모전" subtitle="Program detail" headingAs="p" />
         </motion.div>
 
         <motion.div
@@ -648,10 +719,10 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
           <button
             type="button"
             onClick={goBackToContestList}
-            className="flex h-10 w-10 items-center justify-center  border border-white/14 text-slate-400 transition hover:border-white/28 hover:text-white"
+            className="flex h-10 w-10 items-center justify-center border border-[var(--line)] text-[var(--muted)] transition hover:border-[var(--accent)] hover:text-white"
             aria-label="목록으로 돌아가기"
           >
-            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+            <span aria-hidden="true" className="text-xl">←</span>
           </button>
 
           <div
@@ -684,14 +755,14 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
         ) : contest ? (
           <>
             <motion.section
-              className="border border-white/16 bg-[rgba(18,18,18,0.78)] p-8 shadow-[0_24px_56px_rgba(0,0,0,0.34)] backdrop-blur-md md:p-10"
+              className="border-y border-[var(--line)] bg-transparent py-10 md:py-14"
               {...staggeredFadeUpMotion(1, reduceMotion)}
             >
-              <div className="flex flex-col items-center gap-2 text-center">
-                <h1 className="font-[var(--font-display)] text-5xl leading-[1.06] text-slate-100 md:text-6xl">
+              <div className="flex flex-col items-start gap-3 text-left">
+                <h1 className="max-w-4xl font-[var(--font-display)] text-5xl leading-[1.06] text-[var(--canvas-ink)] md:text-7xl">
                   {contest.theme}
                 </h1>
-                <span className="text-sm text-slate-500">{getContestPhaseLabel(phase)}</span>
+                <span className="museum-kicker">{getContestPhaseLabel(phase)}</span>
               </div>
 
               <div className="mt-7 h-px w-full bg-gradient-to-r from-transparent via-white/20 to-transparent" />
@@ -721,9 +792,9 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                 </div>
               </div>
 
-              <article className="mt-7 border border-white/14 bg-white/[0.03] p-6">
+              <article className="mt-9 border-t border-[var(--line)] pt-6">
                 <h3 className="border-b border-white/10 pb-2 text-xs uppercase tracking-[0.24em] text-[#c0a062]">
-                  Exhibition Notes
+                  참여 규정과 현재 단계
                 </h3>
                 <ul className="mt-3 grid gap-2">
                   {(contest.rules ?? []).map((rule) => (
@@ -739,7 +810,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"
-                  className="border border-white/18 bg-slate-100 px-4 py-3 text-sm font-medium tracking-[0.08em] text-black transition hover:bg-white"
+                  className="border border-[var(--canvas-ink)] bg-[var(--canvas-ink)] px-4 py-3 text-sm font-medium tracking-[0.08em] text-black transition hover:bg-white"
                   onClick={() => scrollTo("contest-artworks")}
                 >
                   작품 보기
@@ -747,7 +818,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                 {phase === "SUBMISSION" ? (
                   <button
                     type="button"
-                    className="border border-cyan-300/35 bg-cyan-300/12 px-4 py-3 text-sm tracking-[0.08em] text-cyan-100 transition hover:bg-cyan-300/20"
+                    className="border border-[color:var(--accent)] bg-[color:var(--accent-soft)] px-4 py-3 text-sm tracking-[0.08em] text-[color:var(--accent)] transition hover:bg-[color:var(--accent)] hover:text-[#111]"
                     onClick={openPayment}
                   >
                     출품권 결제
@@ -757,7 +828,14 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                     href={`/contest/${id}/gallery?tab=contest`}
                     className="border border-[#c0a062]/35 bg-[#c0a062]/12 px-4 py-3 text-center text-sm tracking-[0.08em] text-[#f3dba5] transition hover:bg-[#c0a062]/20"
                   >
-                    집중 갤러리
+                    작품 집중 감상
+                  </Link>
+                ) : phase === "ENDED" ? (
+                  <Link
+                    href={`/contest/${id}/results`}
+                    className="border border-[#c0a062]/35 bg-[#c0a062]/12 px-4 py-3 text-center text-sm tracking-[0.08em] text-[#f3dba5] transition hover:bg-[#c0a062]/20"
+                  >
+                    최종 수상작 보기
                   </Link>
                 ) : (
                   <Link
@@ -772,38 +850,41 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
 
             {isSubmissionPhase && (
               <motion.section
-                className="mt-10 border border-cyan-300/24 bg-[rgba(12,34,38,0.74)] p-7 backdrop-blur-md md:p-9"
+                className="museum-panel mt-10 p-7 md:p-9"
                 {...staggeredFadeUpMotion(2, reduceMotion)}
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="font-[var(--font-display)] text-4xl italic text-cyan-50">Submission Studio</h2>
-                  <span className=" border border-cyan-300/30 bg-cyan-300/14 px-3 py-1 text-xs text-cyan-100">
+                  <div>
+                    <p className="museum-kicker">Submission studio</p>
+                    <h2 className="mt-2 font-[var(--font-display)] text-4xl">작품 출품실</h2>
+                  </div>
+                  <span className="border border-[color:var(--accent)] bg-[color:var(--accent-soft)] px-3 py-1 text-xs text-[color:var(--accent)]">
                     보유 출품권 {credits}개
                   </span>
                 </div>
 
-                <div className="mt-4  border border-amber-300/35 bg-amber-300/10 px-4 py-3">
-                  <p className="text-xs font-semibold tracking-[0.08em] text-amber-100">
+                <div className="mt-5 border border-[color:var(--line)] bg-[color:var(--chip)] px-4 py-3">
+                  <p className="text-xs font-semibold tracking-[0.08em] text-[color:var(--accent)]">
                     {AI_DISCLOSURE_NOTICE.title}
                   </p>
-                  <p className="mt-2 text-xs leading-relaxed text-amber-50/90">
+                  <p className="mt-2 text-xs leading-relaxed text-[color:var(--muted)]">
                     {AI_DISCLOSURE_NOTICE.summary}
                   </p>
-                  <p className="mt-2 text-xs text-amber-100">{AI_DISCLOSURE_NOTICE.guide}</p>
+                  <p className="mt-2 text-xs text-[color:var(--canvas-ink)]">{AI_DISCLOSURE_NOTICE.guide}</p>
                 </div>
 
                 {!hasToken && (
                   <div className="mt-4  border border-white/14 bg-white/8 px-4 py-3 text-xs text-slate-300">
-                    로그인 후 결제 및 출품이 가능합니다.
+                    로그인 후 출품권 결제 및 출품이 가능합니다.
                   </div>
                 )}
                 {needsCredit && (
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3  border border-cyan-300/26 bg-cyan-300/10 px-4 py-3 text-xs text-cyan-100">
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border border-[color:var(--accent)]/35 bg-[color:var(--accent-soft)] px-4 py-3 text-xs text-[color:var(--accent)]">
                     <span>해당 콘테스트 출품권이 없습니다.</span>
                     <button
                       type="button"
                       onClick={openPayment}
-                      className=" border border-cyan-300/35 bg-cyan-300/16 px-3 py-1.5 text-xs transition hover:bg-cyan-300/24"
+                      className="min-h-10 border border-[color:var(--accent)] px-3 py-1.5 text-xs font-bold transition hover:bg-[color:var(--accent)] hover:text-[#111]"
                     >
                       출품권 결제
                     </button>
@@ -812,14 +893,23 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
 
                 <div className="mt-5 grid gap-3">
                   <input
-                    className="h-12 border border-white/18 bg-black/20 px-4 text-sm text-slate-100 focus:border-cyan-300/45 focus:outline-none"
+                    aria-label="작품 제목"
+                    maxLength={200}
+                    className="museum-field px-4 text-sm"
                     placeholder="작품 제목"
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
                     disabled={!canSubmit}
                   />
+                  {hasToken ? (
+                    <p aria-live="polite" className="text-right text-[11px] text-[var(--muted)]">
+                      {draftStatus === "saving" ? "초안 저장 중" : draftStatus === "saved" ? "초안 자동 저장됨" : draftStatus === "error" ? "초안 저장 실패" : ""}
+                    </p>
+                  ) : null}
                   <textarea
-                    className="min-h-[100px] border border-white/18 bg-black/20 px-4 py-3 text-sm text-slate-100 focus:border-cyan-300/45 focus:outline-none"
+                    aria-label="작품 설명"
+                    maxLength={2000}
+                    className="museum-field min-h-[100px] px-4 py-3 text-sm"
                     placeholder="작품 설명"
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
@@ -917,7 +1007,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                         htmlFor="contest-entry-file"
                         className={` px-4 py-2 text-xs transition ${
                           canSubmit
-                            ? "cursor-pointer border border-cyan-300/35 bg-cyan-300/14 text-cyan-100 hover:bg-cyan-300/24"
+                            ? "cursor-pointer border border-[color:var(--accent)] bg-[color:var(--accent-soft)] text-[color:var(--accent)] hover:bg-[color:var(--accent)] hover:text-[#111]"
                             : "cursor-not-allowed border border-white/14 bg-white/6 text-slate-500"
                         }`}
                       >
@@ -940,7 +1030,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                       {uploadStage === "uploading" && (
                         <div className="mt-2 h-2 overflow-hidden bg-white/10">
                           <div
-                            className="h-full  bg-cyan-300 transition-[width] duration-300"
+                            className="h-full bg-[color:var(--accent)] transition-[width] duration-300"
                             style={{ width: `${uploadProgress}%` }}
                           />
                         </div>
@@ -966,11 +1056,11 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
 
                   <button
                     type="button"
-                    className="border border-cyan-300/35 bg-cyan-300/18 px-5 py-3 text-sm tracking-[0.08em] text-cyan-50 transition hover:bg-cyan-300/28 disabled:opacity-60"
+                    className="museum-button-primary px-5 py-3 text-sm tracking-[0.08em]"
                     onClick={() => uploadMutation.mutate()}
                     disabled={!canSubmit || !file || uploadMutation.isPending || isUploading}
                   >
-                    {!canSubmit ? "결제 후 출품 가능" : uploadMutation.isPending || isUploading ? "업로드 중..." : "출품하기"}
+                    {!canSubmit ? "출품권 발급 후 가능" : uploadMutation.isPending || isUploading ? "업로드 중..." : "출품하기"}
                   </button>
                 </div>
               </motion.section>
@@ -1118,17 +1208,11 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                         <div className="flex gap-2">
                           <button
                             type="button"
-                            className="material-symbols-outlined text-lg text-slate-400 transition hover:text-white"
-                            aria-label="북마크"
+                            onClick={() => void handleShareEntry(entry.entryId, entry.title)}
+                            className="text-xs text-[var(--muted)] transition hover:text-white"
+                            aria-label={`${entry.title ?? "작품"} 공유`}
                           >
-                            bookmark_border
-                          </button>
-                          <button
-                            type="button"
-                            className="material-symbols-outlined text-lg text-slate-400 transition hover:text-white"
-                            aria-label="공유"
-                          >
-                            share
+                            공유
                           </button>
                         </div>
                       </div>
@@ -1153,8 +1237,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                               />
                               <div className="absolute inset-0 bg-gradient-to-t from-[#121212] via-transparent to-transparent opacity-65" />
                               <div className="absolute right-4 bottom-4 flex items-center gap-1 border border-white/14 bg-black/45 px-3 py-1 text-[10px] text-white">
-                                <span className="material-symbols-outlined text-sm">visibility</span>
-                                <span>{formatNumber(voteCount)}</span>
+                                <span>득표 {formatNumber(voteCount)}</span>
                               </div>
                               {isEndedPhase && currentRank && currentRank <= 3 && (
                                 <div className="absolute left-4 top-4 border border-[#c0a062]/40 bg-[#c0a062]/18 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[#f8e6be]">
@@ -1188,8 +1271,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                           onClick={persistDetailViewState}
                           className="flex items-center justify-center gap-2 border border-white/16 px-4 py-3 text-xs uppercase tracking-[0.16em] text-slate-300 transition hover:bg-white/8"
                         >
-                          <span className="material-symbols-outlined text-lg">fullscreen</span>
-                          <span>Immersive</span>
+                          <span>작품 크게 보기</span>
                         </Link>
                         {isVotingPhase ? (
                           <button
@@ -1198,13 +1280,12 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                             disabled={Boolean(pendingVoteEntryId)}
                             className="flex items-center justify-center gap-2 border border-[#c0a062]/40 bg-[#c0a062]/14 px-4 py-3 text-xs uppercase tracking-[0.16em] text-[#f3dba5] transition hover:bg-[#c0a062]/22 disabled:opacity-60"
                           >
-                            <span className="material-symbols-outlined text-lg">how_to_vote</span>
                             <span>
                               {!hasToken
-                                ? "Login to Vote"
+                                ? "로그인 후 투표"
                                 : pendingVoteEntryId === entry.entryId
-                                  ? "Voting..."
-                                  : "Vote Entry"}
+                                  ? "투표 반영 중"
+                                  : "이 작품에 투표"}
                             </span>
                           </button>
                         ) : (
@@ -1246,10 +1327,10 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                 <>
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-xs uppercase tracking-[0.32em] text-[#c0a062]/86">Test Payment</p>
+                      <p className="museum-kicker">Secure checkout</p>
                       <h2 className="mt-2 font-[var(--font-display)] text-3xl text-slate-100">출품권 결제</h2>
                       <p className="mt-2 text-sm text-slate-300/74">
-                        실제 결제는 진행되지 않으며 테스트 UI입니다.
+                        결제 승인 후 이 공모전에서 사용할 수 있는 출품권 1개가 지급됩니다.
                       </p>
                     </div>
                     <button
@@ -1268,48 +1349,31 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                     <div className="border border-white/14 bg-white/[0.04] px-4 py-3 text-sm text-slate-200">
                       참가비 <strong>{formatNumber(contest.entryFee)}원</strong>
                     </div>
-                    <div className="border border-white/14 bg-white/[0.04] px-4 py-3 text-xs text-slate-300">
-                      출품권은 결제한 해당 콘테스트에서만 사용할 수 있습니다.
-                    </div>
-
-                    <div className="grid gap-2">
-                      <p className="text-xs uppercase tracking-[0.26em] text-slate-500">Payment Method</p>
-                      <div className="flex flex-wrap gap-2">
-                        {[
-                          { id: "card", label: "카드 결제" },
-                          { id: "account", label: "계좌 이체" },
-                          { id: "simple", label: "간편 결제" },
-                        ].map((method) => (
-                          <button
-                            key={method.id}
-                            type="button"
-                            className={` border px-4 py-2 text-xs transition ${
-                              paymentMethod === method.id
-                                ? "border-[#c0a062]/45 bg-[#c0a062]/18 text-[#f8e6be]"
-                                : "border-white/18 bg-transparent text-slate-300 hover:bg-white/10"
-                            }`}
-                            onClick={() => setPaymentMethod(method.id)}
-                          >
-                            {method.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                    <div id="payment-method" className="min-h-24" />
+                    <div id="payment-agreement" className="min-h-10" />
+                    {paymentError ? <p className="border border-[var(--danger)]/40 p-3 text-xs text-[#efc2bc]">{paymentError}</p> : null}
                   </div>
 
                   <div className="mt-6 grid grid-cols-2 gap-3">
                     <button
                       type="button"
                       className="border border-[#c0a062]/45 bg-[#c0a062]/18 px-4 py-3 text-sm tracking-[0.08em] text-[#f8e6be] transition hover:bg-[#c0a062]/26"
-                      onClick={() => {
-                        if (purchaseMutation.isPending) {
-                          return;
+                      disabled={!paymentReady || !checkoutOrder || Boolean(paymentError)}
+                      onClick={async () => {
+                        if (!paymentWidgetsRef.current || !checkoutOrder) return;
+                        try {
+                          await paymentWidgetsRef.current.requestPayment({
+                            orderId: checkoutOrder.orderId,
+                            orderName: checkoutOrder.orderName,
+                            successUrl: `${window.location.origin}/contest/${id}/payment/success`,
+                            failUrl: `${window.location.origin}/contest/${id}/payment/fail`,
+                          });
+                        } catch (error) {
+                          dispatch(showToast(error instanceof Error ? error.message : "결제를 시작하지 못했습니다."));
                         }
-                        setPaymentStep("processing");
-                        purchaseMutation.mutate();
                       }}
                     >
-                      {purchaseMutation.isPending ? "결제 처리 중..." : "테스트 결제 진행"}
+                      {paymentReady ? `${formatNumber(contest.entryFee)}원 결제` : "결제 화면 준비 중"}
                     </button>
                     <button
                       type="button"
@@ -1324,18 +1388,18 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
 
               {paymentStep === "processing" && (
                 <>
-                  <p className="text-xs uppercase tracking-[0.32em] text-[#c0a062]/86">Processing</p>
-                  <h2 className="mt-3 font-[var(--font-display)] text-3xl text-slate-100">결제를 처리하고 있습니다.</h2>
-                  <p className="mt-2 text-sm text-slate-300/74">잠시만 기다려주세요.</p>
+                  <p className="text-xs uppercase tracking-[0.32em] text-[#c0a062]/86">Preparing checkout</p>
+                  <h2 className="mt-3 font-[var(--font-display)] text-3xl text-slate-100">안전한 결제 주문을 준비합니다.</h2>
+                  <p className="mt-2 text-sm text-slate-300/74">저장된 참가비와 주문 정보를 확인하고 있습니다.</p>
                 </>
               )}
 
               {paymentStep === "confirm" && (
                 <>
-                  <p className="text-xs uppercase tracking-[0.32em] text-[#c0a062]/86">Payment Complete</p>
-                  <h2 className="mt-3 font-[var(--font-display)] text-3xl text-slate-100">출품권 결제가 완료되었습니다.</h2>
+                  <p className="text-xs uppercase tracking-[0.32em] text-[#c0a062]/86">Payment complete</p>
+                  <h2 className="mt-3 font-[var(--font-display)] text-3xl text-slate-100">출품권이 지급되었습니다.</h2>
                   <p className="mt-2 text-sm text-slate-300/74">
-                    테스트 결제이므로 실제 승인/청구는 발생하지 않습니다.
+                    결제 승인과 출품권 지급이 모두 확인되었습니다.
                   </p>
                   <div className="mt-5 border border-white/14 bg-white/[0.04] px-4 py-3 text-sm text-slate-200">
                     {contest.theme} 출품권이 추가되었습니다. 현재 {credits}개

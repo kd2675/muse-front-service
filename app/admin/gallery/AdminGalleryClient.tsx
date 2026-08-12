@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "motion/react";
 import AdminShell from "../../components/AdminShell";
 import AdminActionButton from "../../components/AdminActionButton";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import { Skeleton } from "../../components/Skeleton";
 import Reveal from "../../components/motion/Reveal";
 import { getUserFromToken, isAdminRole } from "../../lib/auth";
@@ -41,6 +42,7 @@ export default function AdminGalleryClient() {
   const [search, setSearch] = useState("");
   const [processingMuseumId, setProcessingMuseumId] = useState<number | null>(null);
   const [processingArtworkId, setProcessingArtworkId] = useState<number | null>(null);
+  const [artworkToDelete, setArtworkToDelete] = useState<{ museumId: number; artworkId: number } | null>(null);
 
   const museumsQuery = useQuery({
     queryKey: ["admin", "gallery", "museums"],
@@ -193,6 +195,7 @@ export default function AdminGalleryClient() {
       });
       queryClient.invalidateQueries({ queryKey: ["admin", "gallery", "museums"] });
       queryClient.invalidateQueries({ queryKey: ["gallery", "museums"] });
+      setArtworkToDelete(null);
       dispatch(showToast("작품을 삭제했습니다."));
     },
     onError: () => dispatch(showToast("작품 삭제 중 오류가 발생했습니다.")),
@@ -203,7 +206,7 @@ export default function AdminGalleryClient() {
     return (
       <AdminShell
         section="gallery-manage"
-        title="Gallery Admin"
+        title="전시 운영"
         description="뮤지엄 공개/메인 노출/작품 모더레이션을 운영합니다."
       >
         <section className=" border border-[color:var(--line)] bg-[rgba(34,34,40,0.72)] p-8 text-center shadow-[var(--shadow)]">
@@ -219,7 +222,7 @@ export default function AdminGalleryClient() {
   return (
     <AdminShell
       section="gallery-manage"
-      title="Gallery Admin"
+      title="전시 운영"
       description="뮤지엄 단위 큐와 작품 상태를 기준으로 전시 품질을 관리합니다."
     >
       <Reveal index={0}>
@@ -438,15 +441,10 @@ export default function AdminGalleryClient() {
                           <AdminActionButton
                             variant="danger"
                             size="sm"
-                            onClick={() => {
-                              if (!window.confirm("이 작품을 완전히 삭제할까요?")) {
-                                return;
-                              }
-                              deleteArtworkMutation.mutate({
-                                museumId: selectedMuseum.museumId,
-                                museumArtworkId: artwork.museumArtworkId,
-                              });
-                            }}
+                            onClick={() => setArtworkToDelete({
+                              museumId: selectedMuseum.museumId,
+                              artworkId: artwork.museumArtworkId,
+                            })}
                             disabled={processingArtworkId === artwork.museumArtworkId}
                             fullWidth
                             className="mt-2 text-[11px]"
@@ -475,6 +473,22 @@ export default function AdminGalleryClient() {
         </div>
       </section>
       </Reveal>
+      <ConfirmDialog
+        open={artworkToDelete !== null}
+        title="작품을 완전히 삭제할까요?"
+        description="운영 목록과 공개 전시, 이미지 저장소에서 작품을 제거합니다. 단순 반려가 필요하다면 취소 후 반려 상태를 사용하세요."
+        busy={deleteArtworkMutation.isPending}
+        onCancel={() => setArtworkToDelete(null)}
+        onConfirm={() => {
+          if (!artworkToDelete) {
+            return;
+          }
+          deleteArtworkMutation.mutate({
+            museumId: artworkToDelete.museumId,
+            museumArtworkId: artworkToDelete.artworkId,
+          });
+        }}
+      />
     </AdminShell>
   );
 }

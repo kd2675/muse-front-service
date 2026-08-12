@@ -228,7 +228,7 @@ export default function AdminContestClient() {
     return (
       <AdminShell
         section="contest-manage"
-        title="Contest Admin"
+        title="공모전 운영"
         description="콘테스트 생성/수정/결과 확정을 한 화면에서 관리합니다."
       >
         <section className=" border border-[color:var(--line)] bg-[rgba(34,34,40,0.72)] p-8 shadow-[var(--shadow)]">
@@ -243,7 +243,7 @@ export default function AdminContestClient() {
   return (
     <AdminShell
       section="contest-manage"
-      title="Contest Admin"
+      title="공모전 운영"
       description="출품·심사·전시 흐름을 기준으로 콘테스트를 운영합니다."
     >
       <Reveal index={0}>
@@ -254,7 +254,7 @@ export default function AdminContestClient() {
               <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">
                 Admin
               </p>
-              <h2 className="mt-2 font-[var(--font-display)] text-2xl">Contest Schedule</h2>
+              <h2 className="mt-2 font-[var(--font-display)] text-2xl">공모전 일정</h2>
             </div>
             <AdminActionButton
               variant="secondary"
@@ -386,9 +386,9 @@ export default function AdminContestClient() {
           <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">
             {mode === "create" ? "Create" : "Update"}
           </p>
-          <h1 className="mt-2 border-b border-[color:var(--line)] pb-4 font-[var(--font-display)] text-4xl italic">
+          <h2 className="mt-2 border-b border-[color:var(--line)] pb-4 font-[var(--font-display)] text-4xl">
             콘테스트 관리
-          </h1>
+          </h2>
           <div className="mt-4 flex flex-wrap gap-2">
             <AdminActionButton
               variant="primary"

@@ -50,13 +50,10 @@ export default function GlobalScrollTopButton() {
       type="button"
       aria-label="맨 위로 이동"
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-      className="fixed right-5 z-40 h-11 w-11  border border-black/10 bg-white/88 text-slate-700 shadow-[0_10px_24px_rgba(0,0,0,0.2)] backdrop-blur transition hover:-translate-y-0.5 hover:bg-white active:translate-y-0 md:right-7 md:h-12 md:w-12"
+      className="fixed right-5 z-40 h-11 w-11 border border-[var(--line)] bg-[rgba(9,10,10,0.86)] text-[var(--muted)] shadow-[0_10px_24px_rgba(0,0,0,0.32)] backdrop-blur transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:text-white active:translate-y-0 md:right-7 md:h-12 md:w-12"
       style={{ bottom: "calc(env(safe-area-inset-bottom) + 92px)" }}
     >
-      <span className="material-symbols-outlined text-[20px]" aria-hidden>
-        arrow_upward
-      </span>
+      <span className="text-lg" aria-hidden>↑</span>
     </button>
   );
 }
-

@@ -323,7 +323,7 @@ export default function AdminContestReviewClient() {
     return (
       <AdminShell
         section="contest-review"
-        title="Contest Review Admin"
+        title="출품 심사"
         description="콘테스트별 출품 심사 큐를 상태 기반으로 관리합니다."
       >
         <section className=" border border-[color:var(--line)] bg-[rgba(34,34,40,0.72)] p-8 shadow-[var(--shadow)]">
@@ -336,7 +336,7 @@ export default function AdminContestReviewClient() {
   return (
     <AdminShell
       section="contest-review"
-      title="Contest Review Admin"
+      title="출품 심사"
       description="출품 심사 가능 시간대와 상태별 필터를 기준으로 빠르게 운영합니다."
     >
       <Reveal index={0}>
@@ -345,7 +345,7 @@ export default function AdminContestReviewClient() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">Admin</p>
-              <h2 className="mt-2 font-[var(--font-display)] text-2xl">Contest Review</h2>
+              <h2 className="mt-2 font-[var(--font-display)] text-2xl">심사 대상</h2>
             </div>
             <AdminActionButton
               variant="secondary"
@@ -418,9 +418,9 @@ export default function AdminContestReviewClient() {
 
         <section className="min-w-0 border border-[color:var(--line)] bg-[rgba(18,18,24,0.86)] p-7 shadow-[var(--shadow)] md:p-8">
           <p className="text-xs uppercase tracking-[0.35em] text-[color:var(--accent)]">Entry Review</p>
-          <h1 className="mt-2 border-b border-[color:var(--line)] pb-4 font-[var(--font-display)] text-4xl italic">
+          <h2 className="mt-2 border-b border-[color:var(--line)] pb-4 font-[var(--font-display)] text-4xl">
             출품 심사 전용
-          </h1>
+          </h2>
           <p className="mt-2 text-sm text-[color:var(--muted)]">
             출품 상태를 대기, 승인, 반려 기준으로 분리해서 대량 심사합니다.
           </p>

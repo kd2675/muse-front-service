@@ -124,21 +124,23 @@ function LoginPageContent() {
 
         <motion.form
           onSubmit={handleSubmit}
-          className="border border-[color:var(--line)] bg-[#fffdf8] p-5 shadow-[var(--shadow)]"
+          className="border border-[color:var(--line)] bg-[#f4f0e7] p-5 text-[#191816] shadow-[var(--shadow)]"
           {...staggeredFadeUpMotion(1, reduceMotion)}
         >
-          <div className="grid grid-cols-2 bg-[color:var(--chip)] p-1">
+          <div className="grid grid-cols-2 bg-[#e8e2d6] p-1" role="tablist" aria-label="계정 방식">
             {(["login", "signup"] as const).map((item) => (
               <button
                 key={item}
                 type="button"
+                role="tab"
+                aria-selected={item === mode}
                 onClick={() => {
                   setMode(item);
                   setMessage(null);
                 }}
                 className={item === mode
-                  ? "bg-[#fffdf8] px-3 py-2.5 text-sm font-black text-[color:var(--canvas-ink)] shadow-sm"
-                  : "px-3 py-2.5 text-sm font-bold text-[color:var(--muted)]"}
+                  ? "bg-[#fffdf8] px-3 py-2.5 text-sm font-black text-[#191816] shadow-sm"
+                  : "px-3 py-2.5 text-sm font-bold text-[#6c675f]"}
               >
                 {item === "login" ? "로그인" : "회원가입"}
               </button>
@@ -154,7 +156,7 @@ function LoginPageContent() {
           </div>
 
           {message || queryMessage ? (
-            <p role="alert" aria-live="polite" className="mt-4 border border-[#c95c47]/25 bg-[#c95c47]/8 px-3 py-2.5 text-sm font-semibold text-[#8f382b]">
+            <p role="alert" aria-live="polite" className="mt-4 border border-[#9a493c]/30 bg-[#9a493c]/10 px-3 py-2.5 text-sm font-semibold text-[#7c3328]">
               {message ?? queryMessage}
             </p>
           ) : null}
@@ -167,10 +169,10 @@ function LoginPageContent() {
             {isSubmitting ? "처리 중" : mode === "login" ? "Muse 로그인" : "가입 후 시작"}
           </button>
 
-          <div className="my-5 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.15em] text-[color:var(--muted)]">
-            <span className="h-px flex-1 bg-[color:var(--line)]" />
+          <div className="my-5 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.15em] text-[#756f65]">
+            <span className="h-px flex-1 bg-[#d6cfc1]" />
             Social access
-            <span className="h-px flex-1 bg-[color:var(--line)]" />
+            <span className="h-px flex-1 bg-[#d6cfc1]" />
           </div>
           <div className="grid gap-2">
             <button type="button" onClick={() => startOAuthLogin("naver-muse")} className="min-h-12 bg-[#03c75a] px-4 py-3 text-sm font-black text-white hover:brightness-95">네이버로 계속</button>
@@ -199,7 +201,7 @@ function MuseField({
 }) {
   return (
     <label className="block">
-      <span className="text-xs font-bold text-[color:var(--muted)]">{label}</span>
+      <span className="text-xs font-bold text-[#5f5a52]">{label}</span>
       <input
         name={name}
         type={type}
@@ -207,7 +209,7 @@ function MuseField({
         onChange={(event) => onChange(event.target.value)}
         autoComplete={autoComplete}
         maxLength={255}
-        className="mt-1 min-h-12 w-full border border-[color:var(--line)] bg-transparent px-3 py-3 text-sm font-bold outline-none focus:border-[color:var(--accent)] focus:ring-2 focus:ring-[color:var(--accent)]/10"
+        className="mt-1 min-h-12 w-full border border-[#cfc7b9] bg-[#fffdf8] px-3 py-3 text-sm font-bold text-[#191816] outline-none focus:border-[#8f7548] focus:ring-2 focus:ring-[#8f7548]/15"
       />
     </label>
   );

@@ -4,8 +4,10 @@ type PageShellProps = {
 
 export default function PageShell({ children }: PageShellProps) {
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(11,91,91,0.12)_0%,_rgba(245,241,232,1)_46%,_rgba(245,241,232,1)_100%)]">
-      <div className="mx-auto max-w-6xl px-6 pb-20 pt-10">{children}</div>
+    <div className="museum-grain relative min-h-screen overflow-hidden bg-[var(--canvas)] text-[var(--canvas-ink)]">
+      <main id="main-content" className="relative z-10 mx-auto max-w-6xl px-5 pb-28 pt-8 md:px-8 md:pt-12">
+        {children}
+      </main>
     </div>
   );
 }

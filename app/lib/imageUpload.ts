@@ -1,5 +1,7 @@
 import axios, { type AxiosError } from "axios";
 
+import { getAccessToken } from "./auth";
+
 export const IMAGE_BASE =
   process.env.NEXT_PUBLIC_IMAGE_BASE_URL ?? "http://localhost:8081";
 
@@ -28,6 +30,14 @@ export async function uploadImage(
   formData.append("file", file);
 
   try {
+    const accessToken = getAccessToken();
+    if (!accessToken) {
+      return {
+        error: "Authentication is required before uploading an image",
+        status: 401,
+        errorKind: "HTTP",
+      };
+    }
     const response = await imageClient.post<{
       fileName?: string;
       imageUrl?: string;
@@ -36,6 +46,7 @@ export async function uploadImage(
     }>("/upload/temp", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
+        Authorization: `Bearer ${accessToken}`,
       },
       onUploadProgress: (event) => {
         if (!event.total || !options?.onProgress) {

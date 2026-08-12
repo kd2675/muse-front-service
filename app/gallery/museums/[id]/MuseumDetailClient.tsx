@@ -1,7 +1,8 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -12,6 +13,8 @@ import CinematicBottomNav from "../../../components/CinematicBottomNav";
 import OverviewStyleHeader from "../../../components/OverviewStyleHeader";
 import { overlayFadeMotion, popInMotion, staggeredFadeUpMotion } from "../../../lib/motion";
 import { getPublicMuseumDetail } from "../../../lib/museum";
+import { getAccessToken } from "../../../lib/auth";
+import { getBookmarkStatus, recordMuseumView, setBookmark } from "../../../lib/discovery";
 import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
 import "swiper/css/effect-coverflow";
 
@@ -116,8 +119,8 @@ const EXHIBIT_EFFECT_PRESETS: ExhibitEffectPreset[] = [
   {
     variant: "acrylicDepth",
     profile: "acrylic",
-    hallLabel: "Ethereal Hall",
-    subtitle: "Acrylic Depth",
+    hallLabel: "MUSE 영구 전시",
+    subtitle: "아크릴 프레임",
     rimTop: "rgba(252,255,255,0.9)",
     rimMid: "rgba(206,220,236,0.58)",
     rimBottom: "rgba(112,130,152,0.42)",
@@ -203,16 +206,27 @@ function hashString(input: string): number {
   return hash;
 }
 
+function formatCountdown(openingAt: string | null | undefined, now: number): string {
+  if (!openingAt) return "오픈 시각 준비 중";
+  const diff = Math.max(new Date(openingAt).getTime() - now, 0);
+  const days = Math.floor(diff / 86_400_000);
+  const hours = Math.floor((diff % 86_400_000) / 3_600_000);
+  const minutes = Math.floor((diff % 3_600_000) / 60_000);
+  const seconds = Math.floor((diff % 60_000) / 1000);
+  return `${days}일 ${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
 export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps) {
   const prefersReducedMotion = useReducedMotion();
   const reduceMotion = Boolean(prefersReducedMotion);
   const router = useRouter();
+  const queryClient = useQueryClient();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const [activeIndex, setActiveIndex] = useState(0);
   const isLightboxOpen = searchParams.get("immersive") === "1";
-  const [effectMode, setEffectMode] = useState<ExhibitEffectMode>("random");
+  const [effectMode, setEffectMode] = useState<ExhibitEffectMode>("acrylicDepth");
   const [effectShuffleSeed, setEffectShuffleSeed] = useState(0);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [sheetDragTranslate, setSheetDragTranslate] = useState<number | null>(null);
@@ -223,6 +237,8 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
   const [lightboxPan, setLightboxPan] = useState<LightboxPan>({ x: 0, y: 0 });
   const [lightboxRotationQuarterTurns, setLightboxRotationQuarterTurns] = useState(0);
   const [isLightboxPanning, setIsLightboxPanning] = useState(false);
+  const [clock, setClock] = useState(() => Date.now());
+  const showExhibitLab = process.env.NEXT_PUBLIC_MUSE_EXHIBIT_LAB === "true";
 
   const swiperRef = useRef<SwiperType | null>(null);
   const sheetDragRef = useRef<{
@@ -257,6 +273,22 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
   const museum = data?.data ?? null;
   const error = data?.error;
   const artworks = useMemo(() => museum?.artworks ?? [], [museum?.artworks]);
+  const hasToken = Boolean(getAccessToken());
+  const bookmarkQuery = useQuery({
+    queryKey: ["gallery", "museum", museumId, "bookmark"],
+    queryFn: () => getBookmarkStatus(museumId),
+    enabled: hasToken && Boolean(museum?.contentAvailable),
+  });
+  const bookmarkMutation = useMutation({
+    mutationFn: (bookmarked: boolean) => setBookmark(museumId, bookmarked),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["gallery", "museum", museumId, "bookmark"] }),
+  });
+
+  useEffect(() => {
+    if (museum?.contentAvailable) return;
+    const timer = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [museum?.contentAvailable]);
 
   useEffect(() => {
     const unresolvedArtworks = artworks.filter(
@@ -329,6 +361,17 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
   const safeActiveIndex =
     artworks.length > 0 ? ((activeIndex % artworks.length) + artworks.length) % artworks.length : 0;
   const currentArtwork = artworks.length > 0 ? artworks[safeActiveIndex] : null;
+  useEffect(() => {
+    if (!hasToken || !museum?.contentAvailable || !currentArtwork) return;
+    const timer = window.setTimeout(() => {
+      recordMuseumView(
+        museumId,
+        currentArtwork.museumArtworkId,
+        Math.round(((safeActiveIndex + 1) / Math.max(artworks.length, 1)) * 100),
+      );
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [artworks.length, currentArtwork, hasToken, museum?.contentAvailable, museumId, safeActiveIndex]);
   const currentArtworkAspectRatio = currentArtwork
     ? artworkAspectRatioById[currentArtwork.museumArtworkId] ?? ARTWORK_DEFAULT_ASPECT_RATIO
     : ARTWORK_DEFAULT_ASPECT_RATIO;
@@ -931,15 +974,36 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
           className="pointer-events-auto mx-auto w-full max-w-[1120px] px-6 pt-10 md:px-8"
           {...staggeredFadeUpMotion(0, reduceMotion)}
         >
-          <OverviewStyleHeader title="The Gallery" />
+          <OverviewStyleHeader
+            title={museum?.name ?? "영구 전시"}
+            subtitle={museum?.ownerName ? `Permanent room · ${museum.ownerName}` : "Permanent room"}
+            rightSlot={museum ? (
+              <div className="flex items-center gap-1">
+                <Link href={`/artists/${museum.artistId}`} className="min-h-10 px-2 py-3 text-xs text-white/70 hover:text-white">작가</Link>
+                {hasToken && museum.contentAvailable ? <button type="button" onClick={() => bookmarkMutation.mutate(!(bookmarkQuery.data?.data?.bookmarked ?? false))} className="min-h-10 px-2 text-xs text-white/70 hover:text-white">{bookmarkQuery.data?.data?.bookmarked ? "저장됨" : "저장"}</button> : null}
+                <Link href={`/gallery/museums/${museumId}/catalog`} className="min-h-10 px-2 py-3 text-xs text-white/70 hover:text-white">도록</Link>
+              </div>
+            ) : undefined}
+          />
         </motion.div>
       </header>
 
       <main className="relative z-10 flex h-full w-full flex-col justify-center">
+        {museum && !museum.contentAvailable ? (
+          <div className="absolute inset-0 z-40 flex items-center justify-center bg-[#050605]/95 px-6 text-center">
+            <div className="max-w-2xl">
+              <p className="museum-kicker">Scheduled exhibition</p>
+              <h1 className="mt-4 font-[var(--font-display)] text-5xl md:text-7xl">곧 문을 엽니다</h1>
+              <p className="mt-5 text-sm leading-7 text-white/60">{museum.curatorNote || "큐레이터가 마지막 빛과 작품 간격을 조율하고 있습니다."}</p>
+              <p className="mt-8 font-[var(--font-display)] text-3xl text-[var(--accent)]">{formatCountdown(museum.openingAt, clock)}</p>
+            </div>
+          </div>
+        ) : null}
         <motion.div
           className="relative h-full w-full"
           {...staggeredFadeUpMotion(1, reduceMotion)}
         >
+          {showExhibitLab ? (
           <div className="pointer-events-none absolute top-1/2 left-0 z-[28] -translate-y-1/2">
             <div
               className={`pointer-events-auto relative touch-none transition-transform ease-out ${
@@ -1004,15 +1068,15 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
               </button>
             </div>
           </div>
+          ) : null}
 
           <div
             className="pointer-events-none absolute top-[-20%] left-1/2 z-0 h-[122%] w-[210%] -translate-x-1/2  shadow-[inset_0_0_260px_rgba(0,0,0,0.9),inset_0_0_0_1px_rgba(210,210,210,0.08)]"
             style={{
               backgroundImage:
-                "radial-gradient(ellipse at center, rgba(122,122,122,0.42) 0%, rgba(82,82,82,0.58) 40%, rgba(36,36,36,0.82) 72%, rgba(8,8,8,0.98) 100%), url(https://www.transparenttextures.com/patterns/dark-concrete.png)",
-              backgroundSize: "100% 100%, 220px 220px",
-              backgroundPosition: "center, center",
-              backgroundBlendMode: "normal, soft-light",
+                "radial-gradient(ellipse at center, rgba(122,122,122,0.42) 0%, rgba(82,82,82,0.58) 40%, rgba(36,36,36,0.82) 72%, rgba(8,8,8,0.98) 100%)",
+              backgroundSize: "100% 100%",
+              backgroundPosition: "center",
             }}
           />
           <div className="pointer-events-none absolute top-[10%] left-1/2 z-[1] h-[48%] w-[170%] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgba(232,232,232,0.16)_0%,rgba(220,220,220,0)_72%)] opacity-[0.46]" />
@@ -1268,12 +1332,18 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                     >
                       {currentArtwork.description || "작품 설명이 준비 중입니다."}
                     </p>
+                    {currentArtwork.audioUrl ? (
+                      <audio className="mt-3 h-9 w-full" controls preload="none" aria-label={`${currentArtwork.title} 오디오 해설`}>
+                        <source src={currentArtwork.audioUrl} />
+                        {currentArtwork.audioTranscript || "오디오 해설을 재생할 수 없습니다."}
+                      </audio>
+                    ) : null}
 
                     <p className="mt-2 text-[10px] uppercase tracking-[0.16em] text-white/62">
                       {safeActiveIndex + 1} / {artworks.length} · {dayLabel} {monthLabel}
                     </p>
 
-                    {isDescriptionExpanded ? (
+                    {isDescriptionExpanded && showExhibitLab ? (
                       <p className="mt-3 text-[11px] text-white/58">
                         액자 프리셋은 왼쪽 `FX` 패널을 드래그/터치해 선택
                       </p>

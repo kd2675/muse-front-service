@@ -13,14 +13,29 @@ export type PublicMuseumDetailArtwork = {
   title: string;
   description?: string | null;
   imageUrl: string;
+  sortOrder: number;
+  roomLabel?: string | null;
+  focalX: number;
+  focalY: number;
+  audioUrl?: string | null;
+  audioTranscript?: string | null;
+  lightingPreset: "WARM" | "NEUTRAL" | "DRAMATIC" | string;
 };
 
 export type PublicMuseumDetail = {
   museumId: number;
   name: string;
   description?: string | null;
+  artistId: number;
   ownerName: string;
   isFeatured: boolean;
+  publishStatus: "DRAFT" | "SCHEDULED" | "PUBLISHED" | string;
+  openingAt?: string | null;
+  curatorNote?: string | null;
+  layoutPreset: "SALON" | "LINEAR" | "IMMERSIVE" | string;
+  lightingPreset: "WARM" | "NEUTRAL" | "DRAMATIC" | string;
+  coverArtworkId?: number | null;
+  contentAvailable: boolean;
   artworks: PublicMuseumDetailArtwork[];
 };
 
@@ -31,6 +46,12 @@ export type MyMuseum = {
   isPublic: boolean;
   isFeatured: boolean;
   artworkCount: number;
+  publishStatus: "DRAFT" | "SCHEDULED" | "PUBLISHED" | string;
+  coverArtworkId?: number | null;
+  openingAt?: string | null;
+  curatorNote?: string | null;
+  layoutPreset: "SALON" | "LINEAR" | "IMMERSIVE" | string;
+  lightingPreset: "WARM" | "NEUTRAL" | "DRAMATIC" | string;
 };
 
 export type MyMuseumArtwork = {
@@ -42,6 +63,13 @@ export type MyMuseumArtwork = {
   imageUrl: string;
   moderationStatus: "REVIEWING" | "VISIBLE" | "REMOVED" | string;
   createdAt: string;
+  sortOrder: number;
+  roomLabel?: string | null;
+  focalX: number;
+  focalY: number;
+  audioUrl?: string | null;
+  audioTranscript?: string | null;
+  lightingPreset: "WARM" | "NEUTRAL" | "DRAMATIC" | string;
 };
 
 export type AdminMuseum = {

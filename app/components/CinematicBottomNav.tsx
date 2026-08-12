@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
 import { getUserFromToken, isAdminRole } from "../lib/auth";
 import { onAuthChanged } from "../lib/authEvents";
 import { canAccessPath } from "../lib/routeGuard";
@@ -10,7 +11,6 @@ import { useAppDispatch } from "../store/hooks";
 import { setPendingPath, showToast } from "../store/uiSlice";
 
 type NavTab = "home" | "overview" | "contest" | "gallery" | "profile";
-type NavItemKey = NavTab | "admin";
 
 type CinematicBottomNavProps = {
   activeTab: NavTab;
@@ -18,47 +18,19 @@ type CinematicBottomNavProps = {
 };
 
 type NavItem = {
-  key: NavItemKey;
+  key: NavTab | "admin";
   label: string;
-  icon: string;
   path: string;
   tab: NavTab;
 };
 
 const items: NavItem[] = [
-  { key: "home", label: "Home", icon: "home", path: "/", tab: "home" },
-  {
-    key: "overview",
-    label: "Overview",
-    icon: "dashboard",
-    path: "/overview",
-    tab: "overview",
-  },
-  {
-    key: "contest",
-    label: "Contest",
-    icon: "emoji_events",
-    path: "/contest",
-    tab: "contest",
-  },
-  {
-    key: "gallery",
-    label: "Gallery",
-    icon: "photo_library",
-    path: "/gallery",
-    tab: "gallery",
-  },
-  {
-    key: "profile",
-    label: "Profile",
-    icon: "account_circle",
-    path: "/profile",
-    tab: "profile",
-  },
+  { key: "home", label: "입구", path: "/", tab: "home" },
+  { key: "overview", label: "오늘", path: "/overview", tab: "overview" },
+  { key: "contest", label: "공모전", path: "/contest", tab: "contest" },
+  { key: "gallery", label: "전시관", path: "/gallery", tab: "gallery" },
+  { key: "profile", label: "기록", path: "/profile", tab: "profile" },
 ];
-
-const DOCK_TRIGGER_OFFSET_PX = 120;
-let persistedDockedState = true;
 
 export default function CinematicBottomNav({
   activeTab,
@@ -67,171 +39,73 @@ export default function CinematicBottomNav({
   const dispatch = useAppDispatch();
   const router = useRouter();
   const pathname = usePathname();
-  const prefersReducedMotion = useReducedMotion();
-  const reduceMotion = Boolean(prefersReducedMotion);
-  const [isDocked, setIsDocked] = useState(() => persistedDockedState);
+  const reduceMotion = Boolean(useReducedMotion());
   const [isAdminUser, setIsAdminUser] = useState(false);
 
   useEffect(() => {
-    const updateRole = () => {
-      const role = getUserFromToken()?.role;
-      setIsAdminUser(isAdminRole(role));
-    };
+    const updateRole = () => setIsAdminUser(isAdminRole(getUserFromToken()?.role));
     updateRole();
-    const unsubscribe = onAuthChanged(updateRole);
-    return () => {
-      unsubscribe();
-    };
+    return onAuthChanged(updateRole);
   }, []);
 
-  useEffect(() => {
-    persistedDockedState = isDocked;
-  }, [isDocked]);
-
-  useEffect(() => {
-    if (layout !== "fixed") {
-      return;
-    }
-
-    let rafId = 0;
-
-    const recalcDocking = () => {
-      const doc = document.documentElement;
-      const body = document.body;
-      const viewportHeight = window.innerHeight;
-      const scrollTop = window.scrollY || doc.scrollTop || 0;
-      const contentHeight = Math.max(doc.scrollHeight, body.scrollHeight);
-      const nextHasScrollable = contentHeight > viewportHeight + 2;
-      const atBottom = scrollTop + viewportHeight >= contentHeight - DOCK_TRIGGER_OFFSET_PX;
-      setIsDocked(!nextHasScrollable || atBottom);
-    };
-
-    const onScroll = () => {
-      cancelAnimationFrame(rafId);
-      rafId = window.requestAnimationFrame(recalcDocking);
-    };
-
-    recalcDocking();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, [layout, pathname]);
-
-  const navigateWithGuard = (path: string, tab: NavTab) => {
-    const guard = canAccessPath(path);
+  const navigate = (item: NavItem) => {
+    const guard = canAccessPath(item.path);
     if (!guard.allowed) {
-      dispatch(setPendingPath(`${path}?tab=${tab}`));
+      dispatch(setPendingPath(`${item.path}?tab=${item.tab}`));
       if (guard.reason === "ROLE") {
-        dispatch(showToast("권한이 없습니다."));
-        router.push("/?tab=home");
-        return;
+        dispatch(showToast("이 메뉴에 접근할 권한이 없습니다."));
+        router.push("/");
+      } else {
+        dispatch(showToast("로그인 후 작가 기록을 이용할 수 있습니다."));
+        router.push("/login");
       }
-      dispatch(showToast("로그인이 필요한 기능입니다."));
-      router.push("/login");
       return;
     }
-    router.push(`${path}?tab=${tab}`);
+    router.push(`${item.path}?tab=${item.tab}`);
   };
 
   const navItems: NavItem[] = [
     ...items,
     ...(isAdminUser
-      ? [
-          {
-            key: "admin",
-            label: "Admin",
-            icon: "admin_panel_settings",
-            path: "/admin/contests",
-            tab: "contest",
-          } as const,
-        ]
+      ? [{ key: "admin", label: "운영", path: "/admin/contests", tab: "contest" } as const]
       : []),
   ];
 
-  const renderButtons = () =>
-    navItems.map((item) => {
-      const isAdminPath = pathname.startsWith("/admin");
-      const isActive = isAdminPath ? item.key === "admin" : item.key === activeTab;
-      return (
-        <button
-          key={item.key}
-          type="button"
-          className={`flex h-10 w-10 touch-manipulation items-center justify-center  transition ${
-            isActive ? "text-slate-100" : "text-slate-100/40 hover:text-slate-100"
-          }`}
-          onClick={() => navigateWithGuard(item.path, item.tab)}
-          aria-label={item.label}
-        >
-          <span className="material-symbols-outlined text-[24px]">{item.icon}</span>
-        </button>
-      );
-    });
-
-  const InlineMenu = (
-    <nav className="flex w-full items-center justify-center gap-3  border border-slate-100/10 bg-[rgba(8,8,12,0.4)] px-4 py-3 backdrop-blur-md">
-      {renderButtons()}
-    </nav>
+  return (
+    <div
+      className={
+        layout === "fixed"
+          ? "pointer-events-none fixed inset-x-0 bottom-0 z-50 px-3 pb-[calc(env(safe-area-inset-bottom)+10px)] md:hidden"
+          : "w-full md:hidden"
+      }
+    >
+      <nav
+        aria-label="주요 메뉴"
+        className="pointer-events-auto mx-auto flex w-full max-w-2xl items-stretch justify-center border border-white/10 bg-[rgba(9,10,10,0.9)] px-2 shadow-[0_-16px_60px_rgba(0,0,0,0.28)] backdrop-blur-xl"
+      >
+        {navItems.map((item) => {
+          const isAdminPath = pathname.startsWith("/admin");
+          const isActive = isAdminPath ? item.key === "admin" : item.key === activeTab;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => navigate(item)}
+              aria-current={isActive ? "page" : undefined}
+              className="relative min-h-14 flex-1 px-2 py-3 text-[11px] tracking-[0.12em] text-[var(--muted-deep)] transition hover:text-white md:min-h-16 md:text-xs"
+            >
+              {isActive ? (
+                <motion.span
+                  layoutId="muse-active-nav"
+                  className="absolute inset-x-3 top-0 h-px bg-[var(--accent)]"
+                  transition={reduceMotion ? { duration: 0 } : { duration: 0.24, ease: "easeOut" }}
+                />
+              ) : null}
+              <span className={isActive ? "text-[var(--canvas-ink)]" : undefined}>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+    </div>
   );
-
-  const FloatingMenu = (
-    <nav className="flex w-[clamp(280px,33vw,460px)] max-w-[calc(100vw-2.5rem)] items-center justify-center gap-3  border border-slate-100/10 bg-[rgba(8,8,12,0.4)] px-4 py-3 backdrop-blur-md">
-      {renderButtons()}
-    </nav>
-  );
-
-  const DockedMenu = (
-    <nav className="flex w-full items-center justify-center border-t border-slate-100/12 bg-[rgba(8,8,12,0.88)] px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+12px)] backdrop-blur-md">
-      <div className="flex w-[clamp(360px,44vw,640px)] max-w-[calc(100vw-1.5rem)] items-center justify-center gap-6">
-        {renderButtons()}
-      </div>
-    </nav>
-  );
-
-  if (layout === "fixed") {
-    const unifiedMotion = reduceMotion
-      ? {
-          initial: false,
-          animate: { opacity: 1, y: 0, scale: 1 },
-          exit: { opacity: 1, y: 0, scale: 1 },
-          transition: { duration: 0 },
-        }
-      : {
-          initial: { opacity: 0, y: 10, scale: 0.93 },
-          animate: { opacity: 1, y: 0, scale: 1 },
-          exit: { opacity: 0, y: 10, scale: 0.93 },
-          transition: { duration: 0.3, ease: "easeOut" as const },
-        };
-
-    const dockedFixedMotion = unifiedMotion;
-    const floatingMotion = unifiedMotion;
-
-    return (
-      <AnimatePresence initial={false}>
-        {isDocked ? (
-          <motion.div
-            key="bottom-docked-fixed"
-            {...dockedFixedMotion}
-            className="pointer-events-auto fixed inset-x-0 bottom-0 z-30 flex flex-col items-stretch"
-          >
-            {DockedMenu}
-          </motion.div>
-        ) : (
-          <motion.div
-            key="bottom-floating-fixed"
-            {...floatingMotion}
-            className="pointer-events-auto fixed bottom-0 left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-4 pb-[calc(env(safe-area-inset-bottom)+12px)]"
-          >
-            {FloatingMenu}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    );
-  }
-
-  return InlineMenu;
 }

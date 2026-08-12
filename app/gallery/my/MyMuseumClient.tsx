@@ -1,11 +1,13 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import CinematicBottomNav from "../../components/CinematicBottomNav";
+import ConfirmDialog from "../../components/ConfirmDialog";
 import OverviewStyleHeader from "../../components/OverviewStyleHeader";
 import { Skeleton } from "../../components/Skeleton";
 import { getUserFromToken } from "../../lib/auth";
@@ -42,7 +44,7 @@ type ArtworkFormState = {
 const emptyMuseumForm: MuseumFormState = {
   name: "",
   description: "",
-  isPublic: true,
+  isPublic: false,
 };
 
 const emptyArtworkForm: ArtworkFormState = {
@@ -65,6 +67,8 @@ export default function MyMuseumClient() {
   const [artworkFile, setArtworkFile] = useState<File | null>(null);
   const [uploadStage, setUploadStage] = useState<"idle" | "uploading" | "saving">("idle");
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [museumToDelete, setMuseumToDelete] = useState<number | null>(null);
+  const [artworkToDelete, setArtworkToDelete] = useState<number | null>(null);
 
   const museumsQuery = useQuery({
     queryKey: ["my", "museums"],
@@ -151,7 +155,6 @@ export default function MyMuseumClient() {
       return createMyMuseum({
         name: createForm.name.trim(),
         description: createForm.description.trim() || undefined,
-        isPublic: createForm.isPublic,
       });
     },
     onSuccess: (result) => {
@@ -181,7 +184,6 @@ export default function MyMuseumClient() {
       return updateMyMuseum(activeSelectedMuseumId, {
         name: editForm.name.trim(),
         description: editForm.description.trim() || undefined,
-        isPublic: editForm.isPublic,
       });
     },
     onSuccess: (result) => {
@@ -212,6 +214,7 @@ export default function MyMuseumClient() {
       }
       queryClient.invalidateQueries({ queryKey: ["my", "museums"] });
       queryClient.invalidateQueries({ queryKey: ["gallery", "museums"] });
+      setMuseumToDelete(null);
       dispatch(showToast("뮤지엄을 삭제했습니다."));
     },
     onError: () => dispatch(showToast("뮤지엄 삭제 중 오류가 발생했습니다.")),
@@ -286,6 +289,7 @@ export default function MyMuseumClient() {
       });
       queryClient.invalidateQueries({ queryKey: ["my", "museums"] });
       queryClient.invalidateQueries({ queryKey: ["gallery", "museums"] });
+      setArtworkToDelete(null);
       dispatch(showToast("작품을 삭제했습니다."));
     },
     onError: () => dispatch(showToast("작품 삭제 중 오류가 발생했습니다.")),
@@ -293,14 +297,13 @@ export default function MyMuseumClient() {
 
   if (!isLoggedIn) {
     return (
-      <section className="relative min-h-screen overflow-x-hidden bg-[#121212] text-slate-100">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(84,90,111,0.26),transparent_36%),radial-gradient(circle_at_80%_20%,rgba(73,108,115,0.2),transparent_40%),radial-gradient(circle_at_52%_88%,rgba(120,86,64,0.16),transparent_44%)]" />
+      <section className="museum-grain relative min-h-screen overflow-x-hidden bg-[var(--canvas)] text-[color:var(--canvas-ink)]">
         <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 pb-36 pt-10 md:px-8">
-          <OverviewStyleHeader title="My Museum" subtitle="Creator Studio" />
-          <article className="mt-12 border border-white/16 bg-[rgba(255,255,255,0.05)] px-8 py-10 shadow-[0_18px_52px_rgba(0,0,0,0.35)]">
-            <p className="text-xs uppercase tracking-[0.28em] text-slate-400">Private Curation</p>
-            <h2 className="mt-3 font-[var(--font-display)] text-4xl italic">로그인이 필요합니다</h2>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300/86">
+          <OverviewStyleHeader title="내 전시실" subtitle="Curator studio" headingAs="p" />
+          <article className="museum-panel mt-12 max-w-4xl border-x-0 px-7 py-12 md:px-10">
+            <p className="museum-kicker">Private curation</p>
+            <h1 className="mt-4 font-[var(--font-display)] text-4xl md:text-5xl">로그인 후 전시를 시작하세요</h1>
+            <p className="mt-5 max-w-2xl break-keep text-sm leading-7 text-[color:var(--muted)]">
               내 뮤지엄은 개인 전시관 생성, 작품 업로드, 공개 여부 설정을 관리하는 공간입니다.
               로그인 후 전시관을 구성해보세요.
             </p>
@@ -315,7 +318,7 @@ export default function MyMuseumClient() {
               <button
                 type="button"
                 onClick={() => router.push(APP_ROUTES.galleryLobby)}
-                className="border border-white/24 bg-white/6 px-6 py-3 text-sm text-slate-200 transition hover:border-white/44 hover:bg-white/12"
+                className="min-h-11 border border-[color:var(--line)] px-6 py-3 text-sm text-[color:var(--muted)] transition hover:border-[color:var(--line-strong)] hover:text-white"
               >
                 갤러리 홈으로
               </button>
@@ -328,30 +331,30 @@ export default function MyMuseumClient() {
   }
 
   return (
-    <section className="relative min-h-screen overflow-x-hidden bg-[#121212] text-slate-100">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_14%_10%,rgba(84,90,111,0.24),transparent_34%),radial-gradient(circle_at_86%_20%,rgba(73,108,115,0.18),transparent_40%),radial-gradient(circle_at_52%_84%,rgba(120,86,64,0.14),transparent_42%)]" />
+    <section className="museum-grain relative min-h-screen overflow-x-hidden bg-[var(--canvas)] text-[color:var(--canvas-ink)]">
       <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 pb-36 pt-10 md:px-8">
-        <OverviewStyleHeader title="My Museum" subtitle="Creator Studio" />
+        <OverviewStyleHeader title="내 전시실" subtitle="Curator studio" />
 
-        <section className="mt-7 grid gap-3 sm:grid-cols-3">
-          <article className="border border-white/12 bg-white/6 px-4 py-4">
-            <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Museums</p>
-            <p className="mt-2 text-2xl font-semibold text-slate-100">{museums.length}</p>
+        <section aria-label="전시실 현황" className="mt-8 grid grid-cols-3 border-y border-[color:var(--line)]">
+          <article className="border-r border-[color:var(--line)] px-3 py-5 md:px-5">
+            <p className="text-[10px] uppercase tracking-[0.24em] text-[color:var(--muted)]">전시실</p>
+            <p className="mt-2 font-[var(--font-display)] text-3xl">{museums.length}</p>
           </article>
-          <article className="border border-white/12 bg-white/6 px-4 py-4">
-            <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Public</p>
-            <p className="mt-2 text-2xl font-semibold text-slate-100">{publicMuseumCount}</p>
+          <article className="border-r border-[color:var(--line)] px-3 py-5 md:px-5">
+            <p className="text-[10px] uppercase tracking-[0.24em] text-[color:var(--muted)]">공개 중</p>
+            <p className="mt-2 font-[var(--font-display)] text-3xl">{publicMuseumCount}</p>
           </article>
-          <article className="border border-white/12 bg-white/6 px-4 py-4">
-            <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Artworks</p>
-            <p className="mt-2 text-2xl font-semibold text-slate-100">{totalArtworkCount}</p>
+          <article className="px-3 py-5 md:px-5">
+            <p className="text-[10px] uppercase tracking-[0.24em] text-[color:var(--muted)]">소장 작품</p>
+            <p className="mt-2 font-[var(--font-display)] text-3xl">{totalArtworkCount}</p>
           </article>
         </section>
 
         <section className="mt-6 grid gap-6 xl:grid-cols-[340px_minmax(0,1fr)]">
           <aside className="space-y-4">
-            <article className="border border-white/16 bg-[rgba(255,255,255,0.05)] p-5 shadow-[0_12px_34px_rgba(0,0,0,0.22)]">
-              <h2 className="font-[var(--font-display)] text-2xl italic">내 뮤지엄</h2>
+            <article className="museum-panel p-5">
+              <p className="museum-kicker">Exhibition rooms</p>
+              <h2 className="mt-2 font-[var(--font-display)] text-3xl">전시실 선택</h2>
               {museumsQuery.isLoading ? (
                 <div className="mt-4 space-y-3">
                   {Array.from({ length: 3 }).map((_, index) => (
@@ -368,18 +371,18 @@ export default function MyMuseumClient() {
                       onClick={() => setSelectedMuseumId(museum.museumId)}
                       className={`w-full border px-4 py-3 text-left text-sm transition ${
                         museum.museumId === activeSelectedMuseumId
-                          ? "border-[color:var(--accent)] bg-[rgba(11,91,91,0.2)] text-white"
-                          : "border-white/14 bg-white/6 text-slate-300 hover:border-white/34 hover:bg-white/10"
+                          ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)] text-white"
+                          : "border-[color:var(--line)] text-[color:var(--muted)] hover:border-[color:var(--line-strong)] hover:text-white"
                       }`}
                     >
                       <p className="font-medium">{museum.name}</p>
-                      <p className="mt-1 text-xs text-slate-400">
+                      <p className="mt-1 text-xs text-[color:var(--muted)]">
                         작품 {museum.artworkCount}점 · {museum.isPublic ? "공개" : "비공개"}
                       </p>
                     </motion.button>
                   ))}
                   {museums.length === 0 && (
-                    <p className="border border-white/14 bg-white/6 px-4 py-4 text-sm text-slate-300">
+                    <p className="border border-dashed border-[color:var(--line)] px-4 py-4 text-sm text-[color:var(--muted)]">
                       아직 만든 뮤지엄이 없습니다.
                     </p>
                   )}
@@ -388,40 +391,38 @@ export default function MyMuseumClient() {
               )}
             </article>
 
-            <article className="border border-white/16 bg-[rgba(255,255,255,0.05)] p-5 shadow-[0_12px_34px_rgba(0,0,0,0.22)]">
-              <h3 className="text-sm uppercase tracking-[0.24em] text-slate-400">Create Museum</h3>
+            <article className="museum-panel p-5">
+              <p className="museum-kicker">New room</p>
+              <h2 className="mt-2 font-[var(--font-display)] text-2xl">새 전시실</h2>
               <div className="mt-4 space-y-3">
                 <input
                   value={createForm.name}
+                  aria-label="새 전시실 이름"
+                  maxLength={100}
                   onChange={(event) =>
                     setCreateForm((prev) => ({ ...prev, name: event.target.value }))
                   }
                   placeholder="뮤지엄 이름"
-                  className="h-11 w-full border border-white/16 bg-white/10 px-3 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-[color:var(--accent)]"
+                  className="museum-field px-3 text-sm"
                 />
                 <textarea
                   value={createForm.description}
+                  aria-label="새 전시실 설명"
+                  maxLength={1000}
                   onChange={(event) =>
                     setCreateForm((prev) => ({ ...prev, description: event.target.value }))
                   }
                   placeholder="뮤지엄 설명"
-                  className="min-h-24 w-full border border-white/16 bg-white/10 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-[color:var(--accent)]"
+                  className="museum-field min-h-24 px-3 py-2 text-sm"
                 />
-                <label className="flex items-center gap-2 text-xs text-slate-300">
-                  <input
-                    type="checkbox"
-                    checked={createForm.isPublic}
-                    onChange={(event) =>
-                      setCreateForm((prev) => ({ ...prev, isPublic: event.target.checked }))
-                    }
-                  />
-                  공개 뮤지엄으로 생성
-                </label>
+                <p className="border-l border-[var(--accent)] pl-3 text-xs leading-5 text-[color:var(--muted)]">
+                  전시실은 안전한 초안으로 생성됩니다. 작품 심사 후 큐레이션 스튜디오에서 공개하거나 오픈 일정을 예약하세요.
+                </p>
                 <button
                   type="button"
                   onClick={() => createMuseumMutation.mutate()}
                   disabled={createMuseumMutation.isPending}
-                  className="w-full bg-[color:var(--accent)] px-4 py-3 text-sm text-white transition hover:brightness-95 disabled:opacity-60"
+                  className="museum-button-primary w-full px-4 py-3 text-sm"
                 >
                   {createMuseumMutation.isPending ? "생성 중..." : "뮤지엄 생성"}
                 </button>
@@ -430,52 +431,50 @@ export default function MyMuseumClient() {
           </aside>
 
           <div className="space-y-5">
-            <article className="border border-white/16 bg-[rgba(255,255,255,0.05)] p-6 shadow-[0_14px_36px_rgba(0,0,0,0.26)]">
+            <article className="museum-panel p-6">
               {selectedMuseum ? (
                 <>
-                  <h3 className="font-[var(--font-display)] text-3xl italic">뮤지엄 설정</h3>
+                  <p className="museum-kicker">Room settings</p>
+                  <h2 className="mt-2 font-[var(--font-display)] text-3xl">전시실 설정</h2>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <input
                       value={editForm.name}
+                      aria-label="전시실 이름"
+                      maxLength={100}
                       onChange={(event) => updateEditFormField("name", event.target.value)}
                       placeholder="뮤지엄 이름"
-                      className="h-11 border border-white/16 bg-white/10 px-3 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-[color:var(--accent)]"
+                      className="museum-field px-3 text-sm"
                     />
-                    <label className="flex items-center gap-2 border border-white/16 bg-white/10 px-3 text-sm text-slate-300">
-                      <input
-                        type="checkbox"
-                        checked={editForm.isPublic}
-                        onChange={(event) => updateEditFormField("isPublic", event.target.checked)}
-                      />
-                      공개 뮤지엄
-                    </label>
+                    <div className="museum-field flex items-center px-3 text-sm text-[color:var(--muted)]">
+                      공개 상태: {selectedMuseum.publishStatus === "SCHEDULED" ? "오픈 예정" : selectedMuseum.isPublic ? "공개" : "초안"}
+                    </div>
                   </div>
                   <textarea
                     value={editForm.description}
+                    aria-label="전시실 설명"
+                    maxLength={1000}
                     onChange={(event) => updateEditFormField("description", event.target.value)}
                     placeholder="뮤지엄 설명"
-                    className="mt-3 min-h-24 w-full border border-white/16 bg-white/10 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-[color:var(--accent)]"
+                    className="museum-field mt-3 min-h-24 px-3 py-2 text-sm"
                   />
                   <div className="mt-4 flex flex-wrap gap-2">
+                    <Link
+                      href={`/gallery/my/${selectedMuseum.museumId}/curate`}
+                      className="border border-[var(--accent)] px-5 py-2 text-sm text-[var(--accent)] transition hover:bg-[var(--accent)] hover:text-[#111]"
+                    >
+                      큐레이션 스튜디오
+                    </Link>
                     <button
                       type="button"
                       onClick={() => updateMuseumMutation.mutate()}
                       disabled={updateMuseumMutation.isPending}
-                      className="bg-[color:var(--accent)] px-4 py-2 text-sm text-white transition hover:brightness-95 disabled:opacity-60"
+                      className="museum-button-primary px-5 py-2 text-sm"
                     >
                       저장
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        if (!activeSelectedMuseumId) {
-                          return;
-                        }
-                        if (!window.confirm("뮤지엄과 작품이 함께 삭제됩니다. 진행할까요?")) {
-                          return;
-                        }
-                        deleteMuseumMutation.mutate(activeSelectedMuseumId);
-                      }}
+                      onClick={() => setMuseumToDelete(activeSelectedMuseumId)}
                       disabled={deleteMuseumMutation.isPending}
                       className="border border-rose-300/40 bg-rose-300/15 px-4 py-2 text-sm text-rose-200 transition hover:brightness-95 disabled:opacity-60"
                     >
@@ -490,8 +489,9 @@ export default function MyMuseumClient() {
               )}
             </article>
 
-            <article className="border border-white/16 bg-[rgba(255,255,255,0.05)] p-6 shadow-[0_14px_36px_rgba(0,0,0,0.26)]">
-              <h3 className="font-[var(--font-display)] text-3xl italic">작품 관리</h3>
+            <article className="museum-panel p-6">
+              <p className="museum-kicker">Collection desk</p>
+              <h2 className="mt-2 font-[var(--font-display)] text-3xl">작품 등록과 심사 상태</h2>
               {!activeSelectedMuseumId ? (
                 <p className="mt-4 text-sm text-slate-300">
                   뮤지엄을 선택하면 작품을 업로드할 수 있습니다.
@@ -504,11 +504,13 @@ export default function MyMuseumClient() {
                       <p className="mt-0.5 text-[11px] text-slate-400">전시 리스트에 노출될 제목</p>
                       <input
                         value={artworkForm.title}
+                        aria-label="작품 제목"
+                        maxLength={200}
                         onChange={(event) =>
                           setArtworkForm((prev) => ({ ...prev, title: event.target.value }))
                         }
                         placeholder="작품 제목 입력"
-                        className="mt-2 h-11 w-full border border-white/16 bg-white/10 px-3 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-[color:var(--accent)]"
+                        className="museum-field mt-2 px-3 text-sm"
                       />
                     </div>
 
@@ -532,7 +534,7 @@ export default function MyMuseumClient() {
                         </div>
                         <label
                           htmlFor="museum-artwork-file"
-                          className="cursor-pointer border border-[color:var(--accent)] bg-[rgba(11,91,91,0.2)] px-3 py-1.5 text-[11px] text-teal-100 transition hover:bg-[rgba(11,91,91,0.34)]"
+                          className="cursor-pointer border border-[color:var(--accent)] bg-[color:var(--accent-soft)] px-3 py-2 text-[11px] text-[color:var(--accent)] transition hover:bg-[color:var(--accent)] hover:text-[#111]"
                         >
                           파일 선택
                         </label>
@@ -545,12 +547,14 @@ export default function MyMuseumClient() {
                     </div>
                   </div>
                   <textarea
-                    value={artworkForm.description}
+                  value={artworkForm.description}
+                  aria-label="작품 설명"
+                  maxLength={2000}
                     onChange={(event) =>
                       setArtworkForm((prev) => ({ ...prev, description: event.target.value }))
                     }
                     placeholder="작품 설명"
-                    className="mt-3 min-h-24 w-full border border-white/16 bg-white/10 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500 focus:border-[color:var(--accent)]"
+                  className="museum-field mt-3 min-h-24 px-3 py-2 text-sm"
                   />
                   {isUploading ? (
                     <p className="mt-2 text-xs text-slate-300">
@@ -563,7 +567,7 @@ export default function MyMuseumClient() {
                     type="button"
                     onClick={() => createArtworkMutation.mutate()}
                     disabled={createArtworkMutation.isPending || isUploading}
-                    className="mt-3 bg-[color:var(--accent)] px-4 py-2 text-sm text-white transition hover:brightness-95 disabled:opacity-60"
+                    className="museum-button-primary mt-3 px-5 py-2 text-sm"
                   >
                     작품 업로드
                   </button>
@@ -580,7 +584,7 @@ export default function MyMuseumClient() {
                         <motion.article
                           key={artwork.museumArtworkId}
                           {...staggeredFadeUpMotion(index + 8, reduceMotion)}
-                          className="overflow-hidden border border-white/14 bg-white/8"
+                          className="overflow-hidden border border-[color:var(--line)] bg-[color:var(--canvas-raised)]"
                         >
                           <div className="relative h-40 w-full">
                             <Image
@@ -606,12 +610,7 @@ export default function MyMuseumClient() {
                             </div>
                             <button
                               type="button"
-                              onClick={() => {
-                                if (!window.confirm("이 작품을 삭제할까요?")) {
-                                  return;
-                                }
-                                deleteArtworkMutation.mutate(artwork.museumArtworkId);
-                              }}
+                              onClick={() => setArtworkToDelete(artwork.museumArtworkId)}
                               disabled={deleteArtworkMutation.isPending}
                               className="mt-3 border border-rose-300/40 bg-rose-300/15 px-3 py-1 text-xs text-rose-200 transition hover:brightness-95 disabled:opacity-60"
                             >
@@ -633,6 +632,30 @@ export default function MyMuseumClient() {
           </div>
         </section>
       </main>
+      <ConfirmDialog
+        open={museumToDelete !== null}
+        title="전시실을 삭제할까요?"
+        description="전시실 안의 모든 작품과 공개 링크가 함께 삭제됩니다. 이 작업은 되돌릴 수 없습니다."
+        busy={deleteMuseumMutation.isPending}
+        onCancel={() => setMuseumToDelete(null)}
+        onConfirm={() => {
+          if (museumToDelete !== null) {
+            deleteMuseumMutation.mutate(museumToDelete);
+          }
+        }}
+      />
+      <ConfirmDialog
+        open={artworkToDelete !== null}
+        title="작품을 삭제할까요?"
+        description="전시실과 이미지 저장소에서 이 작품을 제거합니다. 심사 기록도 더 이상 표시되지 않습니다."
+        busy={deleteArtworkMutation.isPending}
+        onCancel={() => setArtworkToDelete(null)}
+        onConfirm={() => {
+          if (artworkToDelete !== null) {
+            deleteArtworkMutation.mutate(artworkToDelete);
+          }
+        }}
+      />
       <CinematicBottomNav activeTab="gallery" layout="fixed" />
     </section>
   );

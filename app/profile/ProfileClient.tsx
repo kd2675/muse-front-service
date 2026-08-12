@@ -79,11 +79,11 @@ export default function ProfileClient() {
   );
   const renderEntriesPagination = (extraClassName = "") => (
     <div
-      className={`flex flex-wrap items-center justify-center gap-2  bg-white/[0.05] px-3 py-3 ${extraClassName}`.trim()}
+      className={`flex flex-wrap items-center justify-center gap-2 border-t border-[color:var(--line)] px-3 py-3 ${extraClassName}`.trim()}
     >
       <button
         type="button"
-        className=" bg-white/10 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/16 disabled:opacity-40"
+        className="min-h-10 border border-[color:var(--line)] px-3 py-1.5 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--line-strong)] hover:text-white disabled:opacity-40"
         onClick={() => setEntriesPage(Math.max(1, currentEntryPage - 1))}
         disabled={currentEntryPage <= 1}
       >
@@ -93,10 +93,11 @@ export default function ProfileClient() {
         <button
           key={`page-${token}-${index}`}
           type="button"
-          className={`min-w-8  px-3 py-1.5 text-xs transition ${
+          aria-current={token === currentEntryPage ? "page" : undefined}
+          className={`min-h-10 min-w-10 px-3 py-1.5 text-xs transition ${
             token === currentEntryPage
-              ? "bg-white text-black"
-              : "bg-white/10 text-slate-200 hover:bg-white/16"
+              ? "bg-[color:var(--accent)] font-bold text-[#111]"
+              : "border border-[color:var(--line)] text-[color:var(--muted)] hover:text-white"
           }`}
           onClick={() => setEntriesPage(token)}
         >
@@ -105,7 +106,7 @@ export default function ProfileClient() {
       )}
       <button
         type="button"
-        className=" bg-white/10 px-3 py-1.5 text-xs text-slate-200 transition hover:bg-white/16 disabled:opacity-40"
+        className="min-h-10 border border-[color:var(--line)] px-3 py-1.5 text-xs text-[color:var(--muted)] transition hover:border-[color:var(--line-strong)] hover:text-white disabled:opacity-40"
         onClick={() => setEntriesPage(Math.min(totalEntryPages, currentEntryPage + 1))}
         disabled={currentEntryPage >= totalEntryPages}
       >
@@ -125,17 +126,16 @@ export default function ProfileClient() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#121212] text-slate-100">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_12%,rgba(84,90,111,0.22),transparent_34%),radial-gradient(circle_at_84%_18%,rgba(73,108,115,0.18),transparent_36%),radial-gradient(circle_at_52%_82%,rgba(120,86,64,0.14),transparent_38%)]" />
+    <div className="museum-grain relative min-h-screen overflow-x-hidden bg-[var(--canvas)] text-[color:var(--canvas-ink)]">
 
       <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 pb-40 pt-8 md:px-8">
-        <motion.div className="mb-8" {...staggeredFadeUpMotion(0, reduceMotion)}>
-          <OverviewStyleHeader title="The Profile" />
+        <motion.div className="mb-10" {...staggeredFadeUpMotion(0, reduceMotion)}>
+          <OverviewStyleHeader title="작가 기록" subtitle="Artist archive" headingAs="p" />
         </motion.div>
 
         {isLoading ? (
           <section className="space-y-8">
-            <div className=" bg-[rgba(40,40,46,0.72)] p-7 shadow-[0_18px_52px_rgba(0,0,0,0.34)] md:p-8">
+            <div className="museum-panel p-7 md:p-8">
               <div className="flex items-center gap-4">
                 <Skeleton className="h-16 w-16 " />
                 <div className="grid gap-2">
@@ -145,7 +145,7 @@ export default function ProfileClient() {
               </div>
               <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
                 {Array.from({ length: 4 }).map((_, index) => (
-                  <div key={index} className=" bg-white/10 p-4">
+                  <div key={index} className="border-t border-[color:var(--line)] p-4">
                     <Skeleton className="h-3 w-16 " />
                     <Skeleton className="mt-3 h-6 w-20 " />
                   </div>
@@ -154,12 +154,12 @@ export default function ProfileClient() {
             </div>
 
             <div className="grid gap-8 lg:grid-cols-2">
-              <div className=" bg-[rgba(40,40,46,0.72)] p-7 shadow-[0_18px_52px_rgba(0,0,0,0.34)] md:p-8">
+              <div className="museum-panel p-7 md:p-8">
                 <Skeleton className="h-7 w-32 " />
                 <SkeletonText className="mt-3 max-w-sm" lines={2} />
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
                   {Array.from({ length: 4 }).map((_, index) => (
-                    <div key={index} className=" bg-white/10 p-4">
+                    <div key={index} className="border border-[color:var(--line)] p-4">
                       <Skeleton className="h-24 w-full " />
                       <Skeleton className="mt-3 h-4 w-24 " />
                       <Skeleton className="mt-2 h-6 w-2/3 " />
@@ -168,12 +168,12 @@ export default function ProfileClient() {
                 </div>
               </div>
 
-              <div className=" bg-[rgba(40,40,46,0.72)] p-7 shadow-[0_18px_52px_rgba(0,0,0,0.34)] md:p-8">
+              <div className="museum-panel p-7 md:p-8">
                 <Skeleton className="h-7 w-32 " />
                 <SkeletonText className="mt-3 max-w-sm" lines={2} />
                 <div className="mt-6 grid gap-4">
                   {Array.from({ length: 3 }).map((_, index) => (
-                    <div key={index} className=" bg-white/10 p-4">
+                    <div key={index} className="border border-[color:var(--line)] p-4">
                       <Skeleton className="h-3 w-24 " />
                       <Skeleton className="mt-2 h-5 w-40 " />
                       <Skeleton className="mt-2 h-3 w-28 " />
@@ -186,7 +186,7 @@ export default function ProfileClient() {
         ) : profile ? (
           <div className="space-y-8">
             <motion.section
-              className=" bg-[rgba(40,40,46,0.72)] p-7 shadow-[0_18px_52px_rgba(0,0,0,0.34)] md:p-8"
+              className="museum-panel border-x-0 p-7 md:p-8"
               {...staggeredFadeUpMotion(1, reduceMotion)}
             >
               <div className="flex flex-wrap items-end justify-between gap-5">
@@ -198,10 +198,11 @@ export default function ProfileClient() {
                     }}
                   />
                   <div>
-                    <h2 className="font-[var(--font-display)] text-3xl text-slate-100">
+                    <p className="museum-kicker">등록 작가</p>
+                    <h1 className="mt-1 font-[var(--font-display)] text-4xl text-[color:var(--canvas-ink)]">
                       {profile.artist.name}
-                    </h2>
-                    <p className="mt-1 text-sm text-slate-300/84">{profile.artist.tagline}</p>
+                    </h1>
+                    <p className="mt-2 text-sm text-[color:var(--muted)]">{profile.artist.tagline}</p>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2">
@@ -212,50 +213,58 @@ export default function ProfileClient() {
                   >
                     새 출품하기
                   </AdminActionButton>
+                  <AdminActionButton
+                    variant="secondary"
+                    onClick={() => router.push("/library")}
+                    className="text-xs"
+                  >
+                    관람 기록
+                  </AdminActionButton>
                 </div>
               </div>
 
-              <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
-                <div className=" bg-white/10 p-4">
-                  <p className="text-xs text-slate-400">작품 수</p>
-                  <p className="mt-2 text-xl font-semibold text-slate-100">
+              <dl className="mt-8 grid grid-cols-2 border-y border-[color:var(--line)] md:grid-cols-4">
+                <div className="border-r border-[color:var(--line)] p-4 first:pl-0">
+                  <dt className="text-xs text-[color:var(--muted)]">작품 수</dt>
+                  <dd className="mt-2 font-[var(--font-display)] text-2xl">
                     {formatNumber(profile.stats.totalWorks)}
-                  </p>
+                  </dd>
                 </div>
-                <div className=" bg-white/10 p-4">
-                  <p className="text-xs text-slate-400">수상</p>
-                  <p className="mt-2 text-xl font-semibold text-slate-100">
+                <div className="border-r border-[color:var(--line)] p-4">
+                  <dt className="text-xs text-[color:var(--muted)]">수상</dt>
+                  <dd className="mt-2 font-[var(--font-display)] text-2xl">
                     {formatNumber(profile.stats.totalAwards)}
-                  </p>
+                  </dd>
                 </div>
-                <div className=" bg-white/10 p-4">
-                  <p className="text-xs text-slate-400">누적 상금</p>
-                  <p className="mt-2 text-xl font-semibold text-slate-100">
+                <div className="border-r border-[color:var(--line)] p-4">
+                  <dt className="text-xs text-[color:var(--muted)]">누적 상금</dt>
+                  <dd className="mt-2 font-[var(--font-display)] text-2xl">
                     {formatNumber(profile.stats.totalEarnings)}원
-                  </p>
+                  </dd>
                 </div>
-                <div className=" bg-white/10 p-4">
-                  <p className="text-xs text-slate-400">팔로워</p>
-                  <p className="mt-2 text-xl font-semibold text-slate-100">
+                <div className="p-4 pr-0">
+                  <dt className="text-xs text-[color:var(--muted)]">팔로워</dt>
+                  <dd className="mt-2 font-[var(--font-display)] text-2xl">
                     {formatNumber(profile.stats.followers)}
-                  </p>
+                  </dd>
                 </div>
-              </div>
+              </dl>
             </motion.section>
 
             <div className="grid gap-8 lg:grid-cols-2">
               <motion.section
-                className=" bg-[rgba(40,40,46,0.72)] p-7 shadow-[0_18px_52px_rgba(0,0,0,0.34)] md:p-8"
+                className="museum-panel p-7 md:p-8"
                 {...staggeredFadeUpMotion(2, reduceMotion)}
               >
-                <h3 className="font-[var(--font-display)] text-2xl text-slate-100">Portfolio</h3>
-                <p className="mt-2 text-sm text-slate-300/84">대표 작품을 확인하세요.</p>
+                <p className="museum-kicker">Selected works</p>
+                <h2 className="mt-2 font-[var(--font-display)] text-3xl">대표 작품</h2>
+                <p className="mt-2 text-sm text-[color:var(--muted)]">작가의 작업 세계를 보여주는 대표 기록입니다.</p>
                 <div className="mt-6 grid gap-4 sm:grid-cols-2">
                   {profile.portfolio.map((item, index) => (
                     <motion.article
                       key={item.id}
                       {...staggeredFadeUpMotion(index + 3, reduceMotion)}
-                      className=" bg-white/10 p-4"
+                      className="border-t border-[color:var(--line)] pt-4"
                     >
                       <div
                         className="h-24 w-full "
@@ -263,26 +272,27 @@ export default function ProfileClient() {
                           background: `linear-gradient(140deg, ${item.colorFrom}, ${item.colorTo})`,
                         }}
                       />
-                      <div className="mt-3 text-xs text-slate-400">{item.category}</div>
-                      <h4 className="mt-1 font-[var(--font-display)] text-lg text-slate-100">
+                      <div className="mt-3 text-xs text-[color:var(--accent)]">{item.category}</div>
+                      <h3 className="mt-1 font-[var(--font-display)] text-lg">
                         {item.title}
-                      </h4>
+                      </h3>
                     </motion.article>
                   ))}
                 </div>
               </motion.section>
 
               <motion.section
-                className=" bg-[rgba(40,40,46,0.72)] p-7 shadow-[0_18px_52px_rgba(0,0,0,0.34)] md:p-8"
+                className="museum-panel p-7 md:p-8"
                 {...staggeredFadeUpMotion(3, reduceMotion)}
               >
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
-                    <h3 className="font-[var(--font-display)] text-2xl text-slate-100">My Entries</h3>
-                    <p className="mt-2 text-sm text-slate-300/84">제출한 출품을 관리하세요.</p>
+                    <p className="museum-kicker">Submission ledger</p>
+                    <h2 className="mt-2 font-[var(--font-display)] text-3xl">출품 기록</h2>
+                    <p className="mt-2 text-sm text-[color:var(--muted)]">제출한 작품과 심사 상태를 확인합니다.</p>
                   </div>
                   <div className="flex w-full flex-col items-end gap-2 sm:w-auto">
-                    <div className="text-xs text-slate-300/84">
+                    <div className="text-xs text-[color:var(--muted)]">
                       총 {formatNumber(entriesPageData?.totalElements ?? 0)}개 · 페이지 {currentEntryPage}/
                       {totalEntryPages}
                     </div>
@@ -293,7 +303,7 @@ export default function ProfileClient() {
                 {entriesLoading ? (
                   <div className="mt-6 grid gap-4">
                     {Array.from({ length: 2 }).map((_, index) => (
-                      <div key={index} className=" bg-white/10 p-4">
+                      <div key={index} className="border border-[color:var(--line)] p-4">
                         <Skeleton className="h-14 w-14 " />
                         <Skeleton className="mt-3 h-4 w-40 " />
                         <Skeleton className="mt-2 h-3 w-28 " />
@@ -309,7 +319,7 @@ export default function ProfileClient() {
                       </div>
                     )}
                     {entries.length === 0 ? (
-                      <div className="mt-6  bg-white/10 p-6 text-sm text-slate-300/84">
+                      <div className="mt-6 border border-dashed border-[color:var(--line)] p-6 text-sm text-[color:var(--muted)]">
                         아직 제출한 출품이 없습니다.
                       </div>
                     ) : (
@@ -318,7 +328,7 @@ export default function ProfileClient() {
                           <motion.div
                             key={entry.entryId}
                             {...staggeredFadeUpMotion(index + 6, reduceMotion)}
-                            className="flex flex-wrap items-center justify-between gap-4  bg-white/10 p-4"
+                            className="flex flex-wrap items-center justify-between gap-4 border-t border-[color:var(--line)] py-4"
                           >
                             <div className="flex items-center gap-4">
                               {entry.imageUrl ? (
@@ -332,16 +342,16 @@ export default function ProfileClient() {
                                 <div className="h-14 w-14  bg-white/16" />
                               )}
                               <div>
-                                <p className="text-xs uppercase tracking-[0.25em] text-cyan-100">
+                                <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--accent)]">
                                   {entry.contestTheme}
                                 </p>
-                                <p className="mt-1 text-sm font-semibold text-slate-100">
+                                <p className="mt-1 text-sm font-semibold">
                                   {entry.title ?? "Untitled"}
                                 </p>
-                                <p className="mt-1 text-xs text-slate-400">제출일 {entry.submittedAt}</p>
+                                <p className="mt-1 text-xs text-[color:var(--muted)]">제출일 {entry.submittedAt}</p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-3 text-xs text-slate-300">
+                            <div className="flex items-center gap-3 text-xs text-[color:var(--muted)]">
                               <span
                                 className={` border px-3 py-1 text-xs ${
                                   getContestEntryStatusTone(entry.status).chipClass
@@ -351,7 +361,7 @@ export default function ProfileClient() {
                               </span>
                               <button
                                 type="button"
-                                className=" bg-white/14 px-3 py-1 text-xs text-slate-200 transition hover:bg-rose-300/24 hover:text-rose-100 disabled:opacity-60"
+                                className="min-h-10 border border-[color:var(--line)] px-3 py-1 text-xs transition hover:border-[color:var(--danger)] hover:text-[color:var(--danger)] disabled:opacity-60"
                                 onClick={() => deleteMutation.mutate(entry.entryId)}
                                 disabled={deleteMutation.isPending}
                               >
@@ -370,24 +380,25 @@ export default function ProfileClient() {
             </div>
 
             <motion.section
-              className=" bg-[rgba(40,40,46,0.72)] p-7 shadow-[0_18px_52px_rgba(0,0,0,0.34)] md:p-8"
+              className="museum-panel p-7 md:p-8"
               {...staggeredFadeUpMotion(4, reduceMotion)}
             >
-              <h3 className="font-[var(--font-display)] text-2xl text-slate-100">Awards</h3>
-              <p className="mt-2 text-sm text-slate-300/84">콘테스트 수상 이력을 확인하세요.</p>
+              <p className="museum-kicker">Distinctions</p>
+              <h2 className="mt-2 font-[var(--font-display)] text-3xl">수상 기록</h2>
+              <p className="mt-2 text-sm text-[color:var(--muted)]">콘테스트에서 남긴 공식 기록입니다.</p>
               <div className="mt-6 grid gap-4">
                 {profile.awards.map((award, index) => (
                   <motion.div
                     key={award.id}
                     {...staggeredFadeUpMotion(index + 12, reduceMotion)}
-                    className="flex flex-wrap items-center justify-between gap-4  bg-white/10 p-4"
+                    className="flex flex-wrap items-center justify-between gap-4 border-t border-[color:var(--line)] py-4"
                   >
                     <div>
-                      <p className="text-xs uppercase tracking-[0.3em] text-cyan-100">{award.rank}</p>
-                      <p className="mt-2 font-semibold text-slate-100">{award.contest}</p>
-                      <p className="mt-1 text-xs text-slate-400">{award.period}</p>
+                      <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--accent)]">{award.rank}</p>
+                      <p className="mt-2 font-semibold">{award.contest}</p>
+                      <p className="mt-1 text-xs text-[color:var(--muted)]">{award.period}</p>
                     </div>
-                    <span className=" bg-white/16 px-3 py-1 text-xs text-slate-200">
+                    <span className="border border-[color:var(--line)] px-3 py-1 text-xs text-[color:var(--muted)]">
                       {award.prize}
                     </span>
                   </motion.div>

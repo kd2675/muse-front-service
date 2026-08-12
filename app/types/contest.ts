@@ -149,3 +149,28 @@ export type ContestFinalizeResult = {
   finalizedAt: string;
   winners: ContestFinalizeWinner[];
 };
+
+export type ContestResult = {
+  contestId: number;
+  theme: string;
+  period: string;
+  prizePool: number;
+  finalizedAt: string;
+  winners: Array<{
+    rank: number;
+    entryId: string;
+    title?: string | null;
+    description?: string | null;
+    imageUrl: string;
+    artistId: number;
+    artistName: string;
+    prize: string;
+  }>;
+};
+
+export type ContestEntryDraft = {
+  contestId: number;
+  title?: string | null;
+  description?: string | null;
+  updatedAt: string;
+};
