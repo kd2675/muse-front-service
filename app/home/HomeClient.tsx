@@ -63,7 +63,7 @@ export default function HomeClient() {
     <div className="relative min-h-[100dvh] overflow-hidden bg-[var(--canvas)] text-[var(--canvas-ink)]">
       <MuseumAtmosphere variant="lobby" />
       <div className="museum-grain pointer-events-none absolute inset-0 z-20 opacity-70" />
-      <main id="main-content" className="relative z-30 mx-auto flex min-h-[100dvh] w-full max-w-[1600px] flex-col px-5 pb-28 pt-4 md:px-10 md:pb-32 md:pt-6 xl:px-14">
+      <main id="main-content" tabIndex={-1} className="relative z-30 mx-auto flex min-h-[100dvh] w-full max-w-[1600px] flex-col px-5 pb-28 pt-4 md:px-10 md:pb-32 md:pt-6 xl:px-14">
         <header className="flex min-h-16 items-center justify-between border-b border-white/15">
           <div>
             <p className="font-[var(--font-display)] text-2xl tracking-[0.22em] md:text-3xl">MUSE</p>

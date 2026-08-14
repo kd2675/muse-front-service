@@ -35,6 +35,8 @@ export default function AdminShell({ section, title, description, children }: Ad
     <div className="museum-grain relative min-h-screen overflow-x-hidden bg-[var(--canvas)] text-[color:var(--canvas-ink)]">
 
       <main
+        id="main-content"
+        tabIndex={-1}
         className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-5 pb-32 pt-8 md:px-8"
       >
         <OverviewStyleHeader title={title} subtitle="Muse 운영실" />

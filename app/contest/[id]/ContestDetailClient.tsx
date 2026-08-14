@@ -28,6 +28,7 @@ import {
   getContestPhaseTone,
 } from "../../lib/statusTheme";
 import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
+import { useDialogAccessibility } from "../../hooks/useDialogAccessibility";
 import { useAppDispatch } from "../../store/hooks";
 import { setPendingPath, showToast } from "../../store/uiSlice";
 import type { ContestPhase } from "../../types/contest";
@@ -283,6 +284,11 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
     "idle",
   );
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const paymentDialogRef = useDialogAccessibility(
+    paymentStep !== "closed",
+    () => setPaymentStep("closed"),
+    paymentStep !== "processing",
+  );
 
   useBodyScrollLock(paymentStep !== "closed");
 
@@ -707,7 +713,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
     <div className="museum-grain relative min-h-screen overflow-x-hidden bg-[var(--canvas)] text-[var(--canvas-ink)]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_4%,rgba(197,168,117,0.08),transparent_24%)]" />
 
-      <main id="main-content" className="relative mx-auto w-full max-w-6xl px-5 pb-44 pt-7 md:px-8 md:pt-10">
+      <main id="main-content" tabIndex={-1} className="relative mx-auto w-full max-w-6xl px-5 pb-44 pt-7 md:px-8 md:pt-10">
         <motion.div className="mb-6" {...staggeredFadeUpMotion(0, reduceMotion)}>
           <OverviewStyleHeader title="공모전" subtitle="Program detail" headingAs="p" />
         </motion.div>
@@ -1320,6 +1326,11 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 px-4"
           >
             <motion.div
+              ref={paymentDialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="payment-dialog-title"
+              tabIndex={-1}
               {...popInMotion(reduceMotion)}
               className="w-full max-w-lg border border-white/18 bg-[rgba(14,14,18,0.98)] p-8 shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
             >
@@ -1328,7 +1339,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <p className="museum-kicker">Secure checkout</p>
-                      <h2 className="mt-2 font-[var(--font-display)] text-3xl text-slate-100">출품권 결제</h2>
+                      <h2 id="payment-dialog-title" className="mt-2 font-[var(--font-display)] text-3xl text-slate-100">출품권 결제</h2>
                       <p className="mt-2 text-sm text-slate-300/74">
                         결제 승인 후 이 공모전에서 사용할 수 있는 출품권 1개가 지급됩니다.
                       </p>
@@ -1389,7 +1400,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
               {paymentStep === "processing" && (
                 <>
                   <p className="text-xs uppercase tracking-[0.32em] text-[#c0a062]/86">Preparing checkout</p>
-                  <h2 className="mt-3 font-[var(--font-display)] text-3xl text-slate-100">안전한 결제 주문을 준비합니다.</h2>
+                  <h2 id="payment-dialog-title" className="mt-3 font-[var(--font-display)] text-3xl text-slate-100">안전한 결제 주문을 준비합니다.</h2>
                   <p className="mt-2 text-sm text-slate-300/74">저장된 참가비와 주문 정보를 확인하고 있습니다.</p>
                 </>
               )}
@@ -1397,7 +1408,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
               {paymentStep === "confirm" && (
                 <>
                   <p className="text-xs uppercase tracking-[0.32em] text-[#c0a062]/86">Payment complete</p>
-                  <h2 className="mt-3 font-[var(--font-display)] text-3xl text-slate-100">출품권이 지급되었습니다.</h2>
+                  <h2 id="payment-dialog-title" className="mt-3 font-[var(--font-display)] text-3xl text-slate-100">출품권이 지급되었습니다.</h2>
                   <p className="mt-2 text-sm text-slate-300/74">
                     결제 승인과 출품권 지급이 모두 확인되었습니다.
                   </p>

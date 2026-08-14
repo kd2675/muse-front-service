@@ -5,6 +5,19 @@ type AuthChangeListener = () => void;
 
 const authExpireListeners = new Set<AuthExpireListener>();
 const authChangeListeners = new Set<AuthChangeListener>();
+let authExpiryClaimed = false;
+
+export function claimAuthExpiryNotification(): boolean {
+  if (authExpiryClaimed) {
+    return false;
+  }
+  authExpiryClaimed = true;
+  return true;
+}
+
+export function resetAuthExpiryNotification() {
+  authExpiryClaimed = false;
+}
 
 export function onAuthExpired(listener: AuthExpireListener) {
   authExpireListeners.add(listener);

@@ -2,8 +2,7 @@ import axios, { type AxiosRequestConfig, type AxiosError } from "axios";
 import {
   refreshAccessToken,
   getAccessToken,
-  clearAccessToken,
-  notifyAuthExpired,
+  expireAccessToken,
 } from "./auth";
 import type { ResponseEnvelope } from "../types/response";
 
@@ -98,7 +97,6 @@ apiClient.interceptors.request.use((config) => {
 
 let isRefreshing = false;
 let refreshQueue: Array<(token: string | null) => void> = [];
-let authExpiredNotified = false;
 
 function enqueueRefresh(cb: (token: string | null) => void) {
   refreshQueue.push(cb);
@@ -110,12 +108,7 @@ function resolveRefreshQueue(token: string | null) {
 }
 
 function handleAuthExpired(reason: "expired" | "refresh_failed") {
-  if (authExpiredNotified) {
-    return;
-  }
-  authExpiredNotified = true;
-  clearAccessToken();
-  notifyAuthExpired(reason);
+  expireAccessToken(reason);
 }
 
 export type ApiResult<T> = {
@@ -265,13 +258,13 @@ async function requestJson<T>(
     const backendCodeValue = errorData?.code;
     const mapped = mapBackendCode(backendCodeValue);
     const isRefreshCall = path.startsWith("/auth/refresh");
+    const isExpectedAnonymousRefresh = isRefreshCall && status === 401;
     if (status === 401 && !isRefreshCall && retryCount < 1) {
       if (isRefreshing) {
         const token = await new Promise<string | null>((resolve) => {
           enqueueRefresh(resolve);
         });
         if (token) {
-          authExpiredNotified = false;
           return requestJson<T>(method, path, data, config, retryCount + 1);
         }
       } else {
@@ -280,13 +273,12 @@ async function requestJson<T>(
         resolveRefreshQueue(newToken);
         isRefreshing = false;
         if (newToken) {
-          authExpiredNotified = false;
           return requestJson<T>(method, path, data, config, retryCount + 1);
         }
       }
       handleAuthExpired("refresh_failed");
     }
-    if (shouldLogError()) {
+    if (shouldLogError() && !isExpectedAnonymousRefresh) {
       console.error(`[api] ${method} failed`, {
         path,
         status,

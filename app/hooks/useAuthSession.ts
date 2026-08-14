@@ -3,12 +3,11 @@
 import { useEffect, useState } from "react";
 import {
   bootstrapAccessToken,
-  clearAccessToken,
+  expireAccessToken,
   getAccessToken,
   getUserFromToken,
   hasAnyRole,
   isTokenExpired,
-  notifyAuthExpired,
   refreshAccessToken,
   scheduleTokenExpiry,
 } from "../lib/auth";
@@ -76,8 +75,7 @@ export default function useAuthSession() {
       void (async () => {
         const refreshed = await refreshAccessToken();
         if (!cancelled && !refreshed) {
-          clearAccessToken();
-          notifyAuthExpired("refresh_failed");
+          expireAccessToken("refresh_failed");
         }
       })();
       return () => {
@@ -88,8 +86,7 @@ export default function useAuthSession() {
       void (async () => {
         const refreshed = await refreshAccessToken();
         if (!refreshed) {
-          clearAccessToken();
-          notifyAuthExpired("refresh_failed");
+          expireAccessToken("refresh_failed");
         }
       })();
     }, tokenExp);

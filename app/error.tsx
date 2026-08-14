@@ -17,7 +17,7 @@ export default function GlobalError({
 
   return (
     <div className="museum-grain min-h-screen bg-[var(--canvas)] text-[var(--canvas-ink)]">
-      <main id="main-content" className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center px-6 pb-32">
+      <main id="main-content" tabIndex={-1} className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center px-6 pb-32">
         <p className="museum-kicker">Exhibition interrupted</p>
         <h1 className="mt-4 font-[var(--font-display)] text-5xl">전시를 잠시 이어갈 수 없습니다.</h1>
         <p className="mt-5 max-w-xl leading-7 text-[var(--muted)]">

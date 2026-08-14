@@ -103,7 +103,7 @@ function LoginPageContent() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--canvas)] px-5 py-8 text-[var(--canvas-ink)]">
+    <main id="main-content" tabIndex={-1} className="min-h-screen bg-[var(--canvas)] px-5 py-8 text-[var(--canvas-ink)]">
       <section className="mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center gap-10 lg:grid-cols-[1fr_420px]">
         <motion.div {...staggeredFadeUpMotion(0, reduceMotion)}>
           <p className="text-xs font-bold uppercase tracking-[0.34em] text-[color:var(--accent)]">MUSE PRIVATE VIEW</p>
@@ -217,7 +217,7 @@ function MuseField({
 
 function MuseLoginProgress({ reduceMotion }: { reduceMotion: boolean }) {
   return (
-    <main className="grid min-h-screen place-items-center bg-[var(--canvas)] px-5" aria-live="polite">
+    <main id="main-content" tabIndex={-1} className="grid min-h-screen place-items-center bg-[var(--canvas)] px-5" aria-live="polite">
       <motion.section className="text-center" {...staggeredFadeUpMotion(0, reduceMotion)}>
         <span className="spinner mx-auto block" aria-hidden="true" />
         <h1 className="mt-5 font-[var(--font-display)] text-2xl">로그인을 준비하고 있습니다</h1>
@@ -272,7 +272,7 @@ function resolveQueryMessage(searchParams: URLSearchParams): string | null {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<main className="min-h-screen bg-[var(--canvas)]" />}>
+    <Suspense fallback={<main id="main-content" tabIndex={-1} className="min-h-screen bg-[var(--canvas)]" />}>
       <LoginPageContent />
     </Suspense>
   );

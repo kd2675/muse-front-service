@@ -238,12 +238,14 @@ export default function AdminGalleryClient() {
           <aside className="border border-[color:var(--line)] bg-[rgba(18,18,24,0.9)] p-5">
             <div className="space-y-3">
               <input
+                aria-label="뮤지엄 검색"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="뮤지엄/작가/ID 검색"
                 className="h-10 w-full border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-3 text-sm outline-none focus:border-[color:var(--accent)]"
               />
               <select
+                aria-label="뮤지엄 공개 상태 필터"
                 value={museumFilter}
                 onChange={(event) => setMuseumFilter(event.target.value as MuseumFilter)}
                 className="h-10 w-full border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-3 text-sm outline-none focus:border-[color:var(--accent)]"
@@ -338,6 +340,7 @@ export default function AdminGalleryClient() {
                     </p>
                   </div>
                   <select
+                    aria-label="작품 검수 상태 필터"
                     value={artworkFilter}
                     onChange={(event) => setArtworkFilter(event.target.value as ArtworkFilter)}
                     className="h-10 border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-3 text-sm outline-none focus:border-[color:var(--accent)]"

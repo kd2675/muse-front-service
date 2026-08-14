@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { useDialogAccessibility } from "../hooks/useDialogAccessibility";
 
 type ConfirmDialogProps = {
   open: boolean;
@@ -21,29 +22,25 @@ export default function ConfirmDialog({
   onCancel,
   onConfirm,
 }: ConfirmDialogProps) {
-  const cancelButtonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    cancelButtonRef.current?.focus();
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !busy) {
-        onCancel();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [busy, onCancel, open]);
+  const dialogRef = useDialogAccessibility(open, onCancel, !busy);
+  useBodyScrollLock(open);
 
   if (!open) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-[140] grid place-items-center bg-black/75 px-5 backdrop-blur-sm">
-      <section
+    <div
+      className="fixed inset-0 z-[140] grid place-items-center bg-black/75 px-5 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !busy) {
+          onCancel();
+        }
+      }}
+    >
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"
@@ -59,7 +56,6 @@ export default function ConfirmDialog({
         </p>
         <div className="mt-7 grid grid-cols-2 gap-2">
           <button
-            ref={cancelButtonRef}
             type="button"
             onClick={onCancel}
             disabled={busy}
@@ -76,7 +72,7 @@ export default function ConfirmDialog({
             {busy ? "처리 중" : confirmLabel}
           </button>
         </div>
-      </section>
+      </div>
     </div>
   );
 }

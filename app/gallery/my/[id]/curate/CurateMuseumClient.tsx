@@ -113,7 +113,7 @@ export default function CurateMuseumClient({ museumId }: { museumId: number }) {
 
   return (
     <div className="museum-grain min-h-screen bg-[var(--canvas)] text-[var(--canvas-ink)]">
-      <main className="mx-auto w-full max-w-[1500px] px-5 pb-24 pt-6 md:px-8">
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-[1500px] px-5 pb-24 pt-6 md:px-8">
         <OverviewStyleHeader title={museum?.name ?? "큐레이션 스튜디오"} subtitle="Exhibition composer" rightSlot={<Link href="/gallery/my" className="text-xs text-[var(--muted)] hover:text-white">나가기</Link>} />
         <div className="mt-6 grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)_340px]">
           <aside className="museum-panel p-4">
@@ -148,7 +148,7 @@ export default function CurateMuseumClient({ museumId }: { museumId: number }) {
               {publishStatus === "SCHEDULED" ? <label className="mt-3 block text-xs text-[var(--muted)]">오픈 시각<input type="datetime-local" value={openingAt} onChange={(event) => setOpeningAt(event.target.value)} className="museum-field mt-2 w-full px-3" /></label> : null}
               <label className="mt-3 block text-xs text-[var(--muted)]">표지 작품<select value={coverArtworkId ?? ""} onChange={(event) => setCoverArtworkId(event.target.value ? Number(event.target.value) : null)} className="museum-field mt-2 w-full px-3"><option value="">자동 선택</option>{ordered.map((item) => <option key={item.museumArtworkId} value={item.museumArtworkId}>{item.title}</option>)}</select></label>
               <label className="mt-3 block text-xs text-[var(--muted)]">큐레이터 노트<textarea value={curatorNote} onChange={(event) => setCuratorNote(event.target.value)} className="museum-field mt-2 min-h-24 w-full p-3" /></label>
-              <div className="mt-3 grid grid-cols-2 gap-2"><select value={layoutPreset} onChange={(event) => setLayoutPreset(event.target.value as LayoutPreset)} className="museum-field px-2"><option value="SALON">살롱</option><option value="LINEAR">선형</option><option value="IMMERSIVE">몰입형</option></select><select value={lightingPreset} onChange={(event) => setLightingPreset(event.target.value as LightingPreset)} className="museum-field px-2"><option value="WARM">웜</option><option value="NEUTRAL">뉴트럴</option><option value="DRAMATIC">드라마틱</option></select></div>
+              <div className="mt-3 grid grid-cols-2 gap-2"><select aria-label="전시 레이아웃" value={layoutPreset} onChange={(event) => setLayoutPreset(event.target.value as LayoutPreset)} className="museum-field px-2"><option value="SALON">살롱</option><option value="LINEAR">선형</option><option value="IMMERSIVE">몰입형</option></select><select aria-label="전시 조명" value={lightingPreset} onChange={(event) => setLightingPreset(event.target.value as LightingPreset)} className="museum-field px-2"><option value="WARM">웜</option><option value="NEUTRAL">뉴트럴</option><option value="DRAMATIC">드라마틱</option></select></div>
               <button type="button" onClick={() => curationMutation.mutate()} disabled={curationMutation.isPending} className="museum-button-primary mt-4 w-full py-3 text-sm">전시 설정 저장</button>
               {museum?.isPublic ? <Link href={`/gallery/museums/${museumId}`} className="mt-2 block border border-[var(--line)] py-3 text-center text-sm">공개 전시 미리보기</Link> : null}
             </section>
@@ -156,11 +156,11 @@ export default function CurateMuseumClient({ museumId }: { museumId: number }) {
             {selected ? <section className="museum-panel p-5">
               <p className="museum-kicker">Artwork direction</p><h2 className="mt-2 font-[var(--font-display)] text-2xl">작품 연출</h2>
               <input value={selected.title} onChange={(event) => updateSelected({ title: event.target.value })} className="museum-field mt-4 w-full px-3" aria-label="작품 제목" />
-              <input value={selected.roomLabel ?? ""} onChange={(event) => updateSelected({ roomLabel: event.target.value })} className="museum-field mt-2 w-full px-3" placeholder="공간 라벨" />
+              <input aria-label="작품 공간 라벨" value={selected.roomLabel ?? ""} onChange={(event) => updateSelected({ roomLabel: event.target.value })} className="museum-field mt-2 w-full px-3" placeholder="공간 라벨" />
               <label className="mt-3 block text-xs text-[var(--muted)]">초점 X {selected.focalX}<input type="range" min="0" max="100" value={selected.focalX} onChange={(event) => updateSelected({ focalX: Number(event.target.value) })} className="w-full" /></label>
               <label className="mt-2 block text-xs text-[var(--muted)]">초점 Y {selected.focalY}<input type="range" min="0" max="100" value={selected.focalY} onChange={(event) => updateSelected({ focalY: Number(event.target.value) })} className="w-full" /></label>
-              <input value={selected.audioUrl ?? ""} onChange={(event) => updateSelected({ audioUrl: event.target.value })} className="museum-field mt-3 w-full px-3" placeholder="오디오 해설 URL" />
-              <textarea value={selected.audioTranscript ?? ""} onChange={(event) => updateSelected({ audioTranscript: event.target.value })} className="museum-field mt-2 min-h-20 w-full p-3" placeholder="오디오 대체 텍스트" />
+              <input aria-label="오디오 해설 URL" value={selected.audioUrl ?? ""} onChange={(event) => updateSelected({ audioUrl: event.target.value })} className="museum-field mt-3 w-full px-3" placeholder="오디오 해설 URL" />
+              <textarea aria-label="오디오 해설 대체 텍스트" value={selected.audioTranscript ?? ""} onChange={(event) => updateSelected({ audioTranscript: event.target.value })} className="museum-field mt-2 min-h-20 w-full p-3" placeholder="오디오 대체 텍스트" />
               <button type="button" onClick={() => artworkMutation.mutate(selected)} className="museum-button-primary mt-3 w-full py-3 text-sm">작품 연출 저장</button>
             </section> : null}
           </aside>

@@ -128,7 +128,7 @@ export default function ProfileClient() {
   return (
     <div className="museum-grain relative min-h-screen overflow-x-hidden bg-[var(--canvas)] text-[color:var(--canvas-ink)]">
 
-      <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 pb-40 pt-8 md:px-8">
+      <main id="main-content" tabIndex={-1} className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 pb-40 pt-8 md:px-8">
         <motion.div className="mb-10" {...staggeredFadeUpMotion(0, reduceMotion)}>
           <OverviewStyleHeader title="작가 기록" subtitle="Artist archive" headingAs="p" />
         </motion.div>

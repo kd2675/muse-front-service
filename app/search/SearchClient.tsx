@@ -22,7 +22,7 @@ export default function SearchClient({ initialQuery = "" }: { initialQuery?: str
 
   return (
     <div className="museum-grain min-h-screen bg-[var(--canvas)] text-[var(--canvas-ink)]">
-      <main className="mx-auto w-full max-w-6xl px-6 pb-40 pt-8 md:px-8">
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl px-6 pb-40 pt-8 md:px-8">
         <OverviewStyleHeader title="작품과 기록 찾기" subtitle="Discovery desk" />
         <form
           className="museum-panel mt-8 flex gap-3 p-4"

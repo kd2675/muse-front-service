@@ -2,13 +2,14 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from "../lib/discovery";
 
 export default function NotificationCenter() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const query = useQuery({
     queryKey: ["notifications"],
     queryFn: getNotifications,
@@ -24,12 +25,30 @@ export default function NotificationCenter() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: KeyboardEvent | PointerEvent) => {
+      if (event instanceof KeyboardEvent && event.key === "Escape") {
+        setOpen(false);
+      } else if (event instanceof PointerEvent && !containerRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    window.addEventListener("keydown", close);
+    window.addEventListener("pointerdown", close);
+    return () => {
+      window.removeEventListener("keydown", close);
+      window.removeEventListener("pointerdown", close);
+    };
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       <button
         type="button"
         aria-label={`알림${data?.unreadCount ? ` ${data.unreadCount}개` : ""}`}
         aria-expanded={open}
+        aria-controls="notification-center-panel"
         onClick={() => setOpen((value) => !value)}
         className="relative min-h-10 px-2 text-xs text-[var(--muted)] transition hover:text-white"
       >
@@ -41,7 +60,7 @@ export default function NotificationCenter() {
         ) : null}
       </button>
       {open ? (
-        <section className="absolute right-0 top-12 z-[70] w-[min(88vw,380px)] border border-[var(--line)] bg-[#111312] p-4 text-left shadow-2xl">
+        <section id="notification-center-panel" aria-label="관람 알림 목록" className="absolute right-0 top-12 z-[70] w-[min(88vw,380px)] border border-[var(--line)] bg-[#111312] p-4 text-left shadow-2xl">
           <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
             <h2 className="font-[var(--font-display)] text-xl">관람 알림</h2>
             <button

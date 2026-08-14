@@ -70,7 +70,7 @@ export default function AuthCallbackPage() {
 
   return (
     <PageShell>
-      <main className="grid min-h-[70vh] place-items-center px-6" aria-live="polite">
+      <main id="main-content" tabIndex={-1} className="grid min-h-[70vh] place-items-center px-6" aria-live="polite">
         <section className="text-center">
           <span className="spinner mx-auto block" aria-hidden="true" />
           <h1 className="mt-5 font-[var(--font-display)] text-2xl">로그인을 마무리하고 있습니다</h1>

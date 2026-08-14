@@ -298,7 +298,7 @@ export default function MyMuseumClient() {
   if (!isLoggedIn) {
     return (
       <section className="museum-grain relative min-h-screen overflow-x-hidden bg-[var(--canvas)] text-[color:var(--canvas-ink)]">
-        <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 pb-36 pt-10 md:px-8">
+        <main id="main-content" tabIndex={-1} className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 pb-36 pt-10 md:px-8">
           <OverviewStyleHeader title="내 전시실" subtitle="Curator studio" headingAs="p" />
           <article className="museum-panel mt-12 max-w-4xl border-x-0 px-7 py-12 md:px-10">
             <p className="museum-kicker">Private curation</p>
@@ -332,7 +332,7 @@ export default function MyMuseumClient() {
 
   return (
     <section className="museum-grain relative min-h-screen overflow-x-hidden bg-[var(--canvas)] text-[color:var(--canvas-ink)]">
-      <main className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 pb-36 pt-10 md:px-8">
+      <main id="main-content" tabIndex={-1} className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 pb-36 pt-10 md:px-8">
         <OverviewStyleHeader title="내 전시실" subtitle="Curator studio" />
 
         <section aria-label="전시실 현황" className="mt-8 grid grid-cols-3 border-y border-[color:var(--line)]">

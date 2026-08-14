@@ -22,6 +22,8 @@ import {
 } from "../../../lib/statusTheme";
 import { getUserFromToken, isAdminRole } from "../../../lib/auth";
 import { useAppDispatch } from "../../../store/hooks";
+import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
+import { useDialogAccessibility } from "../../../hooks/useDialogAccessibility";
 import { showToast } from "../../../store/uiSlice";
 import Reveal from "../../../components/motion/Reveal";
 import { staggeredFadeUpMotion } from "../../../lib/motion";
@@ -170,6 +172,12 @@ export default function AdminContestReviewClient() {
   const [updatingEntryId, setUpdatingEntryId] = useState<string | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const [previewImageTitle, setPreviewImageTitle] = useState<string>("");
+  const closePreview = () => {
+    setPreviewImageUrl(null);
+    setPreviewImageTitle("");
+  };
+  const previewDialogRef = useDialogAccessibility(Boolean(previewImageUrl), closePreview);
+  useBodyScrollLock(Boolean(previewImageUrl));
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
 
   useEffect(() => {
@@ -620,18 +628,22 @@ export default function AdminContestReviewClient() {
       </Reveal>
       {previewImageUrl && (
         <section className="fixed inset-0 z-[120] bg-[rgba(9,16,24,0.82)] p-4 md:p-8">
-          <div className="mx-auto flex h-full w-full max-w-[1120px] flex-col border border-white/20 bg-[rgba(7,11,18,0.94)] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.45)] md:p-6">
+          <div
+            ref={previewDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="admin-preview-title"
+            tabIndex={-1}
+            className="mx-auto flex h-full w-full max-w-[1120px] flex-col border border-white/20 bg-[rgba(7,11,18,0.94)] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.45)] md:p-6"
+          >
             <div className="flex items-center justify-between gap-3 border-b border-white/15 pb-3">
-              <h2 className="truncate text-sm font-semibold text-white">{previewImageTitle}</h2>
+              <h2 id="admin-preview-title" className="truncate text-sm font-semibold text-white">{previewImageTitle}</h2>
               <div className="flex items-center gap-2">
                 <AdminActionButton
                   variant="secondary"
                   size="sm"
                   className="border-white/30 bg-white/8 text-white/90 hover:border-white hover:text-white"
-                  onClick={() => {
-                    setPreviewImageUrl(null);
-                    setPreviewImageTitle("");
-                  }}
+                  onClick={closePreview}
                 >
                   닫기
                 </AdminActionButton>

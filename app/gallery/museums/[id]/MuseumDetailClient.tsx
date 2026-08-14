@@ -16,6 +16,7 @@ import { getPublicMuseumDetail } from "../../../lib/museum";
 import { getAccessToken } from "../../../lib/auth";
 import { getBookmarkStatus, recordMuseumView, setBookmark } from "../../../lib/discovery";
 import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
+import { useDialogAccessibility } from "../../../hooks/useDialogAccessibility";
 import "swiper/css/effect-coverflow";
 
 type MuseumDetailClientProps = {
@@ -560,6 +561,7 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
     const query = params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
+  const lightboxDialogRef = useDialogAccessibility(isLightboxOpen, closeLightbox, false);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -988,7 +990,7 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
         </motion.div>
       </header>
 
-      <main className="relative z-10 flex h-full w-full flex-col justify-center">
+      <main id="main-content" tabIndex={-1} className="relative z-10 flex h-full w-full flex-col justify-center">
         {museum && !museum.contentAvailable ? (
           <div className="absolute inset-0 z-40 flex items-center justify-center bg-[#050605]/95 px-6 text-center">
             <div className="max-w-2xl">
@@ -1371,11 +1373,16 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
             className="fixed inset-0 z-[80] bg-[rgba(2,2,4,0.94)] p-4 md:p-8"
           >
             <motion.div
+              ref={lightboxDialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="museum-lightbox-title"
+              tabIndex={-1}
               {...popInMotion(reduceMotion)}
               className="mx-auto flex h-full w-full max-w-[1200px] flex-col border border-white/16 bg-[rgba(7,7,10,0.5)] p-4 md:p-6"
             >
               <div className="mb-4 flex items-center justify-between gap-3 text-slate-100">
-                <p className="text-xs uppercase tracking-[0.28em] text-slate-300">Immersive View</p>
+                <p id="museum-lightbox-title" className="text-xs uppercase tracking-[0.28em] text-slate-300">Immersive View</p>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -1412,6 +1419,7 @@ export default function MuseumDetailClient({ museumId }: MuseumDetailClientProps
                     90°
                   </button>
                   <button
+                    type="button"
                     className="border border-white/20 bg-white/16 px-4 py-2 text-sm text-slate-100 transition hover:bg-white/24"
                     onClick={closeLightbox}
                   >

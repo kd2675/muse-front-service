@@ -14,6 +14,7 @@ import { overlayFadeMotion, popInMotion, staggeredFadeUpMotion } from "../../../
 import { navigateBack } from "../../../lib/navigation";
 import { getContestPhaseLabel, getContestPhaseTone } from "../../../lib/statusTheme";
 import { useBodyScrollLock } from "../../../hooks/useBodyScrollLock";
+import { useDialogAccessibility } from "../../../hooks/useDialogAccessibility";
 import { useAppDispatch } from "../../../store/hooks";
 import { setPendingPath, showToast } from "../../../store/uiSlice";
 
@@ -34,6 +35,11 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
   const [pendingVoteEntryId, setPendingVoteEntryId] = useState<string | null>(null);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(requestedEntryId);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const lightboxDialogRef = useDialogAccessibility(
+    isLightboxOpen,
+    () => setIsLightboxOpen(false),
+    false,
+  );
 
   useBodyScrollLock(isLightboxOpen);
 
@@ -137,7 +143,7 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
     <div className="relative min-h-screen overflow-x-hidden bg-[#121212] text-slate-100">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_9%_8%,rgba(110,132,162,0.2),transparent_35%),radial-gradient(circle_at_86%_14%,rgba(157,128,82,0.18),transparent_40%),radial-gradient(circle_at_56%_82%,rgba(90,87,84,0.2),transparent_42%)]" />
 
-      <main className="relative mx-auto w-full max-w-5xl px-6 pb-44 pt-8">
+      <main id="main-content" tabIndex={-1} className="relative mx-auto w-full max-w-5xl px-6 pb-44 pt-8">
         <motion.div className="mb-4" {...staggeredFadeUpMotion(0, reduceMotion)}>
           <OverviewStyleHeader title="공모전 전시" subtitle="Focused viewing" headingAs="p" />
         </motion.div>
@@ -349,9 +355,17 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
             {...overlayFadeMotion(reduceMotion)}
             className="fixed inset-0 z-50 bg-[rgba(12,12,14,0.94)] p-4 md:p-8"
           >
-            <motion.div {...popInMotion(reduceMotion)} className="mx-auto flex h-full w-full max-w-7xl flex-col">
+            <motion.div
+              ref={lightboxDialogRef}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="contest-lightbox-title"
+              tabIndex={-1}
+              {...popInMotion(reduceMotion)}
+              className="mx-auto flex h-full w-full max-w-7xl flex-col"
+            >
               <div className="mb-4 flex items-center justify-between gap-3 text-slate-100">
-                <p className="text-xs uppercase tracking-[0.28em] text-slate-300">Full Screen View</p>
+                <p id="contest-lightbox-title" className="text-xs uppercase tracking-[0.28em] text-slate-300">Full Screen View</p>
                 <button
                   type="button"
                   className=" border border-white/20 px-4 py-2 text-sm text-slate-200 transition hover:bg-white/10"

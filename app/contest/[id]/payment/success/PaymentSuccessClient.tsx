@@ -24,7 +24,7 @@ export default function PaymentSuccessClient() {
   }, [amount, invalidRequest, orderId, paymentKey]);
 
   return (
-    <main className="museum-grain flex min-h-screen items-center justify-center bg-[var(--canvas)] px-6 text-[var(--canvas-ink)]">
+    <main id="main-content" tabIndex={-1} className="museum-grain flex min-h-screen items-center justify-center bg-[var(--canvas)] px-6 text-[var(--canvas-ink)]">
       <section className="museum-panel w-full max-w-xl border-x-0 p-8 text-center md:p-12">
         <p className="museum-kicker">{state === "done" ? "Payment complete" : state === "error" ? "Approval needs attention" : "Verifying"}</p>
         <h1 className="mt-4 font-[var(--font-display)] text-4xl">{state === "done" ? "출품 준비가 끝났습니다" : "결제 확인"}</h1>

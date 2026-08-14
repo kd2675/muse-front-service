@@ -12,7 +12,7 @@ export default function ContestResultsClient({ contestId }: { contestId: number 
   const result = query.data?.data;
   return (
     <div className="museum-grain min-h-screen bg-[var(--canvas)] text-[var(--canvas-ink)]">
-      <main className="mx-auto w-full max-w-6xl px-6 pb-40 pt-8 md:px-8">
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl px-6 pb-40 pt-8 md:px-8">
         <OverviewStyleHeader title={result?.theme ?? "수상 결과"} subtitle="Jury selection archive" />
         {result ? (
           <>

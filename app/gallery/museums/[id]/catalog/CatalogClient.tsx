@@ -17,7 +17,7 @@ export default function CatalogClient({ museumId }: { museumId: number }) {
     }).then(setQrCode).catch(() => setQrCode(""));
   }, [museumId]);
   return (
-    <main className="min-h-screen bg-[#f5f0e6] px-6 py-8 text-[#171816] print:px-0 print:py-0">
+    <main id="main-content" tabIndex={-1} className="min-h-screen bg-[#f5f0e6] px-6 py-8 text-[#171816] print:px-0 print:py-0">
       <div className="mx-auto max-w-5xl">
         <nav className="mb-8 flex justify-between print:hidden"><Link href={`/gallery/museums/${museumId}`}>전시로 돌아가기</Link><button type="button" onClick={() => window.print()} className="bg-[#171816] px-5 py-2 text-sm text-white">도록 인쇄 / PDF</button></nav>
         {museum ? (

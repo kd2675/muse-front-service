@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAppDispatch } from "../store/hooks";
 import { setPendingPath, showToast } from "../store/uiSlice";
@@ -13,9 +13,11 @@ export default function AuthWatcher() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const pathname = usePathname();
+  const skipNextAuthChangeRef = useRef(false);
 
   useEffect(() => {
     const unsubscribe = onAuthExpired((reason: AuthExpireReason) => {
+      skipNextAuthChangeRef.current = true;
       const message =
         reason === "refresh_failed"
           ? "세션 갱신에 실패했습니다. 다시 로그인해주세요."
@@ -61,6 +63,10 @@ export default function AuthWatcher() {
       }
     });
     const unsubscribeAuthChanged = onAuthChanged(() => {
+      if (skipNextAuthChangeRef.current) {
+        skipNextAuthChangeRef.current = false;
+        return;
+      }
       verifyAccess();
     });
 

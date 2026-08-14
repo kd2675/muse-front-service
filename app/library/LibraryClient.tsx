@@ -34,7 +34,7 @@ export default function LibraryClient() {
   });
   return (
     <div className="museum-grain min-h-screen bg-[var(--canvas)] text-[var(--canvas-ink)]">
-      <main className="mx-auto w-full max-w-6xl px-6 pb-40 pt-8 md:px-8">
+      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-6xl px-6 pb-40 pt-8 md:px-8">
         <OverviewStyleHeader title="나의 관람 기록" subtitle="Private collection" />
         <LibrarySection title="저장한 전시">
           <QueryState pending={bookmarks.isPending} error={bookmarks.data?.error} empty={!bookmarks.isPending && !bookmarks.data?.error && (bookmarks.data?.data.length ?? 0) === 0} emptyMessage="아직 저장한 전시가 없습니다." />

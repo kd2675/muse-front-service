@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import CurateMuseumClient from "./CurateMuseumClient";
+
+export const metadata: Metadata = { title: "전시 큐레이션", robots: { index: false, follow: false } };
 
 type PageProps = { params: Promise<{ id: string }> };
 export default async function CurateMuseumPage({ params }: PageProps) {

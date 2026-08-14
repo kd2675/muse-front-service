@@ -1,7 +1,12 @@
 import { MUSE_CLIENT_ID, postJson } from "./api";
 import type { ResponseEnvelope } from "../types/response";
 import type { LoginResponse } from "../types/auth";
-import { emitAuthChanged, emitAuthExpired } from "./authEvents";
+import {
+  claimAuthExpiryNotification,
+  emitAuthChanged,
+  emitAuthExpired,
+  resetAuthExpiryNotification,
+} from "./authEvents";
 
 export type AuthUser = {
   id?: string;
@@ -69,15 +74,8 @@ export function getAccessToken(): string | null {
 export function setAccessToken(token: string) {
   accessTokenMemory = token;
   explicitlySignedOut = false;
+  resetAuthExpiryNotification();
   bootstrapRefreshDone = false;
-  authGeneration += 1;
-  emitAuthChanged();
-}
-
-export function clearAccessToken() {
-  accessTokenMemory = null;
-  bootstrapRefreshDone = false;
-  bootstrapRefreshInFlight = null;
   authGeneration += 1;
   emitAuthChanged();
 }
@@ -85,8 +83,16 @@ export function clearAccessToken() {
 export type AuthExpireReason = "expired" | "refresh_failed";
 const TOKEN_EXPIRY_LEEWAY_SECONDS = 300;
 
-export function notifyAuthExpired(reason: AuthExpireReason = "expired") {
+export function expireAccessToken(reason: AuthExpireReason = "expired") {
+  if (!claimAuthExpiryNotification()) {
+    return;
+  }
+  accessTokenMemory = null;
+  bootstrapRefreshDone = false;
+  bootstrapRefreshInFlight = null;
+  authGeneration += 1;
   emitAuthExpired(reason);
+  emitAuthChanged();
 }
 
 function decodeBase64Url(value: string): string | null {

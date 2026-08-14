@@ -46,7 +46,7 @@ export default function GalleryClient() {
   return (
     <div className="museum-grain relative min-h-screen overflow-hidden bg-[var(--canvas)] text-[var(--canvas-ink)]">
       <MuseumAtmosphere variant="gallery" />
-      <main id="main-content" className="relative z-10 mx-auto w-full max-w-[1440px] px-5 pb-32 pt-4 md:px-10 md:pt-6 xl:px-14">
+      <main id="main-content" tabIndex={-1} className="relative z-10 mx-auto w-full max-w-[1440px] px-5 pb-32 pt-4 md:px-10 md:pt-6 xl:px-14">
         <OverviewStyleHeader
           title="영구 전시관"
           subtitle="Permanent collection"
