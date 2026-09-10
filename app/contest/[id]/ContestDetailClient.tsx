@@ -13,12 +13,15 @@ import {
   getContestEntriesPage,
   getContestRanking,
   getMyEntryCredits,
-  getContestDraft,
-  saveContestDraft,
   submitContestEntry,
   voteContestEntry,
 } from "../../lib/contest";
-import { getAccessToken } from "../../lib/auth";
+import { buildLoginPath } from "../../lib/authRouting";
+import useAuthSession from "../../hooks/useAuthSession";
+import useContestDraft from "../../hooks/useContestDraft";
+import useUnsavedChanges from "../../hooks/useUnsavedChanges";
+import ConfirmDialog from "../../components/ConfirmDialog";
+import QueryState from "../../components/QueryState";
 import { uploadImage, type ImageUploadResult } from "../../lib/imageUpload";
 import { overlayFadeMotion, popInMotion, staggeredFadeUpMotion } from "../../lib/motion";
 import { navigateBack } from "../../lib/navigation";
@@ -48,7 +51,7 @@ const DETAIL_VIEW_STATE_MAX_AGE_MS = 1000 * 60 * 60 * 6;
 const AI_DISCLOSURE_NOTICE = {
   title: "AI 활용 고지 안내",
   summary:
-    "「인공지능 발전과 신뢰 기반 조성 등에 관한 기본법」 및 시행령(2026.01.22 시행) 취지에 따라, 생성형 AI를 활용한 결과물은 AI 활용 사실을 이용자가 명확히 인지할 수 있도록 표시·고지가 필요합니다.",
+    "작품을 감상하는 사람이 제작 과정을 이해할 수 있도록 생성형 AI 활용 여부를 작품 설명에 밝혀 주세요. 출품 가능 범위는 이 공모전의 규칙을 확인해 주세요.",
   guide: "AI를 사용한 경우 작품 설명에 사용 도구와 활용 범위를 함께 적어주세요.",
 };
 
@@ -256,7 +259,8 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
   const prefersReducedMotion = useReducedMotion();
   const reduceMotion = Boolean(prefersReducedMotion);
 
-  const hasToken = Boolean(getAccessToken());
+  const { authStatus } = useAuthSession();
+  const hasToken = authStatus === "in";
 
   const [paymentStep, setPaymentStep] = useState<
     "closed" | "payment" | "processing" | "confirm"
@@ -265,13 +269,10 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
   const [paymentReady, setPaymentReady] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const paymentWidgetsRef = useRef<TossPaymentWidgets | null>(null);
-  const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [pendingVoteEntryId, setPendingVoteEntryId] = useState<string | null>(null);
   const [page, setPage] = useState(() => readContestDetailViewState(id)?.page ?? 1);
   const restoredScrollRef = useRef(false);
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [fileMeta, setFileMeta] = useState<{
     width: number;
@@ -292,35 +293,18 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
 
   useBodyScrollLock(paymentStep !== "closed");
 
-  const { data: contestData, isLoading: contestLoading } = useQuery({
+  const { data: contestData, isLoading: contestLoading, refetch: retryContest } = useQuery({
     queryKey: ["contest", id],
     queryFn: () => getContestDetail(id),
   });
   const contest = contestData?.data;
   const contestError = contestData?.error;
 
-  const { data: creditData } = useQuery({
+  const { data: creditData, isLoading: creditLoading, refetch: retryCredits } = useQuery({
     queryKey: ["contest", id, "entryCredits"],
     queryFn: () => getMyEntryCredits(id),
     enabled: hasToken,
   });
-
-  const draftQuery = useQuery({
-    queryKey: ["contest", id, "draft"],
-    queryFn: () => getContestDraft(id),
-    enabled: hasToken,
-    retry: false,
-  });
-
-  useEffect(() => {
-    const draft = draftQuery.data?.data;
-    if (!draft) return;
-    const timer = window.setTimeout(() => {
-      setTitle((value) => value || draft.title || "");
-      setDescription((value) => value || draft.description || "");
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [draftQuery.data?.data]);
 
   const pagedEntriesQuery = useQuery({
     queryKey: ["contest", id, "entries", "submitted", page, ENTRY_PAGE_SIZE],
@@ -365,18 +349,12 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
   const isVotingPhase = phase === "VOTING";
   const isEndedPhase = phase === "ENDED";
   const hideArtworkByPhase = phase === "UPCOMING" || phase === "REVIEW";
-  const canSubmit = hasToken && isSubmissionPhase && credits > 0;
-  const needsCredit = hasToken && isSubmissionPhase && credits <= 0;
+  const canSubmit = hasToken && isSubmissionPhase && !creditData?.error && credits > 0;
+  const needsCredit = hasToken && isSubmissionPhase && !creditLoading && !creditData?.error && credits <= 0;
 
-  useEffect(() => {
-    if (!hasToken || !isSubmissionPhase || (!title.trim() && !description.trim())) return;
-    const timer = window.setTimeout(async () => {
-      setDraftStatus("saving");
-      const result = await saveContestDraft(id, { title, description });
-      setDraftStatus(result.error ? "error" : "saved");
-    }, 900);
-    return () => window.clearTimeout(timer);
-  }, [description, hasToken, id, isSubmissionPhase, title]);
+  const draft = useContestDraft(id, hasToken && isSubmissionPhase);
+  const { title, description, setTitle, setDescription, status: draftStatus } = draft;
+  const unsaved = useUnsavedChanges(draft.dirty || Boolean(file) || uploadStage === "uploading" || uploadStage === "saving");
 
   const progressValue = useMemo(() => {
     if (!contest) {
@@ -559,6 +537,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
       if (!fileMeta) {
         throw new Error("파일 정보를 확인한 뒤 다시 시도해주세요.");
       }
+      await draft.flushAndPause();
       setUploadStage("uploading");
       setUploadProgress(0);
       const uploadResult = await uploadImage(file, {
@@ -586,6 +565,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
       if (result.error || !result.data) {
         const message = result.error ?? "출품 정보 저장에 실패했습니다.";
         setUploadStage("idle");
+        draft.resume();
         setUploadError(message);
         dispatch(showToast(`출품 등록에 실패했습니다. (${message})`));
         return;
@@ -593,6 +573,10 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
 
       setUploadError(null);
       setUploadStage("done");
+      draft.complete();
+      setFile(null); setFileMeta(null);
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["entries"] });
       queryClient.invalidateQueries({ queryKey: ["contest", id, "entryCredits"] });
       queryClient.invalidateQueries({ queryKey: ["contest", id, "entries"] });
       dispatch(showToast("콘테스트 출품이 완료되었습니다."));
@@ -601,6 +585,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
       const message = error instanceof Error ? error.message : "출품 업로드에 실패했습니다.";
       setUploadError(message);
       setUploadStage("idle");
+      draft.resume();
       dispatch(showToast("출품 업로드에 실패했습니다."));
     },
   });
@@ -613,7 +598,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
     if (!hasToken) {
       dispatch(setPendingPath(`/contest/${id}?tab=contest`));
       dispatch(showToast("로그인 후 출품권을 발급할 수 있습니다."));
-      router.push("/login");
+      router.push(buildLoginPath(`/contest/${id}`));
       return;
     }
     if (!isSubmissionPhase) {
@@ -632,7 +617,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
     if (!hasToken) {
       dispatch(setPendingPath(`/contest/${id}?tab=contest`));
       dispatch(showToast("로그인 후 투표할 수 있습니다."));
-      router.push("/login");
+      router.push(buildLoginPath(`/contest/${id}`));
       return;
     }
     voteMutation.mutate(entryId);
@@ -661,7 +646,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
     if (!section) {
       return;
     }
-    section.scrollIntoView({ behavior: "smooth", block: "start" });
+    section.scrollIntoView({ behavior: reduceMotion ? "instant" : "smooth", block: "start" });
   };
 
   const renderSubmissionPagination = (keyPrefix: string) => (
@@ -798,7 +783,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                 </div>
               </div>
 
-              <article className="mt-9 border-t border-[var(--line)] pt-6">
+              <article id="contest-rules" className="mt-9 scroll-mt-6 border-t border-[var(--line)] pt-6">
                 <h3 className="border-b border-white/10 pb-2 text-xs uppercase tracking-[0.24em] text-[#c0a062]">
                   참여 규정과 현재 단계
                 </h3>
@@ -854,9 +839,12 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
               </div>
             </motion.section>
 
+            <nav aria-label="공모전 참여 순서" className="mt-6 grid gap-3 border-y border-[var(--line)] py-5 sm:grid-cols-3">
+              {[['01', '일정과 규칙 확인', '#contest-rules'], ['02', isSubmissionPhase ? '작품 준비와 출품' : isVotingPhase ? '작품 감상과 투표' : '나의 출품 확인', isSubmissionPhase ? '#entry-workspace' : isVotingPhase ? `/contest/${id}/gallery` : '/profile'], ['03', isEndedPhase ? '최종 수상 기록' : '다른 전시 둘러보기', isEndedPhase ? `/contest/${id}/results` : '/gallery']].map(([step, label, href]) => <Link key={step} href={href} className="flex min-h-12 items-center gap-3 px-3 text-sm"><span className="font-[var(--font-display)] text-2xl text-[var(--accent)]">{step}</span>{label}<span className="ml-auto" aria-hidden="true">→</span></Link>)}
+            </nav>
             {isSubmissionPhase && (
               <motion.section
-                className="museum-panel mt-10 p-7 md:p-9"
+                id="entry-workspace" className="museum-panel mt-10 scroll-mt-6 p-5 md:p-9"
                 {...staggeredFadeUpMotion(2, reduceMotion)}
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -865,7 +853,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                     <h2 className="mt-2 font-[var(--font-display)] text-4xl">작품 출품실</h2>
                   </div>
                   <span className="border border-[color:var(--accent)] bg-[color:var(--accent-soft)] px-3 py-1 text-xs text-[color:var(--accent)]">
-                    보유 출품권 {credits}개
+                    {creditLoading ? "출품권 확인 중" : creditData?.error ? "출품권 확인 필요" : `보유 출품권 ${credits}개`}
                   </span>
                 </div>
 
@@ -884,6 +872,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                     로그인 후 출품권 결제 및 출품이 가능합니다.
                   </div>
                 )}
+                {creditData?.error ? <QueryState kind="error" title="출품권을 확인하지 못했습니다" description="다시 구매하기 전에 보유 내역을 확인해 주세요." retry={() => void retryCredits()} /> : null}
                 {needsCredit && (
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border border-[color:var(--accent)]/35 bg-[color:var(--accent-soft)] px-4 py-3 text-xs text-[color:var(--accent)]">
                     <span>해당 콘테스트 출품권이 없습니다.</span>
@@ -897,6 +886,8 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                   </div>
                 )}
 
+                {draft.error ? <QueryState kind="error" title="기존 초안을 불러오지 못했습니다" description="저장된 내용을 보호하기 위해 불러오기를 마친 뒤 편집할 수 있습니다." retry={() => void draft.retry()} /> : null}
+                {draftStatus === "error" ? <button type="button" className="museum-button-secondary mt-3 px-4 py-2 text-sm" onClick={() => void draft.saveNow().catch(() => undefined)}>초안 저장 다시 시도</button> : null}
                 <div className="mt-5 grid gap-3">
                   <input
                     aria-label="작품 제목"
@@ -905,11 +896,11 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                     placeholder="작품 제목"
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
-                    disabled={!canSubmit}
+                    disabled={!draft.ready || uploadMutation.isPending}
                   />
                   {hasToken ? (
                     <p aria-live="polite" className="text-right text-[11px] text-[var(--muted)]">
-                      {draftStatus === "saving" ? "초안 저장 중" : draftStatus === "saved" ? "초안 자동 저장됨" : draftStatus === "error" ? "초안 저장 실패" : ""}
+                      {draftStatus === "error" ? "초안 저장 실패 — 입력 내용은 유지됩니다" : draft.dirty || draftStatus === "saving" ? "초안 저장 중" : draftStatus === "saved" ? "초안 자동 저장됨 · 파일은 이 기기에만 보관됩니다" : "제목과 설명은 자동 저장됩니다. 파일은 기기에만 보관됩니다."}
                     </p>
                   ) : null}
                   <textarea
@@ -919,7 +910,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                     placeholder="작품 설명"
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
-                    disabled={!canSubmit}
+                    disabled={!draft.ready || uploadMutation.isPending}
                   />
 
                     <div className="border border-white/16 bg-black/16 p-4">
@@ -928,7 +919,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                       type="file"
                       accept="image/jpeg,image/png,image/jpg"
                       className="sr-only"
-                      disabled={!canSubmit}
+                      disabled={!draft.ready || uploadMutation.isPending}
                       onClick={(event) => {
                         event.currentTarget.value = "";
                       }}
@@ -1006,7 +997,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                       <div>
                         <p className="text-xs font-semibold text-slate-100">출품 파일 선택</p>
                         <p className="mt-1 text-[11px] text-slate-400">
-                          JPEG/PNG, 최대 100MB, 최소 3000px
+                          JPEG/PNG · 최대 100MB · 가로·세로 각각 3000px 이상
                         </p>
                       </div>
                       <label
@@ -1031,8 +1022,9 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                   </div>
 
                   {uploadStatusLabel && (
-                    <div className="border border-white/16 bg-white/8 px-4 py-2 text-xs text-slate-300">
+                    <div role="status" className="border border-white/16 bg-white/8 px-4 py-2 text-xs text-slate-300">
                       {uploadStatusLabel}
+                      {uploadStage === "done" ? <Link href="/profile" className="museum-link-line ml-4 text-[var(--accent)]">작가실에서 출품 확인 →</Link> : null}
                       {uploadStage === "uploading" && (
                         <div className="mt-2 h-2 overflow-hidden bg-white/10">
                           <div
@@ -1055,7 +1047,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                       <p className="text-xs text-slate-400">업로드된 이미지 미리보기</p>
                       <div className="mt-2 overflow-hidden border border-white/14">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={uploadedImageUrl} alt="업로드 미리보기" className="h-40 w-full object-cover" />
+                        <img src={uploadedImageUrl} alt="업로드 미리보기" className="h-40 w-full object-contain" />
                       </div>
                     </div>
                   )}
@@ -1064,7 +1056,7 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
                     type="button"
                     className="museum-button-primary px-5 py-3 text-sm tracking-[0.08em]"
                     onClick={() => uploadMutation.mutate()}
-                    disabled={!canSubmit || !file || uploadMutation.isPending || isUploading}
+                    disabled={!canSubmit || !draft.ready || !title.trim() || !file || uploadMutation.isPending || isUploading}
                   >
                     {!canSubmit ? "출품권 발급 후 가능" : uploadMutation.isPending || isUploading ? "업로드 중..." : "출품하기"}
                   </button>
@@ -1311,14 +1303,13 @@ export default function ContestDetailClient({ id }: ContestDetailClientProps) {
             </section>
           </>
         ) : (
-          <section className="border border-rose-300/35 bg-rose-300/10 px-5 py-4 text-sm text-rose-100">
-            콘테스트 정보를 불러오지 못했습니다. {contestError ?? ""}
-          </section>
+          <QueryState kind="error" title="공모전 정보를 불러오지 못했습니다" description={contestError} retry={() => void retryContest()} />
         )}
       </main>
 
       <CinematicBottomNav activeTab="contest" layout="fixed" />
 
+      <ConfirmDialog open={unsaved.open} title="작업 중인 화면을 나갈까요?" description="저장 중인 초안과 업로드 상태를 확인한 뒤 이동하세요. 선택한 파일은 다른 화면으로 이동하면 다시 선택해야 합니다." confirmLabel="이동" onCancel={unsaved.stay} onConfirm={unsaved.leave} />
       <AnimatePresence>
         {paymentStep !== "closed" && contest && (
           <motion.div

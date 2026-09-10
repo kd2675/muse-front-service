@@ -7,6 +7,7 @@ import { useMemo } from "react";
 import CinematicBottomNav from "../components/CinematicBottomNav";
 import MuseumAtmosphere from "../components/MuseumAtmosphere";
 import OverviewStyleHeader from "../components/OverviewStyleHeader";
+import QueryState from "../components/QueryState";
 import Reveal from "../components/motion/Reveal";
 import { getContestEntries, getContestList } from "../lib/contest";
 import { contestPhaseOrder, getContestPhaseLabel } from "../lib/statusTheme";
@@ -103,6 +104,8 @@ export default function ContestClient() {
             <div className="skeleton h-[520px]" />
             <div className="space-y-5"><div className="skeleton h-40" /><div className="skeleton h-40" /></div>
           </div>
+        ) : data?.error ? (
+          <QueryState kind="error" title="공모전 정보를 불러오지 못했습니다" description="연결을 확인한 뒤 다시 시도해 주세요." retry={() => void refetch()} retrying={isFetching} />
         ) : contests.length > 0 ? (
           <div className="py-10 md:py-14">
             {leadContest ? (
