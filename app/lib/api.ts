@@ -252,13 +252,17 @@ async function requestJson<T>(
       ? "응답 시간이 길어지고 있습니다. 잠시 후 다시 시도해주세요."
       : errorKind === "NETWORK"
         ? "서비스에 연결할 수 없습니다. 네트워크 상태를 확인해주세요."
-        : err.response?.statusText ?? err.message ?? "요청을 처리하지 못했습니다.";
+        : err.response?.statusText || err.message || "요청을 처리하지 못했습니다.";
     const errorData = err.response?.data as BackendEnvelope | undefined;
     const durationMs = Date.now() - startedAt;
     const backendCodeValue = errorData?.code;
     const mapped = mapBackendCode(backendCodeValue);
     const isRefreshCall = path.startsWith("/auth/refresh");
     const isExpectedAnonymousRefresh = isRefreshCall && status === 401;
+    const isExpectedEmptyRecord = status === 404 && Number(backendCodeValue) === 4040000 && (
+      /^\/api\/muse\/v1\/me\/contests\/\d+\/draft$/.test(path) ||
+      /^\/api\/muse\/v1\/contests\/\d+\/results$/.test(path)
+    );
     if (status === 401 && !isRefreshCall && retryCount < 1) {
       if (isRefreshing) {
         const token = await new Promise<string | null>((resolve) => {
@@ -278,7 +282,7 @@ async function requestJson<T>(
       }
       handleAuthExpired("refresh_failed");
     }
-    if (shouldLogError() && !isExpectedAnonymousRefresh) {
+    if (shouldLogError() && !isExpectedAnonymousRefresh && !isExpectedEmptyRecord) {
       console.error(`[api] ${method} failed`, {
         path,
         status,

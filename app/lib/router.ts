@@ -7,6 +7,7 @@ export const APP_ROUTES = {
   profile: "/profile?tab=profile",
   library: "/library?tab=profile",
   search: "/search?tab=overview",
+  adminDashboard: "/admin",
   adminContestManage: "/admin/contests?tab=contest",
   adminContestReview: "/admin/contests/review?tab=contest",
   adminGalleryManage: "/admin/gallery?tab=gallery",

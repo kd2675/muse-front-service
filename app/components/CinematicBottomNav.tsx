@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
+
 import { motion, useReducedMotion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { getUserFromToken, isAdminRole } from "../lib/auth";
 import { onAuthChanged } from "../lib/authEvents";
+import { buildLoginPath } from "../lib/authRouting";
 import { canAccessPath } from "../lib/routeGuard";
 import { useAppDispatch } from "../store/hooks";
 import { setPendingPath, showToast } from "../store/uiSlice";
@@ -25,11 +28,11 @@ type NavItem = {
 };
 
 const items: NavItem[] = [
-  { key: "home", label: "입구", path: "/", tab: "home" },
+  { key: "home", label: "홈", path: "/", tab: "home" },
   { key: "overview", label: "오늘", path: "/overview", tab: "overview" },
   { key: "contest", label: "공모전", path: "/contest", tab: "contest" },
   { key: "gallery", label: "전시관", path: "/gallery", tab: "gallery" },
-  { key: "profile", label: "기록", path: "/profile", tab: "profile" },
+  { key: "profile", label: "작가실", path: "/profile", tab: "profile" },
 ];
 
 export default function CinematicBottomNav({
@@ -57,7 +60,7 @@ export default function CinematicBottomNav({
         router.push("/");
       } else {
         dispatch(showToast("로그인 후 작가 기록을 이용할 수 있습니다."));
-        router.push("/login");
+        router.push(buildLoginPath(`${item.path}?tab=${item.tab}`));
       }
       return;
     }
@@ -67,7 +70,7 @@ export default function CinematicBottomNav({
   const navItems: NavItem[] = [
     ...items,
     ...(isAdminUser
-      ? [{ key: "admin", label: "운영", path: "/admin/contests", tab: "contest" } as const]
+      ? [{ key: "admin", label: "운영", path: "/admin", tab: "contest" } as const]
       : []),
   ];
 
@@ -75,8 +78,8 @@ export default function CinematicBottomNav({
     <div
       className={
         layout === "fixed"
-          ? "pointer-events-none fixed inset-x-0 bottom-0 z-50 px-3 pb-[calc(env(safe-area-inset-bottom)+10px)] md:hidden"
-          : "w-full md:hidden"
+          ? "pointer-events-none fixed inset-x-0 bottom-0 z-50 px-3 pb-[calc(env(safe-area-inset-bottom)+10px)] lg:hidden"
+          : "w-full lg:hidden"
       }
     >
       <nav
@@ -87,12 +90,16 @@ export default function CinematicBottomNav({
           const isAdminPath = pathname.startsWith("/admin");
           const isActive = isAdminPath ? item.key === "admin" : item.key === activeTab;
           return (
-            <button
+            <Link
               key={item.key}
-              type="button"
-              onClick={() => navigate(item)}
+              href={`${item.path}?tab=${item.tab}`}
+              onClick={(event) => {
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                event.preventDefault();
+                navigate(item);
+              }}
               aria-current={isActive ? "page" : undefined}
-              className="relative min-h-14 flex-1 px-2 py-3 text-[11px] tracking-[0.12em] text-[var(--muted-deep)] transition hover:text-white md:min-h-16 md:text-xs"
+              className="relative flex min-h-14 min-w-0 flex-1 items-center justify-center whitespace-nowrap px-1 py-3 text-[11px] tracking-[0.04em] text-[var(--muted-deep)] transition hover:text-white sm:px-2 sm:tracking-[0.12em] md:min-h-16 md:text-xs"
             >
               {isActive ? (
                 <motion.span
@@ -102,7 +109,7 @@ export default function CinematicBottomNav({
                 />
               ) : null}
               <span className={isActive ? "text-[var(--canvas-ink)]" : undefined}>{item.label}</span>
-            </button>
+            </Link>
           );
         })}
       </nav>

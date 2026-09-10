@@ -47,7 +47,7 @@ export default function ConfirmDialog({
         aria-describedby="confirm-dialog-description"
         className="museum-panel w-full max-w-md border-[color:var(--line-strong)] p-6 md:p-8"
       >
-        <p className="museum-kicker">Irreversible action</p>
+        <p className="museum-kicker">작업 확인</p>
         <h2 id="confirm-dialog-title" className="mt-3 font-[var(--font-display)] text-3xl">
           {title}
         </h2>

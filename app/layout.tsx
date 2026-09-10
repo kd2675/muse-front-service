@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import "swiper/css";
 import Providers from "./providers";
 import GlobalScrollTopButton from "./components/GlobalScrollTopButton";
 

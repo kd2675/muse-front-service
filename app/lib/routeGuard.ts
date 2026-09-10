@@ -13,6 +13,7 @@ export const ROLE_REQUIREMENTS: Record<string, string[]> = {
 
 export function isProtectedPath(pathname: string) {
   return (
+    /^\/contest\/\d+\/payment\/success\/?$/.test(pathname) ||
     PROTECTED_PREFIXES.some((prefix) =>
     pathname === prefix || pathname.startsWith(`${prefix}/`),
     )
@@ -24,6 +25,7 @@ export function hasAuth() {
 }
 
 export function getRequiredRoles(pathname: string): string[] | null {
+  if (/^\/contest\/\d+\/payment\/success\/?$/.test(pathname)) return ["USER", "ADMIN"];
   const key = Object.keys(ROLE_REQUIREMENTS).find(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
