@@ -120,6 +120,8 @@ export type AdminContest = {
   votingEndAt?: string | null;
   participationCount: number;
   rules: string[];
+  finalized: boolean;
+  pendingReviewCount: number;
 };
 
 export type AdminContestUpsertRequest = {

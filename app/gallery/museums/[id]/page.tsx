@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     if (!response.ok) return fallback;
     const payload = await response.json() as ResponseEnvelope<PublicMuseumDetail>;
     if (!payload.data) return fallback;
-    const image = payload.data.artworks[0]?.imageUrl;
+    const image = (payload.data.artworks.find((artwork) => artwork.museumArtworkId === payload.data?.coverArtworkId) ?? payload.data.artworks[0])?.imageUrl;
     return {
       title: `${payload.data.name} · ${payload.data.ownerName}`,
       description: payload.data.description || payload.data.curatorNote || fallback.description,

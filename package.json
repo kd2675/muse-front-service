@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start -p 3000",
     "lint": "eslint",
-    "verify:auth": "node --no-warnings --experimental-strip-types scripts/verify-auth-flow.mjs"
+    "verify:auth": "node --no-warnings --experimental-strip-types scripts/verify-auth-flow.mjs",
+    "verify:product": "node --no-warnings --experimental-strip-types scripts/verify-product-flow.mjs"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.9.0",
@@ -16,13 +17,12 @@
     "@tanstack/react-query-devtools": "^5.91.3",
     "axios": "^1.19.0",
     "motion": "^12.34.3",
-    "next": "^16.3.0",
+    "next": "^16.3.4",
     "playwright": "^1.58.2",
     "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-redux": "^9.2.0",
-    "swiper": "^12.1.2"
+    "react-redux": "^9.2.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -32,7 +32,7 @@
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
-    "eslint-config-next": "^16.3.0",
+    "eslint-config-next": "^16.3.4",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

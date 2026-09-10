@@ -1,198 +1,207 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { motion, useReducedMotion, type PanInfo } from "motion/react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 
 import CinematicBottomNav from "../components/CinematicBottomNav";
 import MuseumAtmosphere from "../components/MuseumAtmosphere";
-import useAuthSession from "../hooks/useAuthSession";
-import { logout } from "../lib/auth";
+import QueryState from "../components/QueryState";
+import SiteNavigation from "../components/SiteNavigation";
 import { getHomeData } from "../lib/home";
-import { APP_ROUTES } from "../lib/router";
-import { useAppDispatch } from "../store/hooks";
-import { showToast } from "../store/uiSlice";
 
-const DRAG_TRIGGER = -64;
+const journey = [
+  {
+    step: "01",
+    title: "당신의 시선을 출품하세요",
+    description: "공모전의 주제와 일정을 살펴보고, 작품을 준비해 접수합니다.",
+    label: "참여할 공모전 찾기",
+    href: "/contest",
+  },
+  {
+    step: "02",
+    title: "다른 시선에 머물러 보세요",
+    description:
+      "공개된 작품을 감상하고, 투표 기간에 마음에 닿은 사진을 선택합니다.",
+    label: "오늘의 전시 둘러보기",
+    href: "/overview",
+  },
+  {
+    step: "03",
+    title: "작품을 오래 남겨두세요",
+    description:
+      "작가 기록을 쌓고, 사진의 순서와 해설을 담아 나만의 전시를 구성합니다.",
+    label: "나의 전시 만들기",
+    href: "/gallery/my",
+  },
+];
 
 export default function HomeClient() {
-  const dispatch = useAppDispatch();
-  const router = useRouter();
-  const reduceMotion = Boolean(useReducedMotion());
-  const { isHydrated, authStatus, userLabel } = useAuthSession();
-  const [isSigningOut, setIsSigningOut] = useState(false);
-  const [isEntering, setIsEntering] = useState(false);
-  const { data, isLoading, refetch, isFetching } = useQuery({
-    queryKey: ["home"],
-    queryFn: getHomeData,
-  });
-
-  const payload = data?.data ?? null;
-  const heroMuseum = payload?.featuredMuseums.find((museum) => museum.coverImageUrl) ?? null;
-  const heroPick = payload?.todaysPick[0] ?? null;
-
-  const enterMuseum = () => {
-    if (isEntering) {
-      return;
-    }
-    setIsEntering(true);
-    window.setTimeout(() => router.push(APP_ROUTES.homeOverview), reduceMotion ? 0 : 280);
-  };
-
-  const handleDragEnd = (_event: PointerEvent, info: PanInfo) => {
-    if (info.offset.y <= DRAG_TRIGGER || info.velocity.y < -480) {
-      enterMuseum();
-    }
-  };
-
-  const handleSignOut = async () => {
-    setIsSigningOut(true);
-    try {
-      await logout();
-      dispatch(showToast("로그아웃했습니다."));
-      router.push(APP_ROUTES.home);
-    } catch {
-      dispatch(showToast("로그아웃을 완료하지 못했습니다."));
-    } finally {
-      setIsSigningOut(false);
-    }
-  };
+  const query = useQuery({ queryKey: ["home"], queryFn: getHomeData });
+  const payload = query.data?.data;
+  const museum =
+    payload?.featuredMuseums.find((item) => item.coverImageUrl) ??
+    payload?.featuredMuseums[0];
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden bg-[var(--canvas)] text-[var(--canvas-ink)]">
+    <div className="relative min-h-dvh bg-[var(--canvas)] text-[var(--canvas-ink)]">
       <MuseumAtmosphere variant="lobby" />
-      <div className="museum-grain pointer-events-none absolute inset-0 z-20 opacity-70" />
-      <main id="main-content" tabIndex={-1} className="relative z-30 mx-auto flex min-h-[100dvh] w-full max-w-[1600px] flex-col px-5 pb-28 pt-4 md:px-10 md:pb-32 md:pt-6 xl:px-14">
-        <header className="flex min-h-16 items-center justify-between border-b border-white/15">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="relative z-10 mx-auto w-full max-w-[1600px] px-5 pb-28 md:px-10 xl:px-14"
+      >
+        <SiteNavigation />
+        <section className="grid gap-8 py-8 lg:min-h-[72vh] lg:grid-cols-[.85fr_1.15fr] lg:items-center lg:gap-14 lg:py-14">
           <div>
-            <p className="font-[var(--font-display)] text-2xl tracking-[0.22em] md:text-3xl">MUSE</p>
-            <p className="mt-1 hidden text-[9px] uppercase tracking-[0.3em] text-white/48 sm:block">Photography lives on</p>
-          </div>
-          <nav aria-label="전시 안내" className="hidden items-center gap-9 text-[11px] tracking-[0.16em] text-white/56 md:flex">
-            <button type="button" onClick={() => router.push("/overview")} className="museum-link-line hover:text-white">오늘</button>
-            <button type="button" onClick={() => router.push("/contest")} className="museum-link-line hover:text-white">공모전</button>
-            <button type="button" onClick={() => router.push("/gallery")} className="museum-link-line hover:text-white">영구 전시</button>
-          </nav>
-          {!isHydrated || authStatus === "unknown" ? (
-            <div className="skeleton h-8 w-20" />
-          ) : authStatus === "in" ? (
-            <button
-              type="button"
-              onClick={handleSignOut}
-              disabled={isSigningOut}
-              className="museum-link-line text-right text-xs text-white/65 transition hover:text-white disabled:opacity-50"
-            >
-              <span className="block text-white/90">{userLabel ?? "작가"}</span>
-              <span className="mt-1 block text-[10px]">{isSigningOut ? "나가는 중" : "로그아웃"}</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => router.push("/login")}
-              className="museum-link-line py-2 text-xs text-white/75 hover:text-white"
-            >
-              작가 로그인
-            </button>
-          )}
-        </header>
-
-        <div className="relative grid flex-1 items-center gap-6 py-6 lg:grid-cols-[minmax(360px,0.82fr)_minmax(0,1.18fr)] lg:gap-14 lg:py-12">
-          <p aria-hidden="true" className="pointer-events-none absolute -left-3 top-12 font-[var(--font-display)] text-[clamp(8rem,24vw,24rem)] leading-none tracking-[-0.09em] text-white/[0.025]">
-            MUSE
-          </p>
-          {isLoading ? (
-            <div className="relative z-10" aria-live="polite">
-              <p className="museum-kicker text-white/60">Preparing exhibition</p>
-              <p className="mt-4 text-sm text-white/70">오늘의 전시를 준비하고 있습니다.</p>
+            <p className="museum-kicker">사진이 전시가 되는 곳</p>
+            <h1 className="mt-5 max-w-2xl break-keep text-balance font-[var(--font-display)] text-[clamp(2.5rem,4.4vw,4.5rem)] font-normal leading-[1.15]">
+              한 장의 시선,
+              <br />
+              오래 남을 이야기.
+            </h1>
+            <p className="mt-5 max-w-lg text-sm leading-7 text-[var(--muted)] md:text-base md:leading-8">
+              공모전에서 만난 사진이 작가의 기록이 되고,
+              <br className="hidden sm:block" /> 누구나 찾아올 수 있는 전시로
+              이어집니다.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link
+                href="/contest"
+                className="museum-button-primary px-6 py-3 text-sm"
+              >
+                공모전 참여하기{" "}
+                <span aria-hidden="true" className="ml-5">
+                  ↗
+                </span>
+              </Link>
+              <Link
+                href="/gallery"
+                className="museum-button-secondary px-6 py-3 text-sm"
+              >
+                전시 감상하기
+              </Link>
             </div>
-          ) : payload ? (
-            <>
-              <motion.section
-                initial={reduceMotion ? false : { opacity: 0, y: 22 }}
-                animate={{ opacity: isEntering ? 0 : 1, y: isEntering ? -18 : 0 }}
-                transition={{ duration: reduceMotion ? 0 : 0.62, ease: "easeOut" }}
-                className="relative z-10 order-2 max-w-2xl lg:order-1"
-              >
-                <p className="museum-kicker text-white/70">Entrance · 001</p>
-                <h1 className="mt-4 text-balance font-[var(--font-display)] text-4xl font-normal leading-[1.02] text-white sm:text-6xl lg:mt-5 lg:text-[clamp(4.6rem,6.3vw,7.2rem)] lg:leading-[0.98]">
-                  {payload.hero.headline}
-                </h1>
-                <p className="mt-4 max-w-xl text-sm leading-7 text-white/78 md:mt-6 md:text-lg md:leading-8">
-                  {payload.hero.subheadline}
-                </p>
-                <p className="mt-2 max-w-lg text-xs leading-6 text-white/50 md:mt-3 md:text-sm md:leading-7">
-                  {payload.hero.description}
-                </p>
-                <motion.button
-                  type="button"
-                  drag="y"
-                  dragConstraints={{ top: -80, bottom: 0 }}
-                  dragElastic={0.08}
-                  dragMomentum={false}
-                  onDragEnd={handleDragEnd}
-                  onClick={enterMuseum}
-                  disabled={isEntering}
-                  className="group mt-5 flex min-h-13 w-full max-w-sm items-center justify-between border border-white/22 bg-black/20 px-5 text-sm tracking-[0.12em] text-white backdrop-blur-sm transition hover:border-[var(--accent)] hover:bg-[var(--accent-soft)] disabled:opacity-50 md:mt-9 md:min-h-14"
-                  style={{ touchAction: "none" }}
-                >
-                  <span>{isEntering ? "전시장으로 이동 중" : "MUSE 입장하기"}</span>
-                  <span aria-hidden="true" className="text-xl text-[var(--accent)] transition-transform group-hover:translate-x-1">→</span>
-                </motion.button>
-              </motion.section>
-
-              <motion.section
-                initial={reduceMotion ? false : { opacity: 0, x: 28 }}
-                animate={{ opacity: isEntering ? 0 : 1, x: 0, scale: isEntering ? 1.025 : 1 }}
-                transition={{ duration: reduceMotion ? 0 : 0.72, ease: "easeOut", delay: reduceMotion ? 0 : 0.08 }}
-                className="museum-stage relative order-1 aspect-[4/3] overflow-hidden lg:order-2 lg:aspect-auto lg:min-h-[68vh]"
-              >
-                <motion.div
-                  aria-hidden="true"
-                  className="absolute inset-0 bg-cover bg-center"
-                  style={heroMuseum?.coverImageUrl
-                    ? { backgroundImage: `url(${heroMuseum.coverImageUrl})` }
-                    : { background: `linear-gradient(145deg, ${heroPick?.colorFrom ?? "#171b1d"}, ${heroPick?.colorTo ?? "#32302c"})` }}
-                  animate={reduceMotion ? undefined : { scale: [1.01, 1.045] }}
-                  transition={reduceMotion ? { duration: 0 } : { duration: 16, repeat: Number.POSITIVE_INFINITY, repeatType: "reverse", ease: "easeInOut" }}
-                />
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,5,5,0.02),rgba(4,5,5,0.18)_55%,rgba(4,5,5,0.84))]" />
-                <div className="absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-4 p-5 md:p-7">
-                  <div>
-                    <p className="text-[9px] uppercase tracking-[0.24em] text-white/52">Now on view</p>
-                    <p className="mt-2 font-[var(--font-display)] text-2xl text-white md:text-3xl">{heroMuseum?.name ?? "MUSE Collection"}</p>
-                    <p className="mt-1 text-xs text-white/56">{heroMuseum?.ownerName ?? heroPick?.artist ?? "MUSE Archive"}</p>
-                  </div>
-                  <p className="text-right text-[10px] leading-5 tracking-[0.12em] text-white/48">
-                    {heroMuseum ? `${heroMuseum.artworkCount} WORKS` : "OPEN DAILY"}<br />DIGITAL MUSEUM
-                  </p>
-                </div>
-              </motion.section>
-            </>
-          ) : (
-            <section className="relative z-10 max-w-xl lg:col-span-2" aria-live="polite">
-              <p className="museum-kicker text-white/60">Gallery unavailable</p>
-              <h1 className="mt-5 font-[var(--font-display)] text-4xl">오늘의 전시를 불러오지 못했습니다.</h1>
-              <p className="mt-4 text-sm leading-7 text-white/60">연결을 확인한 뒤 다시 시도해 주세요.</p>
-              <button
-                type="button"
-                onClick={() => void refetch()}
-                disabled={isFetching}
-                className="mt-7 border border-white/30 px-6 py-3 text-sm transition hover:border-[var(--accent)] disabled:opacity-50"
-              >
-                {isFetching ? "다시 연결 중" : "다시 시도"}
-              </button>
-            </section>
-          )}
-        </div>
-
-        {payload ? (
-          <div className="grid grid-cols-3 gap-3 border-t border-white/15 py-4 text-[9px] uppercase tracking-[0.16em] text-white/42 md:text-[10px]">
-            <span>Open 24 hours</span>
-            <span className="text-center">Photography archive</span>
-            <span className="text-right">Seoul · Online</span>
+            <Link
+              href="/overview"
+              className="mt-6 inline-flex min-h-11 items-center text-xs text-[var(--muted)] hover:text-[var(--accent)]"
+            >
+              오늘의 MUSE 둘러보기{" "}
+              <span aria-hidden="true" className="ml-3">
+                →
+              </span>
+            </Link>
           </div>
-        ) : null}
+          <div className="museum-stage min-w-0 bg-[var(--canvas-raised)]">
+            {query.isPending ? (
+              <div
+                className="skeleton aspect-[5/4]"
+                role="status"
+                aria-label="오늘의 전시를 불러오는 중"
+              />
+            ) : query.data?.error || query.isError ? (
+              <QueryState
+                kind="error"
+                title="전시 소식을 불러오지 못했습니다"
+                description="잠시 후 다시 확인해 주세요. 공모전과 전시는 메뉴에서 둘러볼 수 있습니다."
+                retry={() => void query.refetch()}
+                retrying={query.isFetching}
+              />
+            ) : museum ? (
+              <Link
+                href={`/gallery/museums/${museum.museumId}`}
+                className="group block"
+              >
+                <div className="relative aspect-[5/4] overflow-hidden">
+                  {museum.coverImageUrl ? (
+                    <Image
+                      src={museum.coverImageUrl}
+                      alt={`${museum.name} 대표 작품`}
+                      fill
+                      preload
+                      sizes="(min-width: 1024px) 55vw, 100vw"
+                      className="object-cover transition duration-700 group-hover:scale-[1.02]"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center font-[var(--font-display)] text-4xl text-[var(--muted)]">
+                      {museum.name}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-end justify-between gap-5 border-t border-[var(--line)] p-5 md:p-7">
+                  <div>
+                    <p className="museum-kicker">지금 만날 수 있는 전시</p>
+                    <h2 className="mt-2 font-[var(--font-display)] text-2xl md:text-3xl">
+                      {museum.name}
+                    </h2>
+                    <p className="mt-2 text-xs text-[var(--muted)]">
+                      {museum.ownerName} · 작품 {museum.artworkCount}점
+                    </p>
+                  </div>
+                  <span
+                    aria-hidden="true"
+                    className="text-2xl text-[var(--accent)]"
+                  >
+                    ↗
+                  </span>
+                </div>
+              </Link>
+            ) : (
+              <QueryState
+                title="다음 전시를 준비하고 있습니다"
+                description="공모전과 작가들의 기록을 먼저 둘러보세요."
+                action={{ href: "/contest", label: "공모전 보기" }}
+              />
+            )}
+          </div>
+        </section>
+        <section
+          aria-labelledby="muse-journey"
+          className="border-t border-[var(--line)] py-10 md:py-14"
+        >
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="museum-kicker">처음 오셨나요?</p>
+              <h2
+                id="muse-journey"
+                className="mt-3 font-[var(--font-display)] text-3xl"
+              >
+                사진을 만나는 세 가지 방법
+              </h2>
+            </div>
+            <p className="text-xs text-[var(--muted)]">
+              감상은 누구나, 기록은 나의 작가실에서.
+            </p>
+          </div>
+          <div className="mt-8 grid gap-7 md:grid-cols-3">
+            {journey.map((item) => (
+              <div key={item.step} className="muse-step">
+                <span className="muse-step-number">{item.step}</span>
+                <div>
+                  <h3 className="font-[var(--font-display)] text-xl">
+                    {item.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
+                    {item.description}
+                  </p>
+                  <Link
+                    href={item.href}
+                    className="mt-3 inline-flex min-h-11 items-center text-sm text-[var(--accent)]"
+                  >
+                    {item.label}{" "}
+                    <span aria-hidden="true" className="ml-3">
+                      →
+                    </span>
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+        <footer className="flex flex-wrap justify-between gap-4 border-t border-[var(--line)] py-6 text-xs text-[var(--muted)]">
+          <span>MUSE · Photography lives on</span>
+          <Link href="/search">작가·작품·전시 검색 →</Link>
+        </footer>
       </main>
       <CinematicBottomNav activeTab="home" layout="fixed" />
     </div>

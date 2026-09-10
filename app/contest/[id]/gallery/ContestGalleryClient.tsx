@@ -8,7 +8,8 @@ import { useEffect, useMemo, useState } from "react";
 import CinematicBottomNav from "../../../components/CinematicBottomNav";
 import OverviewStyleHeader from "../../../components/OverviewStyleHeader";
 import { Skeleton, SkeletonText } from "../../../components/Skeleton";
-import { getAccessToken } from "../../../lib/auth";
+import useAuthSession from "../../../hooks/useAuthSession";
+import { buildLoginPath } from "../../../lib/authRouting";
 import { getContestDetail, getContestEntries, voteContestEntry } from "../../../lib/contest";
 import { overlayFadeMotion, popInMotion, staggeredFadeUpMotion } from "../../../lib/motion";
 import { navigateBack } from "../../../lib/navigation";
@@ -30,7 +31,8 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
   const prefersReducedMotion = useReducedMotion();
   const reduceMotion = Boolean(prefersReducedMotion);
   const requestedEntryId = searchParams.get("entryId");
-  const hasToken = Boolean(getAccessToken());
+  const { authStatus } = useAuthSession();
+  const hasToken = authStatus === "in";
 
   const [pendingVoteEntryId, setPendingVoteEntryId] = useState<string | null>(null);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(requestedEntryId);
@@ -38,7 +40,7 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
   const lightboxDialogRef = useDialogAccessibility(
     isLightboxOpen,
     () => setIsLightboxOpen(false),
-    false,
+    true,
   );
 
   useBodyScrollLock(isLightboxOpen);
@@ -84,21 +86,18 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
   };
 
   useEffect(() => {
-    if (!isVoting) {
-      return;
-    }
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setIsLightboxOpen(false);
         return;
       }
-      if (isLightboxOpen) {
-        return;
-      }
+      if ((event.target as Element).matches("input,textarea,select") || event.metaKey || event.ctrlKey || event.altKey) return;
       if (event.key === "ArrowLeft") {
+        event.preventDefault();
         goPrev();
       }
       if (event.key === "ArrowRight") {
+        event.preventDefault();
         goNext();
       }
     };
@@ -132,7 +131,7 @@ export default function ContestGalleryClient({ id }: ContestGalleryClientProps) 
   const requestLoginForVote = () => {
     dispatch(setPendingPath(`/contest/${id}/gallery?tab=contest`));
     dispatch(showToast("로그인 후 선택할 수 있습니다."));
-    router.push("/login");
+    router.push(buildLoginPath(`/contest/${id}/gallery${currentEntry ? `?entryId=${currentEntry.entryId}` : ""}`));
   };
 
   const goBackToDetail = () => {

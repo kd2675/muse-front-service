@@ -235,19 +235,19 @@ export async function getContestRanking(
 }
 
 export async function getContestResult(id: number) {
-  const { data, error, backendMapped, backendMessage } =
+  const { data, error, backendMapped, backendMessage, status, backendCode } =
     await fetchJson<ResponseEnvelope<ContestResult>>(`/api/muse/v1/contests/${id}/results`);
   return data?.data
-    ? { data: data.data, error: undefined }
-    : { data: null, error: backendMapped ?? backendMessage ?? error };
+    ? { data: data.data, error: undefined, pending: false }
+    : { data: null, error: (status === 404 && Number(backendCode) === 4040000) ? undefined : backendMapped ?? backendMessage ?? error, pending: (status === 404 && Number(backendCode) === 4040000) };
 }
 
 export async function getContestDraft(id: number) {
-  const { data, error, backendMapped, backendMessage } =
+  const { data, error, backendMapped, backendMessage, status, backendCode } =
     await fetchJson<ResponseEnvelope<ContestEntryDraft>>(`/api/muse/v1/me/contests/${id}/draft`);
   return data?.data
     ? { data: data.data, error: undefined }
-    : { data: null, error: backendMapped ?? backendMessage ?? error };
+    : { data: null, error: (status === 404 && Number(backendCode) === 4040000) ? undefined : backendMapped ?? backendMessage ?? error };
 }
 
 export async function saveContestDraft(id: number, payload: { title: string; description: string }) {

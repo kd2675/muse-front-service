@@ -7,6 +7,7 @@ import { useMemo } from "react";
 import CinematicBottomNav from "../components/CinematicBottomNav";
 import MuseumAtmosphere from "../components/MuseumAtmosphere";
 import OverviewStyleHeader from "../components/OverviewStyleHeader";
+import QueryState from "../components/QueryState";
 import Reveal from "../components/motion/Reveal";
 import { getPublicMuseums } from "../lib/museum";
 import { APP_ROUTES, galleryMuseumDetailRoute } from "../lib/router";
@@ -27,9 +28,7 @@ export default function GalleryClient() {
     ?? museums.find((museum) => museum.coverImageUrl)
     ?? museums[0]
     ?? null;
-  const collection = leadMuseum
-    ? museums.filter((museum) => museum.museumId !== leadMuseum.museumId)
-    : museums;
+  const collection = museums;
 
   const moveToMyMuseum = () => {
     const targetPath = "/gallery/my";
@@ -68,6 +67,8 @@ export default function GalleryClient() {
               {Array.from({ length: 4 }).map((_, index) => <div key={index} className="skeleton aspect-[4/5]" />)}
             </div>
           </div>
+        ) : data?.error ? (
+          <QueryState kind="error" title="전시 정보를 불러오지 못했습니다" description="연결을 확인한 뒤 다시 시도해 주세요." retry={() => void refetch()} retrying={isFetching} />
         ) : museums.length > 0 ? (
           <div className="py-10 md:py-14">
             {leadMuseum ? (
