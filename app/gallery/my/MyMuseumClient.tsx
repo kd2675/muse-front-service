@@ -8,6 +8,9 @@ import { motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
 import CinematicBottomNav from "../../components/CinematicBottomNav";
 import ConfirmDialog from "../../components/ConfirmDialog";
+import QueryState from "../../components/QueryState";
+import WorkspaceNavigation from "../../components/WorkspaceNavigation";
+import useUnsavedChanges from "../../hooks/useUnsavedChanges";
 import OverviewStyleHeader from "../../components/OverviewStyleHeader";
 import { Skeleton } from "../../components/Skeleton";
 import { getUserFromToken } from "../../lib/auth";
@@ -52,7 +55,7 @@ const emptyArtworkForm: ArtworkFormState = {
   description: "",
 };
 
-export default function MyMuseumClient() {
+export default function MyMuseumClient({ initialMuseumId }: { initialMuseumId?: number }) {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
@@ -60,13 +63,15 @@ export default function MyMuseumClient() {
   const reduceMotion = Boolean(prefersReducedMotion);
   const authUser = getUserFromToken();
   const isLoggedIn = !!authUser;
-  const [selectedMuseumId, setSelectedMuseumId] = useState<number | null>(null);
+  const [selectedMuseumId, setSelectedMuseumId] = useState<number | null>(initialMuseumId ?? null);
   const [createForm, setCreateForm] = useState<MuseumFormState>(emptyMuseumForm);
   const [editDrafts, setEditDrafts] = useState<Record<number, MuseumFormState>>({});
   const [artworkForm, setArtworkForm] = useState<ArtworkFormState>(emptyArtworkForm);
   const [artworkFile, setArtworkFile] = useState<File | null>(null);
   const [uploadStage, setUploadStage] = useState<"idle" | "uploading" | "saving">("idle");
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [switchMuseumId, setSwitchMuseumId] = useState<number | null>(null);
+  const navigation = useUnsavedChanges(Boolean(createForm.name || createForm.description || artworkFile || artworkForm.title || artworkForm.description || Object.keys(editDrafts).length));
   const [museumToDelete, setMuseumToDelete] = useState<number | null>(null);
   const [artworkToDelete, setArtworkToDelete] = useState<number | null>(null);
 
@@ -158,8 +163,8 @@ export default function MyMuseumClient() {
       });
     },
     onSuccess: (result) => {
-      if (result.error) {
-        dispatch(showToast(result.error));
+      if (result.error || !("data" in result) || !result.data) {
+        dispatch(showToast(result.error || "저장을 완료하지 못했습니다."));
         return;
       }
       setCreateForm(emptyMuseumForm);
@@ -187,8 +192,8 @@ export default function MyMuseumClient() {
       });
     },
     onSuccess: (result) => {
-      if (result.error) {
-        dispatch(showToast(result.error));
+      if (result.error || !("data" in result) || !result.data) {
+        dispatch(showToast(result.error || "저장을 완료하지 못했습니다."));
         return;
       }
       queryClient.invalidateQueries({ queryKey: ["my", "museums"] });
@@ -252,8 +257,8 @@ export default function MyMuseumClient() {
       return result;
     },
     onSuccess: (result) => {
-      if (result.error) {
-        dispatch(showToast(result.error));
+      if (result.error || !("data" in result) || !result.data) {
+        dispatch(showToast(result.error || "저장을 완료하지 못했습니다."));
         return;
       }
       setArtworkForm(emptyArtworkForm);
@@ -325,7 +330,9 @@ export default function MyMuseumClient() {
             </div>
           </article>
         </main>
-        <CinematicBottomNav activeTab="gallery" layout="fixed" />
+        <ConfirmDialog open={navigation.open} title="저장하지 않은 작업이 있습니다" description="화면을 나가면 입력한 내용과 선택한 파일이 사라집니다." confirmLabel="나가기" onCancel={navigation.stay} onConfirm={navigation.leave} />
+      <ConfirmDialog open={switchMuseumId !== null} title="다른 전시실로 이동할까요?" description="등록하지 않은 작품 내용과 파일은 사라집니다. 현재 전시실에 작품을 먼저 등록할 수 있습니다." confirmLabel="전시실 이동" onCancel={() => setSwitchMuseumId(null)} onConfirm={() => { setSelectedMuseumId(switchMuseumId); setSwitchMuseumId(null); setArtworkFile(null); setArtworkForm(emptyArtworkForm); }} />
+      <CinematicBottomNav activeTab="gallery" layout="fixed" />
       </section>
     );
   }
@@ -334,6 +341,7 @@ export default function MyMuseumClient() {
     <section className="museum-grain relative min-h-screen overflow-x-hidden bg-[var(--canvas)] text-[color:var(--canvas-ink)]">
       <main id="main-content" tabIndex={-1} className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 pb-36 pt-10 md:px-8">
         <OverviewStyleHeader title="내 전시실" subtitle="Curator studio" />
+        <WorkspaceNavigation />
 
         <section aria-label="전시실 현황" className="mt-8 grid grid-cols-3 border-y border-[color:var(--line)]">
           <article className="border-r border-[color:var(--line)] px-3 py-5 md:px-5">
@@ -368,7 +376,12 @@ export default function MyMuseumClient() {
                       type="button"
                       key={museum.museumId}
                       {...staggeredFadeUpMotion(index + 1, reduceMotion)}
-                      onClick={() => setSelectedMuseumId(museum.museumId)}
+                      onClick={() => {
+                        if (artworkFile || artworkForm.title || artworkForm.description) setSwitchMuseumId(museum.museumId);
+                        else setSelectedMuseumId(museum.museumId);
+                      }}
+                      disabled={createArtworkMutation.isPending || updateMuseumMutation.isPending}
+                      aria-pressed={museum.museumId === activeSelectedMuseumId}
                       className={`w-full border px-4 py-3 text-left text-sm transition ${
                         museum.museumId === activeSelectedMuseumId
                           ? "border-[color:var(--accent)] bg-[color:var(--accent-soft)] text-white"
@@ -381,12 +394,12 @@ export default function MyMuseumClient() {
                       </p>
                     </motion.button>
                   ))}
-                  {museums.length === 0 && (
+                  {museums.length === 0 && !museumsError && (
                     <p className="border border-dashed border-[color:var(--line)] px-4 py-4 text-sm text-[color:var(--muted)]">
                       아직 만든 뮤지엄이 없습니다.
                     </p>
                   )}
-                  {museumsError ? <p className="text-xs text-rose-300">{museumsError}</p> : null}
+                  {museumsError ? <QueryState kind="error" title="전시실을 불러오지 못했습니다" description={museumsError} retry={() => void museumsQuery.refetch()} /> : null}
                 </div>
               )}
             </article>
@@ -396,7 +409,7 @@ export default function MyMuseumClient() {
               <h2 className="mt-2 font-[var(--font-display)] text-2xl">새 전시실</h2>
               <div className="mt-4 space-y-3">
                 <input
-                  value={createForm.name}
+                  disabled={createMuseumMutation.isPending} value={createForm.name}
                   aria-label="새 전시실 이름"
                   maxLength={100}
                   onChange={(event) =>
@@ -406,7 +419,7 @@ export default function MyMuseumClient() {
                   className="museum-field px-3 text-sm"
                 />
                 <textarea
-                  value={createForm.description}
+                  disabled={createMuseumMutation.isPending} value={createForm.description}
                   aria-label="새 전시실 설명"
                   maxLength={1000}
                   onChange={(event) =>
@@ -421,7 +434,7 @@ export default function MyMuseumClient() {
                 <button
                   type="button"
                   onClick={() => createMuseumMutation.mutate()}
-                  disabled={createMuseumMutation.isPending}
+                  disabled={createMuseumMutation.isPending || !createForm.name.trim()}
                   className="museum-button-primary w-full px-4 py-3 text-sm"
                 >
                   {createMuseumMutation.isPending ? "생성 중..." : "뮤지엄 생성"}
@@ -438,7 +451,7 @@ export default function MyMuseumClient() {
                   <h2 className="mt-2 font-[var(--font-display)] text-3xl">전시실 설정</h2>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <input
-                      value={editForm.name}
+                      disabled={updateMuseumMutation.isPending} value={editForm.name}
                       aria-label="전시실 이름"
                       maxLength={100}
                       onChange={(event) => updateEditFormField("name", event.target.value)}
@@ -450,7 +463,7 @@ export default function MyMuseumClient() {
                     </div>
                   </div>
                   <textarea
-                    value={editForm.description}
+                    disabled={updateMuseumMutation.isPending} value={editForm.description}
                     aria-label="전시실 설명"
                     maxLength={1000}
                     onChange={(event) => updateEditFormField("description", event.target.value)}
@@ -467,7 +480,7 @@ export default function MyMuseumClient() {
                     <button
                       type="button"
                       onClick={() => updateMuseumMutation.mutate()}
-                      disabled={updateMuseumMutation.isPending}
+                      disabled={updateMuseumMutation.isPending || !editForm.name.trim()}
                       className="museum-button-primary px-5 py-2 text-sm"
                     >
                       저장
@@ -503,7 +516,7 @@ export default function MyMuseumClient() {
                       <p className="text-xs font-semibold text-slate-200">작품 제목</p>
                       <p className="mt-0.5 text-[11px] text-slate-400">전시 리스트에 노출될 제목</p>
                       <input
-                        value={artworkForm.title}
+                        disabled={createArtworkMutation.isPending} value={artworkForm.title}
                         aria-label="작품 제목"
                         maxLength={200}
                         onChange={(event) =>
@@ -517,7 +530,7 @@ export default function MyMuseumClient() {
                     <div className="border border-white/14 bg-white/8 p-3">
                       <input
                         id="museum-artwork-file"
-                        type="file"
+                        type="file" disabled={createArtworkMutation.isPending}
                         accept="image/*"
                         onClick={(event) => {
                           event.currentTarget.value = "";
@@ -547,7 +560,7 @@ export default function MyMuseumClient() {
                     </div>
                   </div>
                   <textarea
-                  value={artworkForm.description}
+                  disabled={createArtworkMutation.isPending} value={artworkForm.description}
                   aria-label="작품 설명"
                   maxLength={2000}
                     onChange={(event) =>
@@ -566,7 +579,7 @@ export default function MyMuseumClient() {
                   <button
                     type="button"
                     onClick={() => createArtworkMutation.mutate()}
-                    disabled={createArtworkMutation.isPending || isUploading}
+                    disabled={createArtworkMutation.isPending || isUploading || !artworkForm.title.trim() || !artworkFile}
                     className="museum-button-primary mt-3 px-5 py-2 text-sm"
                   >
                     작품 업로드
@@ -625,7 +638,7 @@ export default function MyMuseumClient() {
                       등록된 작품이 없습니다.
                     </p>
                   )}
-                  {artworksError ? <p className="mt-2 text-xs text-rose-300">{artworksError}</p> : null}
+                  {artworksError ? <QueryState kind="error" title="작품 목록을 불러오지 못했습니다" description={artworksError} retry={() => void artworksQuery.refetch()} /> : null}
                 </>
               )}
             </article>
@@ -656,6 +669,8 @@ export default function MyMuseumClient() {
           }
         }}
       />
+      <ConfirmDialog open={navigation.open} title="저장하지 않은 작업이 있습니다" description="화면을 나가면 입력한 내용과 선택한 파일이 사라집니다." confirmLabel="나가기" onCancel={navigation.stay} onConfirm={navigation.leave} />
+      <ConfirmDialog open={switchMuseumId !== null} title="다른 전시실로 이동할까요?" description="등록하지 않은 작품 내용과 파일은 사라집니다. 현재 전시실에 작품을 먼저 등록할 수 있습니다." confirmLabel="전시실 이동" onCancel={() => setSwitchMuseumId(null)} onConfirm={() => { setSelectedMuseumId(switchMuseumId); setSwitchMuseumId(null); setArtworkFile(null); setArtworkForm(emptyArtworkForm); }} />
       <CinematicBottomNav activeTab="gallery" layout="fixed" />
     </section>
   );

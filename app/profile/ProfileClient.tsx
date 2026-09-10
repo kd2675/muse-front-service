@@ -3,6 +3,13 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "motion/react";
+import Link from "next/link";
+import ConfirmDialog from "../components/ConfirmDialog";
+import QueryState from "../components/QueryState";
+import WorkspaceNavigation from "../components/WorkspaceNavigation";
+import ProfileEditor from "./ProfileEditor";
+import MyExhibitions from "./MyExhibitions";
+import useLogoutAction from "../hooks/useLogoutAction";
 import { useRouter } from "next/navigation";
 import { getContestList } from "../lib/contest";
 import { deleteEntry, getMyEntriesPage } from "../lib/entries";
@@ -35,13 +42,16 @@ export default function ProfileClient() {
   const prefersReducedMotion = useReducedMotion();
   const reduceMotion = Boolean(prefersReducedMotion);
   const queryClient = useQueryClient();
+  const [editing, setEditing] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const { signOut, isSigningOut } = useLogoutAction();
   const [entriesPage, setEntriesPage] = useState(1);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ["profile", "summary"],
     queryFn: getProfileSummary,
   });
-  const { data: entriesData, isLoading: entriesLoading } = useQuery({
+  const { data: entriesData, isLoading: entriesLoading, refetch: refetchEntries } = useQuery({
     queryKey: ["entries", "page", entriesPage, ENTRY_PAGE_SIZE],
     queryFn: () => getMyEntriesPage({ page: entriesPage, size: ENTRY_PAGE_SIZE }),
   });
@@ -57,7 +67,11 @@ export default function ProfileClient() {
         dispatch(showToast(result.error));
         return;
       }
-      queryClient.invalidateQueries({ queryKey: ["entries", "page"] });
+      setDeleting(null);
+      if (entriesData?.data.items.length === 1 && entriesPage > 1) setEntriesPage(entriesPage - 1);
+      void queryClient.invalidateQueries({ queryKey: ["entries"] });
+      void queryClient.invalidateQueries({ queryKey: ["profile"] });
+      void queryClient.invalidateQueries({ queryKey: ["contest"] });
       dispatch(showToast("출품이 삭제되었습니다."));
     },
     onError: () => {
@@ -130,9 +144,10 @@ export default function ProfileClient() {
 
       <main id="main-content" tabIndex={-1} className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-6 pb-40 pt-8 md:px-8">
         <motion.div className="mb-10" {...staggeredFadeUpMotion(0, reduceMotion)}>
-          <OverviewStyleHeader title="작가 기록" subtitle="Artist archive" headingAs="p" />
+          <OverviewStyleHeader title="나의 작가실" subtitle="Artist workspace" headingAs="p" />
         </motion.div>
 
+        <WorkspaceNavigation />
         {isLoading ? (
           <section className="space-y-8">
             <div className="museum-panel p-7 md:p-8">
@@ -184,7 +199,7 @@ export default function ProfileClient() {
             </div>
           </section>
         ) : profile ? (
-          <div className="space-y-8">
+          <div className="space-y-8 pt-8">
             <motion.section
               className="museum-panel border-x-0 p-7 md:p-8"
               {...staggeredFadeUpMotion(1, reduceMotion)}
@@ -206,6 +221,8 @@ export default function ProfileClient() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2">
+                  <button type="button" onClick={() => setEditing(!editing)} className="museum-button-secondary px-4 py-2 text-xs">{editing ? "편집 닫기" : "프로필 편집"}</button>
+                  {profile.artist.id > 0 ? <Link href={`/artists/${profile.artist.id}`} className="museum-button-secondary px-4 py-2 text-xs">공개 작가 페이지 ↗</Link> : null}
                   <AdminActionButton
                     variant="primary"
                     onClick={handleNewEntry}
@@ -215,7 +232,7 @@ export default function ProfileClient() {
                   </AdminActionButton>
                   <AdminActionButton
                     variant="secondary"
-                    onClick={() => router.push("/library")}
+                    onClick={() => router.push("/library?tab=history")}
                     className="text-xs"
                   >
                     관람 기록
@@ -223,9 +240,10 @@ export default function ProfileClient() {
                 </div>
               </div>
 
+              {editing ? <ProfileEditor artist={profile.artist} onSaved={() => setEditing(false)} /> : null}
               <dl className="mt-8 grid grid-cols-2 border-y border-[color:var(--line)] md:grid-cols-4">
                 <div className="border-r border-[color:var(--line)] p-4 first:pl-0">
-                  <dt className="text-xs text-[color:var(--muted)]">작품 수</dt>
+                  <dt className="text-xs text-[color:var(--muted)]">출품 작품</dt>
                   <dd className="mt-2 font-[var(--font-display)] text-2xl">
                     {formatNumber(profile.stats.totalWorks)}
                   </dd>
@@ -252,34 +270,7 @@ export default function ProfileClient() {
             </motion.section>
 
             <div className="grid gap-8 lg:grid-cols-2">
-              <motion.section
-                className="museum-panel p-7 md:p-8"
-                {...staggeredFadeUpMotion(2, reduceMotion)}
-              >
-                <p className="museum-kicker">Selected works</p>
-                <h2 className="mt-2 font-[var(--font-display)] text-3xl">대표 작품</h2>
-                <p className="mt-2 text-sm text-[color:var(--muted)]">작가의 작업 세계를 보여주는 대표 기록입니다.</p>
-                <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                  {profile.portfolio.map((item, index) => (
-                    <motion.article
-                      key={item.id}
-                      {...staggeredFadeUpMotion(index + 3, reduceMotion)}
-                      className="border-t border-[color:var(--line)] pt-4"
-                    >
-                      <div
-                        className="h-24 w-full "
-                        style={{
-                          background: `linear-gradient(140deg, ${item.colorFrom}, ${item.colorTo})`,
-                        }}
-                      />
-                      <div className="mt-3 text-xs text-[color:var(--accent)]">{item.category}</div>
-                      <h3 className="mt-1 font-[var(--font-display)] text-lg">
-                        {item.title}
-                      </h3>
-                    </motion.article>
-                  ))}
-                </div>
-              </motion.section>
+              <MyExhibitions />
 
               <motion.section
                 className="museum-panel p-7 md:p-8"
@@ -312,13 +303,7 @@ export default function ProfileClient() {
                   </div>
                 ) : (
                   <>
-                    {entriesError && (
-                      <div className="mt-4  bg-rose-300/18 px-4 py-2 text-xs text-rose-100">
-                        출품 데이터를 불러오지 못했습니다.
-                        {entriesError ? ` (${entriesError})` : ""}
-                      </div>
-                    )}
-                    {entries.length === 0 ? (
+                    {entriesError ? <QueryState kind="error" title="출품 기록을 불러오지 못했습니다" retry={() => void refetchEntries()} /> : entries.length === 0 ? (
                       <div className="mt-6 border border-dashed border-[color:var(--line)] p-6 text-sm text-[color:var(--muted)]">
                         아직 제출한 출품이 없습니다.
                       </div>
@@ -359,14 +344,15 @@ export default function ProfileClient() {
                               >
                                 {getContestEntryStatusLabel(entry.status)}
                               </span>
-                              <button
+                              <Link href={`/contest/${entry.contestId}`} className="min-h-11 py-3 text-[var(--accent)]">공모전 보기</Link>
+                              {entry.status === "SUBMITTED" && contests.some((item) => item.id === entry.contestId && item.phase === "SUBMISSION") ? <button
                                 type="button"
                                 className="min-h-10 border border-[color:var(--line)] px-3 py-1 text-xs transition hover:border-[color:var(--danger)] hover:text-[color:var(--danger)] disabled:opacity-60"
-                                onClick={() => deleteMutation.mutate(entry.entryId)}
+                                onClick={() => setDeleting(entry.entryId)}
                                 disabled={deleteMutation.isPending}
                               >
-                                삭제
-                              </button>
+                                출품 취소
+                              </button> : null}
                             </div>
                           </motion.div>
                         ))}
@@ -387,6 +373,7 @@ export default function ProfileClient() {
               <h2 className="mt-2 font-[var(--font-display)] text-3xl">수상 기록</h2>
               <p className="mt-2 text-sm text-[color:var(--muted)]">콘테스트에서 남긴 공식 기록입니다.</p>
               <div className="mt-6 grid gap-4">
+                {profile.awards.length === 0 ? <p className="py-6 text-sm text-[var(--muted)]">확정된 수상 결과가 이곳에 쌓입니다.</p> : null}
                 {profile.awards.map((award, index) => (
                   <motion.div
                     key={award.id}
@@ -407,14 +394,13 @@ export default function ProfileClient() {
             </motion.section>
           </div>
         ) : (
-          <div className=" bg-rose-300/18 px-6 py-6 text-sm text-rose-100">
-            프로필 데이터를 불러오지 못했습니다.
-            {error ? ` (${error})` : ""}
-          </div>
+          <QueryState kind="error" title="작가 기록을 불러오지 못했습니다" description={error} retry={() => void refetch()} />
         )}
+        <div className="mt-8 flex justify-end border-t border-[var(--line)] pt-4"><button type="button" onClick={() => void signOut()} disabled={isSigningOut} className="min-h-11 text-sm text-[var(--muted)]">{isSigningOut ? "로그아웃 중" : "로그아웃"}</button></div>
       </main>
 
       <CinematicBottomNav activeTab="profile" layout="fixed" />
+      <ConfirmDialog open={deleting !== null} title="출품을 취소할까요?" description="접수 기간의 심사 전 작품만 취소할 수 있습니다. 사용한 출품권 1개가 돌아오며, 결제 환불은 결제 내역에서 별도로 진행할 수 있습니다." confirmLabel="출품 취소" busy={deleteMutation.isPending} onCancel={() => setDeleting(null)} onConfirm={() => deleting && deleteMutation.mutate(deleting)} />
     </div>
   );
 }

@@ -214,6 +214,20 @@ export async function getAdminMuseums(): Promise<ApiResult<AdminMuseum[]>> {
   return { data: data.data };
 }
 
+export type MuseumComposition = {
+  curation: Parameters<typeof updateMuseumCuration>[1];
+  artworks: Array<{ museumArtworkId: number; settings: Parameters<typeof updateMuseumArtwork>[2] }>;
+};
+
+export async function saveMuseumComposition(museumId: number, payload: MuseumComposition) {
+  const result = await putJson<ResponseEnvelope<{ museum: MyMuseum; artworks: MyMuseumArtwork[] }>>(
+    `/api/muse/v1/me/museums/${museumId}/composition`, payload,
+  );
+  return result.data?.data
+    ? { data: result.data.data, error: undefined }
+    : { data: null, error: resolveError(result) || "전시 구성을 저장하지 못했습니다." };
+}
+
 export async function updateAdminMuseumFeatured(
   museumId: number,
   featured: boolean,

@@ -7,6 +7,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function MyMuseumPage() {
-  return <MyMuseumClient />;
+export default async function MyMuseumPage({ searchParams }: { searchParams: Promise<{ museumId?: string }> }) {
+  const query = await searchParams;
+  const id = Number(query.museumId);
+  return <MyMuseumClient key={query.museumId || "default"} initialMuseumId={Number.isSafeInteger(id) && id > 0 ? id : undefined} />;
 }
