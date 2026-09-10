@@ -42,6 +42,7 @@ Muse 사용자용 Next.js 앱입니다. Contest, Gallery, Overview, Profile, 관
 - `/artists/[id]`
 - `/library`
 - `/profile`
+- `/admin`
 - `/admin/contests`
 - `/admin/contests/review`
 - `/admin/gallery`
@@ -83,7 +84,6 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 - React Query
 - Redux Toolkit
 - Motion
-- Swiper
 - Toss Payments Payment Widget v2
 - QRCode
 
@@ -102,3 +102,11 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 - 확인된 provider ID:
   - `naver-muse`
   - `kakao-muse`
+
+## 재구성 및 실행 검증
+
+- 제품 방향, 변경 내용과 검증 범위: [MUSE_PRODUCT_REVIEW.md](MUSE_PRODUCT_REVIEW.md).
+- 실제 API와 H2로 동작하는 검증용 실행: [PREVIEW.md](../muse-back-service/PREVIEW.md).
+- 공유 DB 적용 조건과 검증 SQL: [SCHEMA_COMPLETION.md](../muse-back-service/SCHEMA_COMPLETION.md).
+- 기본 확인은 `npm run lint`, `npm run verify:auth`, `npm run verify:product`, `npm run build`, `npm audit`입니다.
+- 전시 편집은 전체 구성을 한 번에 저장하며, 공개 관람은 원본 비율 감상·키보드 이동·확대·저장·이어보기로 구성합니다.
