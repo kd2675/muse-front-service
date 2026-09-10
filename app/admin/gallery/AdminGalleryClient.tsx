@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "motion/react";
+import QueryState from "../../components/QueryState";
 import AdminShell from "../../components/AdminShell";
 import AdminActionButton from "../../components/AdminActionButton";
 import ConfirmDialog from "../../components/ConfirmDialog";
@@ -29,14 +30,14 @@ import { showToast } from "../../store/uiSlice";
 type MuseumFilter = "all" | "featured" | "public" | "private";
 type ArtworkFilter = "all" | "REVIEWING" | "VISIBLE" | "REMOVED";
 
-export default function AdminGalleryClient() {
+export default function AdminGalleryClient({ initialMuseumId }: { initialMuseumId?: number }) {
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
   const prefersReducedMotion = useReducedMotion();
   const reduceMotion = Boolean(prefersReducedMotion);
   const role = getUserFromToken()?.role;
   const isAdmin = isAdminRole(role);
-  const [selectedMuseumId, setSelectedMuseumId] = useState<number | null>(null);
+  const [selectedMuseumId, setSelectedMuseumId] = useState<number | null>(initialMuseumId ?? null);
   const [museumFilter, setMuseumFilter] = useState<MuseumFilter>("all");
   const [artworkFilter, setArtworkFilter] = useState<ArtworkFilter>("REVIEWING");
   const [search, setSearch] = useState("");
@@ -122,7 +123,7 @@ export default function AdminGalleryClient() {
         return;
       }
       queryClient.invalidateQueries({ queryKey: ["admin", "gallery", "museums"] });
-      queryClient.invalidateQueries({ queryKey: ["gallery", "museums"] });
+      for (const key of ["gallery", "home", "overview", "my", "artist", "discovery"]) void queryClient.invalidateQueries({ queryKey: [key] });
       dispatch(showToast("메인 노출 설정을 변경했습니다."));
     },
     onError: () => dispatch(showToast("메인 노출 설정 변경 중 오류가 발생했습니다.")),
@@ -144,7 +145,7 @@ export default function AdminGalleryClient() {
         return;
       }
       queryClient.invalidateQueries({ queryKey: ["admin", "gallery", "museums"] });
-      queryClient.invalidateQueries({ queryKey: ["gallery", "museums"] });
+      for (const key of ["gallery", "home", "overview", "my", "artist", "discovery"]) void queryClient.invalidateQueries({ queryKey: [key] });
       dispatch(showToast("공개 상태를 변경했습니다."));
     },
     onError: () => dispatch(showToast("공개 상태 변경 중 오류가 발생했습니다.")),
@@ -173,7 +174,7 @@ export default function AdminGalleryClient() {
         queryKey: ["admin", "gallery", "museums", activeSelectedMuseumId, "artworks"],
       });
       queryClient.invalidateQueries({ queryKey: ["admin", "gallery", "museums"] });
-      queryClient.invalidateQueries({ queryKey: ["gallery", "museums"] });
+      for (const key of ["gallery", "home", "overview", "my", "artist", "discovery"]) void queryClient.invalidateQueries({ queryKey: [key] });
       dispatch(showToast("작품 모더레이션 상태를 변경했습니다."));
     },
     onError: () => dispatch(showToast("작품 상태 변경 중 오류가 발생했습니다.")),
@@ -194,7 +195,7 @@ export default function AdminGalleryClient() {
         queryKey: ["admin", "gallery", "museums", activeSelectedMuseumId, "artworks"],
       });
       queryClient.invalidateQueries({ queryKey: ["admin", "gallery", "museums"] });
-      queryClient.invalidateQueries({ queryKey: ["gallery", "museums"] });
+      for (const key of ["gallery", "home", "overview", "my", "artist", "discovery"]) void queryClient.invalidateQueries({ queryKey: [key] });
       setArtworkToDelete(null);
       dispatch(showToast("작품을 삭제했습니다."));
     },
@@ -298,7 +299,7 @@ export default function AdminGalleryClient() {
                         variant={museum.isFeatured ? "primary" : "secondary"}
                         size="sm"
                         onClick={() => updateFeaturedMutation.mutate(museum.museumId)}
-                        disabled={processingMuseumId === museum.museumId}
+                        disabled={processingMuseumId !== null}
                       >
                         {museum.isFeatured ? "메인 노출 중" : "메인 노출 해제"}
                       </AdminActionButton>
@@ -306,7 +307,7 @@ export default function AdminGalleryClient() {
                         variant={museum.isPublic ? "success" : "warning"}
                         size="sm"
                         onClick={() => updateVisibilityMutation.mutate(museum.museumId)}
-                        disabled={processingMuseumId === museum.museumId}
+                        disabled={processingMuseumId !== null}
                       >
                         {museum.isPublic ? "공개" : "비공개"}
                       </AdminActionButton>
@@ -314,13 +315,13 @@ export default function AdminGalleryClient() {
                   </motion.article>
                 ))}
 
-                {filteredMuseums.length === 0 && (
+                {filteredMuseums.length === 0 && !museumsError && (
                   <p className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-5 text-sm text-[color:var(--muted)]">
                     조건에 맞는 뮤지엄이 없습니다.
                   </p>
                 )}
                 {museumsError && (
-                  <p className="text-xs text-red-500">{museumsError}</p>
+                  <QueryState kind="error" title="전시 목록을 불러오지 못했습니다" description={museumsError} retry={() => void museumsQuery.refetch()} />
                 )}
               </div>
             )}
@@ -405,7 +406,7 @@ export default function AdminGalleryClient() {
                                   moderationStatus: "REVIEWING",
                                 })
                               }
-                              disabled={processingArtworkId === artwork.museumArtworkId}
+                              disabled={processingArtworkId !== null}
                               className="text-[11px]"
                             >
                               대기
@@ -420,7 +421,7 @@ export default function AdminGalleryClient() {
                                   moderationStatus: "VISIBLE",
                                 })
                               }
-                              disabled={processingArtworkId === artwork.museumArtworkId}
+                              disabled={processingArtworkId !== null}
                               className="text-[11px]"
                             >
                               승인
@@ -435,7 +436,7 @@ export default function AdminGalleryClient() {
                                   moderationStatus: "REMOVED",
                                 })
                               }
-                              disabled={processingArtworkId === artwork.museumArtworkId}
+                              disabled={processingArtworkId !== null}
                               className="text-[11px]"
                             >
                               반려
@@ -448,7 +449,7 @@ export default function AdminGalleryClient() {
                               museumId: selectedMuseum.museumId,
                               artworkId: artwork.museumArtworkId,
                             })}
-                            disabled={processingArtworkId === artwork.museumArtworkId}
+                            disabled={processingArtworkId !== null}
                             fullWidth
                             className="mt-2 text-[11px]"
                           >
@@ -458,13 +459,13 @@ export default function AdminGalleryClient() {
                       </motion.article>
                     ))}
                   </div>
-                ) : (
+                ) : !artworksError ? (
                   <p className="mt-4 border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-6 text-sm text-[color:var(--muted)]">
                     조건에 맞는 작품이 없습니다.
                   </p>
-                )}
+                ) : null}
                 {artworksError && (
-                  <p className="mt-2 text-xs text-red-500">{artworksError}</p>
+                  <QueryState kind="error" title="심사 작품을 불러오지 못했습니다" description={artworksError} retry={() => void artworksQuery.refetch()} />
                 )}
               </>
             ) : (

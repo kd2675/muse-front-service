@@ -1,12 +1,12 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import CinematicBottomNav from "./CinematicBottomNav";
 import OverviewStyleHeader from "./OverviewStyleHeader";
 import { APP_ROUTES } from "../lib/router";
 
-type AdminSection = "contest-manage" | "contest-review" | "gallery-manage";
+type AdminSection = "dashboard" | "contest-manage" | "contest-review" | "gallery-manage";
 
 type AdminShellProps = {
   section: AdminSection;
@@ -22,13 +22,13 @@ type AdminMenuItem = {
 };
 
 const menuItems: AdminMenuItem[] = [
+  { key: "dashboard", label: "운영 현황", path: APP_ROUTES.adminDashboard },
   { key: "contest-manage", label: "공모전 운영", path: APP_ROUTES.adminContestManage },
   { key: "contest-review", label: "출품 심사", path: APP_ROUTES.adminContestReview },
   { key: "gallery-manage", label: "전시 심사", path: APP_ROUTES.adminGalleryManage },
 ];
 
 export default function AdminShell({ section, title, description, children }: AdminShellProps) {
-  const router = useRouter();
   const activeBottomTab = section === "gallery-manage" ? "gallery" : "contest";
 
   return (
@@ -46,10 +46,9 @@ export default function AdminShell({ section, title, description, children }: Ad
             {menuItems.map((item) => {
               const isActive = item.key === section;
               return (
-                <button
+                <Link
                   key={item.key}
-                  type="button"
-                  onClick={() => router.push(item.path)}
+                  href={item.path}
                   aria-current={isActive ? "page" : undefined}
                   className={`min-h-11 px-4 py-2 text-xs font-bold tracking-[-0.01em] transition ${
                     isActive
@@ -58,7 +57,7 @@ export default function AdminShell({ section, title, description, children }: Ad
                   }`}
                 >
                   {item.label}
-                </button>
+                </Link>
               );
             })}
           </nav>

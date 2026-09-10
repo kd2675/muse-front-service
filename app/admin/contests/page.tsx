@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function AdminContestPage() {
-  return <AdminContestClient />;
+export default async function AdminContestPage({ searchParams }: { searchParams: Promise<{ contestId?: string }> }) {
+  const id = Number((await searchParams).contestId);
+  return <AdminContestClient key={id || "list"} initialContestId={Number.isSafeInteger(id) && id > 0 ? id : undefined} />;
 }

@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "motion/react";
 import { useRouter } from "next/navigation";
+import ConfirmDialog from "../../components/ConfirmDialog";
+import QueryState from "../../components/QueryState";
 import AdminShell from "../../components/AdminShell";
 import AdminActionButton from "../../components/AdminActionButton";
 import { Skeleton } from "../../components/Skeleton";
@@ -125,10 +127,10 @@ function validateForm(form: FormState): string | null {
   const entryFee = Number(form.entryFee);
   const prizePool = Number(form.prizePool);
 
-  if (!Number.isFinite(entryFee) || entryFee <= 0) {
+  if (!Number.isSafeInteger(entryFee) || entryFee <= 0) {
     return "참가비는 0보다 커야 합니다.";
   }
-  if (!Number.isFinite(prizePool) || prizePool < 0) {
+  if (!Number.isSafeInteger(prizePool) || prizePool < 0) {
     return "상금 풀은 0 이상이어야 합니다.";
   }
 
@@ -142,7 +144,7 @@ function validateForm(form: FormState): string | null {
   return null;
 }
 
-export default function AdminContestClient() {
+export default function AdminContestClient({ initialContestId }: { initialContestId?: number }) {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
@@ -151,11 +153,13 @@ export default function AdminContestClient() {
   const [mode, setMode] = useState<"create" | "edit">("create");
   const [selectedContestId, setSelectedContestId] = useState<number | null>(null);
   const [form, setForm] = useState<FormState>(defaultForm);
+  const [confirmFinalize, setConfirmFinalize] = useState<number | null>(null);
+  const initializedSelection = useRef(false);
   const [finalizeResult, setFinalizeResult] = useState<ContestFinalizeResult | null>(null);
 
   const role = getUserFromToken()?.role;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ["admin", "contests"],
     queryFn: getAdminContestList,
   });
@@ -182,7 +186,17 @@ export default function AdminContestClient() {
         : null,
     [contests, mode, selectedContestId],
   );
-  const canFinalizeSelectedContest = selectedContest?.phase === "ENDED";
+  const canFinalizeSelectedContest = selectedContest?.phase === "ENDED" && !selectedContest.finalized;
+
+  useEffect(() => {
+    const selected = contests.find((item) => item.id === initialContestId);
+    if (!selected || initializedSelection.current) return;
+    const timer = window.setTimeout(() => {
+      initializedSelection.current = true;
+      setSelectedContestId(selected.id); setMode("edit"); setForm(toForm(selected));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [contests, initialContestId]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -200,7 +214,7 @@ export default function AdminContestClient() {
       setMode("edit");
       setSelectedContestId(result.data.id);
       setForm(toForm(result.data));
-      queryClient.invalidateQueries({ queryKey: ["admin", "contests"] });
+      for (const key of ["admin", "contest", "contests", "profile", "overview", "home", "artist"]) void queryClient.invalidateQueries({ queryKey: [key] });
       dispatch(showToast("콘테스트 설정이 저장되었습니다."));
     },
     onError: () => {
@@ -215,8 +229,9 @@ export default function AdminContestClient() {
         dispatch(showToast(result.error ?? "결과 확정에 실패했습니다."));
         return;
       }
+      setConfirmFinalize(null);
       setFinalizeResult(result.data);
-      queryClient.invalidateQueries({ queryKey: ["admin", "contests"] });
+      for (const key of ["admin", "contest", "contests", "profile", "overview", "home", "artist"]) void queryClient.invalidateQueries({ queryKey: [key] });
       dispatch(showToast("결과 확정이 완료되었습니다."));
     },
     onError: () => {
@@ -323,11 +338,8 @@ export default function AdminContestClient() {
             </div>
           )}
 
-          {loadError && (
-            <p className="mt-4 text-sm text-[color:var(--accent-2)]">
-              목록 조회 실패: {loadError}
-            </p>
-          )}
+          {loadError ? <QueryState kind="error" title="공모전 목록을 불러오지 못했습니다" retry={() => void refetch()} /> : null}
+
 
           {selectedContest && (
             <AdminActionButton
@@ -335,18 +347,18 @@ export default function AdminContestClient() {
               size="md"
               fullWidth
               className="mt-6 py-3 text-sm"
-              onClick={() => finalizeMutation.mutate(selectedContest.id)}
+              onClick={() => setConfirmFinalize(selectedContest.id)}
               disabled={finalizeMutation.isPending || !canFinalizeSelectedContest}
             >
               {finalizeMutation.isPending
                 ? "결과 확정 중..."
-                : canFinalizeSelectedContest
+                : selectedContest.finalized ? "결과 확정 완료" : canFinalizeSelectedContest
                   ? `결과 확정 실행 (#${selectedContest.id})`
                   : `종료 후 확정 가능 (#${selectedContest.id})`}
             </AdminActionButton>
           )}
 
-          {selectedContest && !canFinalizeSelectedContest && (
+          {selectedContest && !canFinalizeSelectedContest && !selectedContest.finalized && (
             <p className="mt-2 text-xs text-[color:var(--muted)]">
               현재 상태: {getContestPhaseLabel(selectedContest.phase)} · 전시 종료 이후에만 결과 확정이 가능합니다.
             </p>
@@ -397,10 +409,11 @@ export default function AdminContestClient() {
               출품 심사 페이지로 이동
             </AdminActionButton>
             <p className="self-center text-xs text-[color:var(--muted)]">
-              대량 출품 심사는 전용 화면에서 상태 필터로 처리합니다.
+              작품 심사는 전용 화면에서 상태별로 확인하고 처리합니다.
             </p>
           </div>
 
+          {selectedContest?.finalized ? <p role="status" className="mb-4 text-sm text-[var(--accent)]">결과가 확정된 공모전은 내용을 수정할 수 없습니다.</p> : null}
           <form
             className="mt-7 grid gap-5"
             onSubmit={(event) => {
@@ -415,7 +428,7 @@ export default function AdminContestClient() {
           >
             <label className="grid gap-2 text-sm">
               <span>테마</span>
-              <input
+              <input disabled={saveMutation.isPending || selectedContest?.finalized}
                 className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3"
                 value={form.theme}
                 onChange={(event) => setForm((prev) => ({ ...prev, theme: event.target.value }))}
@@ -425,7 +438,7 @@ export default function AdminContestClient() {
 
             <label className="grid gap-2 text-sm">
               <span>설명</span>
-              <textarea
+              <textarea disabled={saveMutation.isPending || selectedContest?.finalized}
                 className="min-h-24 border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3"
                 value={form.description}
                 onChange={(event) =>
@@ -438,7 +451,7 @@ export default function AdminContestClient() {
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-2 text-sm">
                 <span>참가비(원)</span>
-                <input
+                <input disabled={saveMutation.isPending || selectedContest?.finalized}
                   type="number"
                   min={1}
                   className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3"
@@ -450,7 +463,7 @@ export default function AdminContestClient() {
               </label>
               <label className="grid gap-2 text-sm">
                 <span>상금 풀(원)</span>
-                <input
+                <input disabled={saveMutation.isPending || selectedContest?.finalized}
                   type="number"
                   min={0}
                   className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3"
@@ -465,7 +478,7 @@ export default function AdminContestClient() {
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="grid gap-2 text-sm">
                 <span>출품 시작</span>
-                <input
+                <input disabled={saveMutation.isPending || selectedContest?.finalized}
                   type="datetime-local"
                   className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3"
                   value={form.submissionStartAt}
@@ -476,7 +489,7 @@ export default function AdminContestClient() {
               </label>
               <label className="grid gap-2 text-sm">
                 <span>출품 종료</span>
-                <input
+                <input disabled={saveMutation.isPending || selectedContest?.finalized}
                   type="datetime-local"
                   className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3"
                   value={form.submissionEndAt}
@@ -487,7 +500,7 @@ export default function AdminContestClient() {
               </label>
               <label className="grid gap-2 text-sm">
                 <span>전시 시작</span>
-                <input
+                <input disabled={saveMutation.isPending || selectedContest?.finalized}
                   type="datetime-local"
                   className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3"
                   value={form.votingStartAt}
@@ -498,7 +511,7 @@ export default function AdminContestClient() {
               </label>
               <label className="grid gap-2 text-sm">
                 <span>전시 종료</span>
-                <input
+                <input disabled={saveMutation.isPending || selectedContest?.finalized}
                   type="datetime-local"
                   className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3"
                   value={form.votingEndAt}
@@ -511,7 +524,7 @@ export default function AdminContestClient() {
 
             <label className="grid gap-2 text-sm">
               <span>규칙(줄바꿈으로 구분)</span>
-              <textarea
+              <textarea disabled={saveMutation.isPending || selectedContest?.finalized}
                 className="min-h-32 border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3"
                 value={form.rulesText}
                 onChange={(event) =>
@@ -525,7 +538,7 @@ export default function AdminContestClient() {
                 type="submit"
                 variant="primary"
                 className="px-6 py-3 text-sm"
-                disabled={saveMutation.isPending}
+                disabled={saveMutation.isPending || selectedContest?.finalized}
               >
                 {saveMutation.isPending
                   ? "저장 중..."
@@ -551,6 +564,7 @@ export default function AdminContestClient() {
         </div>
       </section>
       </Reveal>
+      <ConfirmDialog open={confirmFinalize !== null} title="수상 결과를 확정할까요?" description="승인된 작품을 득표수와 제출 순서로 정렬해 수상자를 확정합니다. 확정하면 작가 기록에 반영되며 공모전 내용을 수정하거나 다시 확정할 수 없습니다." confirmLabel="결과 확정" busy={finalizeMutation.isPending} onCancel={() => setConfirmFinalize(null)} onConfirm={() => confirmFinalize && finalizeMutation.mutate(confirmFinalize)} />
     </AdminShell>
   );
 }

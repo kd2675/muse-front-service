@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "motion/react";
 import { useRouter, useSearchParams } from "next/navigation";
+import QueryState from "../../../components/QueryState";
 import AdminShell from "../../../components/AdminShell";
 import AdminActionButton from "../../../components/AdminActionButton";
 import { Skeleton } from "../../../components/Skeleton";
@@ -155,7 +156,7 @@ function resolveReviewPriority(contest: AdminContest): ReviewPriority {
   if (contest.phase === "VOTING") {
     return { code: "P3", rank: 3, label: "전시 진행" };
   }
-  return { code: "P3", rank: 4, label: "심사 완료" };
+  return { code: "P3", rank: 4, label: "종료 · 결과 확인" };
 }
 
 export default function AdminContestReviewClient() {
@@ -187,7 +188,7 @@ export default function AdminContestReviewClient() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch: retryContests } = useQuery({
     queryKey: ["admin", "contests"],
     queryFn: getAdminContestList,
   });
@@ -270,6 +271,7 @@ export default function AdminContestReviewClient() {
     data: entriesData,
     isLoading: entriesLoading,
     error: entriesQueryError,
+    refetch: retryEntries,
   } = useQuery({
     queryKey: ["admin", "contestEntries", activeContestId],
     queryFn: () => getAdminContestEntries(activeContestId as number),
@@ -317,6 +319,7 @@ export default function AdminContestReviewClient() {
         queryKey: ["admin", "contestEntries", payload.contestId],
       });
       queryClient.invalidateQueries({ queryKey: ["contest", payload.contestId, "entries"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "contests"] });
       dispatch(showToast("출품 상태가 변경되었습니다."));
     },
     onError: () => {
@@ -411,7 +414,7 @@ export default function AdminContestReviewClient() {
                   </motion.button>
                 );
               })}
-              {!isLoading && prioritizedContests.length === 0 && (
+              {!isLoading && prioritizedContests.length === 0 && !contestListError && (
                 <p className="border border-[color:var(--line)] bg-[rgba(18,18,24,0.88)] px-4 py-3 text-sm text-[color:var(--muted)]">
                   등록된 콘테스트가 없습니다.
                 </p>
@@ -420,7 +423,7 @@ export default function AdminContestReviewClient() {
           )}
 
           {contestListError && (
-            <p className="mt-4 text-xs text-[color:var(--accent-2)]">목록 조회 실패: {contestListError}</p>
+            <QueryState kind="error" title="공모전 목록을 불러오지 못했습니다" description={contestListError} retry={() => void retryContests()} />
           )}
         </aside>
 
@@ -430,10 +433,10 @@ export default function AdminContestReviewClient() {
             출품 심사 전용
           </h2>
           <p className="mt-2 text-sm text-[color:var(--muted)]">
-            출품 상태를 대기, 승인, 반려 기준으로 분리해서 대량 심사합니다.
+            대기 중인 작품을 확인하고 승인 또는 반려로 처리합니다.
           </p>
           <p className="mt-1 text-xs text-[color:var(--muted)]">
-            심사는 출품 종료 후 전시 시작 전(여분 시간대)에만 가능합니다.
+            심사는 출품 종료 후부터 전시 시작 전까지 진행합니다.
           </p>
           {selectedContest && !isSelectedContestReviewable && (
             <p className="mt-3 border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-3 py-2 text-xs text-[color:var(--accent-2)]">
@@ -606,7 +609,7 @@ export default function AdminContestReviewClient() {
                     </motion.article>
                   ))}
 
-                  {filteredEntries.length === 0 && (
+                  {filteredEntries.length === 0 && !entriesError && (
                     <div className="border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3 text-sm text-[color:var(--muted)]">
                       {getContestEntryStatusLabel(filter)} 상태 출품이 없습니다.
                     </div>
@@ -614,14 +617,14 @@ export default function AdminContestReviewClient() {
                 </div>
               )}
             </>
-          ) : (
+          ) : !contestListError && !isLoading ? (
             <div className="mt-5 border border-[color:var(--line)] bg-[rgba(12,12,18,0.82)] px-4 py-3 text-sm text-[color:var(--muted)]">
               등록된 콘테스트가 없습니다.
             </div>
-          )}
+          ) : null}
 
           {entriesError && (
-            <p className="mt-3 text-xs text-[color:var(--accent-2)]">출품 목록 조회 실패: {entriesError}</p>
+            <QueryState kind="error" title="출품 목록을 불러오지 못했습니다" description={entriesError} retry={() => void retryEntries()} />
           )}
         </section>
       </section>

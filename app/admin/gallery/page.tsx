@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function AdminGalleryPage() {
-  return <AdminGalleryClient />;
+export default async function AdminGalleryPage({ searchParams }: { searchParams: Promise<{ museumId?: string }> }) {
+  const id = Number((await searchParams).museumId);
+  return <AdminGalleryClient key={id || "list"} initialMuseumId={Number.isSafeInteger(id) && id > 0 ? id : undefined} />;
 }
